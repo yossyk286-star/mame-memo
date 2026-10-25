@@ -19,6 +19,8 @@ export interface TastingRecord {
   temp: Temp | null;
   style: Style | null;
   menuNote: string; // お店の説明
+  /** 合うスイーツ（メニュー読み取りの一言）。後から増やした項目なので古い記録にはない */
+  sweets?: string;
   flavors: string[]; // 感じた味
   acidity: Score | null;
   bitterness: Score | null;

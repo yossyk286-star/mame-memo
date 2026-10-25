@@ -54,6 +54,7 @@ function DetailBody() {
         ["抽出方法", r.method ?? "—"],
         ["温度・飲み方", [r.temp, r.style].filter(Boolean).join("・") || "—"],
         ["お店の説明", r.menuNote || "—"],
+        ["合うスイーツ", r.sweets || "—"],
         ["感じた味", r.flavors.join("・") || "—"],
         ["酸味", scoreText(r.acidity)],
         ["苦味", scoreText(r.bitterness)],
