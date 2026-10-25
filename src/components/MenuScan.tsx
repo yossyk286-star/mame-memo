@@ -142,7 +142,7 @@ export default function MenuScan({
     <section className={styles.box} aria-label="メニューを撮って入力">
       <p className={styles.lead}>
         {status === "done"
-          ? "飲んだ豆を選ぶと、豆の情報が入った状態で感想を書けます。"
+          ? "「＋ 記録に追加」を押すと、豆の情報が入った状態で感想を書けます。"
           : "メニューを撮ると、豆ごとに解説とおすすめの飲み方を出して、記録の項目に入れます。"}
       </p>
       {!savedPasscode && (
@@ -229,7 +229,7 @@ export default function MenuScan({
             {b.recommendation}
           </p>
           <button type="button" className="btn-primary" onClick={() => onPick(b)}>
-            これを飲んだ
+            ＋ 記録に追加
           </button>
           <button type="button" className="btn-secondary" aria-pressed={!!wishOf(b)} onClick={() => toggleWish(b)}>
             {wishOf(b) ? "★ 気になる豆に入れました" : "☆ 気になる（次に試す）"}

@@ -11,10 +11,10 @@ import { beanToDraft, type ScannedBean } from "@/lib/menuScan";
 import type { RecordDraft } from "@/lib/types";
 
 function NewRecord() {
-  // メニュー確認の画面で「これを飲んだ」を押すと ?bean=豆の名前 で来る
+  // メニュー確認の画面で「＋ 記録に追加」を押すと ?bean=豆の名前 で来る
   const params = useSearchParams();
   const beanParam = params.get("bean");
-  // 気になる豆の一覧から「飲んだので記録する」で来たときは ?wish=id
+  // 気になる豆の一覧から「＋ 記録に追加」で来たときは ?wish=id
   const wishParam = params.get("wish");
   const [wishId, setWishId] = useState<string | null>(null);
   const [beans, setBeans] = useState<ScannedBean[]>([]);
