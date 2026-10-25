@@ -8,8 +8,16 @@
   gap: 12px;
 }
 
+.lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--accent-dark);
+}
+
 .shoot {
   cursor: pointer;
+  gap: 8px;
 }
 
 .shoot[aria-disabled="true"] {

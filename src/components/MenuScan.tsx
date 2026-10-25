@@ -24,8 +24,29 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+/** 選んだ豆の解説とおすすめ（フォームの上に出しておく） */
+export function PickedBean({ bean }: { bean: ScannedBean }) {
+  return (
+    <section className="tips" style={{ margin: "16px 16px 0" }}>
+      <h2>{bean.name}</h2>
+      <p className="term-desc">{bean.explanation}</p>
+      <p className="term-desc">
+        <strong>おすすめ：</strong>
+        {bean.recommendation}
+      </p>
+    </section>
+  );
+}
+
 /** メニューを撮影して豆の情報を読み取り、選んだ豆を記録フォームに渡す */
-export default function MenuScan({ onPick }: { onPick: (bean: ScannedBean) => void }) {
+export default function MenuScan({
+  onPick,
+  savedPhoto,
+}: {
+  onPick: (bean: ScannedBean) => void;
+  /** 記録に保存済みの写真。あればそれを読み取るボタンも出す */
+  savedPhoto?: Blob | null;
+}) {
   const [passcode, setPasscode] = useState("");
   const [savedPasscode, setSavedPasscode] = useState(false);
   const [status, setStatus] = useState<"idle" | "reading" | "done">("idle");
@@ -42,14 +63,17 @@ export default function MenuScan({ onPick }: { onPick: (bean: ScannedBean) => vo
   async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    if (file) await scan(file);
+  }
+
+  async function scan(photo: Blob) {
     if (!passcode) return setError("先に合言葉を入れてください");
 
     setError("");
     setStatus("reading");
     try {
       // 料金は画像の大きさで決まるので、長辺1000pxまで縮めてから送る
-      const image = await blobToBase64(await shrinkPhoto(file, 1000));
+      const image = await blobToBase64(await shrinkPhoto(photo, 1000));
       const res = await fetch("/api/read-menu", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -74,6 +98,7 @@ export default function MenuScan({ onPick }: { onPick: (bean: ScannedBean) => vo
 
   return (
     <section className={styles.box} aria-label="メニューを撮って入力">
+      <p className={styles.lead}>メニューを撮ると、豆ごとに解説とおすすめの飲み方を出して、下の項目に入れます。</p>
       {!savedPasscode && (
         <div className="field">
           <label className="label" htmlFor="scan-pass">
@@ -91,7 +116,11 @@ export default function MenuScan({ onPick }: { onPick: (bean: ScannedBean) => vo
       )}
 
       <label className={`btn-primary ${styles.shoot}`} aria-disabled={status === "reading"}>
-        {status === "reading" ? "読み取り中…" : status === "done" ? "撮り直す" : "メニューを撮って入力"}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+          <circle cx="12" cy="13" r="3.5" />
+        </svg>
+        {status === "reading" ? "読み取り中…" : status === "done" ? "撮り直す" : "メニューを撮って読み取る"}
         <input
           type="file"
           accept="image/*"
@@ -101,6 +130,12 @@ export default function MenuScan({ onPick }: { onPick: (bean: ScannedBean) => vo
           className="visually-hidden"
         />
       </label>
+
+      {savedPhoto && status !== "reading" && (
+        <button type="button" className="btn-secondary" onClick={() => scan(savedPhoto)}>
+          保存した写真から読み取る
+        </button>
+      )}
 
       {error && (
         <p className="error" role="alert">
@@ -125,7 +160,7 @@ export default function MenuScan({ onPick }: { onPick: (bean: ScannedBean) => vo
             {b.recommendation}
           </p>
           <button type="button" className="btn-secondary" onClick={() => onPick(b)}>
-            この豆で記録する
+            この豆の内容を入れる
           </button>
         </article>
       ))}

@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
+import MenuScan, { PickedBean } from "@/components/MenuScan";
 import RecordForm from "@/components/RecordForm";
+import { beanToDraft, type ScannedBean } from "@/lib/menuScan";
 import { useRecordFromQuery } from "@/lib/useRecord";
 
 function EditBody() {
   const record = useRecordFromQuery();
+  const [scanOpen, setScanOpen] = useState(false);
+  const [picked, setPicked] = useState<ScannedBean | null>(null);
+
   return (
     <>
       <header className="sub-header">
@@ -16,7 +21,24 @@ function EditBody() {
         <h1>記録を編集</h1>
       </header>
       {record === null && <p className="empty">記録が見つかりませんでした。</p>}
-      {record && <RecordForm initial={record} />}
+      {record && (
+        <>
+          {picked && <PickedBean bean={picked} />}
+          {!picked && scanOpen && <MenuScan onPick={setPicked} savedPhoto={record.photo} />}
+          {!picked && !scanOpen && (
+            <div style={{ padding: "16px 16px 0" }}>
+              <button type="button" className="btn-secondary" style={{ width: "100%" }} onClick={() => setScanOpen(true)}>
+                メニューから読み取る
+              </button>
+            </div>
+          )}
+          {/* 読み取り結果は、すでに入っている内容の上に重ねる */}
+          <RecordForm
+            key={picked?.name ?? "saved"}
+            initial={picked ? { ...record, ...beanToDraft(picked) } : record}
+          />
+        </>
+      )}
     </>
   );
 }
