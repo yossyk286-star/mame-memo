@@ -3,6 +3,27 @@ export type Process = "Washed" | "Natural" | "Honey" | "Anaerobic" | "その他"
 export type Method = "ドリップ" | "エアロプレス" | "エスプレッソ" | "サイフォン" | "フレンチプレス" | "その他";
 export type Temp = "ホット" | "アイス";
 export type Style = "ブラック" | "ミルク";
+export type Grind = "細挽き" | "中細挽き" | "中挽き" | "粗挽き";
+
+/** 家で淹れたときのレシピ。どれも入れなくてよい */
+export interface Recipe {
+  /** 豆の量（g） */
+  dose: number | null;
+  /** お湯の量（ml） */
+  water: number | null;
+  /** お湯の温度（℃） */
+  tempC: number | null;
+  grind: Grind | null;
+  /** 抽出時間（例：2:30） */
+  time: string;
+}
+
+/** 記録の画面で AI に聞いたことと答え */
+export interface QA {
+  q: string;
+  a: string;
+  at: number;
+}
 
 /** 1〜5 の評価。未入力は null */
 export type Score = 1 | 2 | 3 | 4 | 5;
@@ -33,6 +54,10 @@ export interface TastingRecord {
   price?: number | null;
   /** 家の豆（買った豆）から記録したときの、その豆の id */
   bagId?: string;
+  /** 家で淹れたときのレシピ。後から増やした項目なので古い記録にはない */
+  recipe?: Recipe;
+  /** この記録について AI に聞いたこと */
+  qa?: QA[];
   memo: string;
   /** 自分で撮った写真（飲んだコーヒー、お店など）。何枚でも */
   photos: Blob[];

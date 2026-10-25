@@ -5,22 +5,29 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import MenuScan, { PickedBean } from "@/components/MenuScan";
 import RecordForm from "@/components/RecordForm";
-import { beanTitle } from "@/components/RecordCard";
+import { beanTitle, stars } from "@/components/RecordCard";
 import { deleteWish, getBag, getWish, listBags, listRecords } from "@/lib/db";
 import { loadLastScan, markRecorded } from "@/lib/lastScan";
 import { beanToDraft, type ScannedBean } from "@/lib/menuScan";
-import type { Bag, RecordDraft } from "@/lib/types";
+import { bestRecipe, recipeText } from "@/lib/recipe";
+import type { Bag, RecordDraft, TastingRecord } from "@/lib/types";
 
 /** 家の豆から記録する画面。豆の情報は登録したものを入れて、淹れ方と感想だけ書けばよいようにする */
-function BagRecord({ bag, count }: { bag: Bag; count: number }) {
+function BagRecord({ bag, count, best }: { bag: Bag; count: number; best?: TastingRecord }) {
   const router = useRouter();
   return (
     <>
       <section className="tips" style={{ margin: "16px 16px 0" }}>
         <h2>家の豆：{beanTitle(bag)}</h2>
         <p className="term-desc" style={{ margin: 0 }}>
-          {count + 1}回目の記録です。淹れ方や豆の量を変えたら、メモに残しておくと比べやすくなります。
+          {count + 1}回目の記録です。淹れ方や豆の量を変えたら、レシピに残しておくと比べやすくなります。
         </p>
+        {best?.recipe && (
+          <p className="term-desc" style={{ margin: 0 }}>
+            {best.bagId === bag.id ? "この豆で" : "これまでで"}いちばん良かった回（{stars(best.overall)}）のレシピを入れています：
+            {recipeText(best.recipe)}
+          </p>
+        )}
       </section>
       <RecordForm
         prefill={{
@@ -31,6 +38,8 @@ function BagRecord({ bag, count }: { bag: Bag; count: number }) {
           menuNote: bag.note,
           shop: "家",
           bagId: bag.id,
+          method: best?.method ?? null,
+          recipe: best?.recipe,
         }}
         beanFilled
         onSaved={() => router.replace("/bags")}
@@ -47,7 +56,7 @@ function NewRecord() {
   const wishParam = params.get("wish");
   // 家の豆から「飲んだ・記録する」で来たときは ?bag=id
   const bagParam = params.get("bag");
-  const [bag, setBag] = useState<{ bag: Bag; count: number } | null>(null);
+  const [bag, setBag] = useState<{ bag: Bag; count: number; best?: TastingRecord } | null>(null);
   const [openBags, setOpenBags] = useState(0);
   const [wishId, setWishId] = useState<string | null>(null);
   const [beans, setBeans] = useState<ScannedBean[]>([]);
@@ -88,7 +97,10 @@ function NewRecord() {
     listBags().then((bs) => setOpenBags(bs.filter((b) => !b.finished).length));
     if (!bagParam) return;
     Promise.all([getBag(bagParam), listRecords()]).then(([b, rs]) => {
-      if (b) setBag({ bag: b, count: rs.filter((r) => r.bagId === b.id).length });
+      if (!b) return;
+      const mine = rs.filter((r) => r.bagId === b.id);
+      // この豆でまだ淹れていなければ、ほかの豆でいちばん良かったレシピから始める
+      setBag({ bag: b, count: mine.length, best: bestRecipe(mine) ?? bestRecipe(rs) });
     });
   }, [bagParam]);
 
@@ -103,7 +115,7 @@ function NewRecord() {
           </Link>
           <h1>家の豆を記録</h1>
         </header>
-        {bag && <BagRecord bag={bag.bag} count={bag.count} />}
+        {bag && <BagRecord bag={bag.bag} count={bag.count} best={bag.best} />}
       </>
     );
   }

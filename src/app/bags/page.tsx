@@ -7,6 +7,7 @@ import { beanTitle, roastColor, stars, yen } from "@/components/RecordCard";
 import { deleteBag, listBags, listRecords, putBag } from "@/lib/db";
 import { PROCESSES, ROASTS } from "@/lib/glossary";
 import { today } from "@/lib/lastScan";
+import { bestRecipe, recipeText } from "@/lib/recipe";
 import type { Bag, TastingRecord } from "@/lib/types";
 
 function emptyBag(): Omit<Bag, "id" | "createdAt"> {
@@ -116,6 +117,7 @@ function BagCard({
 }) {
   const mine = records.filter((r) => r.bagId === b.id);
   const avg = mine.length ? mine.reduce((a, r) => a + r.overall, 0) / mine.length : 0;
+  const best = bestRecipe(mine);
   return (
     <article className="card" style={{ gap: 6, opacity: b.finished ? 0.7 : 1 }}>
       <div className="card-top">
@@ -139,12 +141,19 @@ function BagCard({
           <span className="muted">まだ記録していません</span>
         )}
       </p>
+      {best?.recipe && (
+        <p className="best-recipe">
+          <strong>いちばん良かったレシピ</strong>（{stars(best.overall)}・{best.method ?? "淹れ方未入力"}）
+          <br />
+          {recipeText(best.recipe)}
+        </p>
+      )}
       {mine.length > 0 && (
         <details className="bottle-history">
           <summary>記録を見る</summary>
           {mine.map((r) => (
             <Link key={r.id} href={`/record?id=${r.id}`}>
-              {r.date.slice(5).replace("-", "/")} {stars(r.overall)} {r.method ?? ""} {r.memo.slice(0, 20)}
+              {r.date.slice(5).replace("-", "/")} {stars(r.overall)} {r.method ?? ""} {r.recipe ? recipeText(r.recipe) : r.memo.slice(0, 20)}
             </Link>
           ))}
         </details>
