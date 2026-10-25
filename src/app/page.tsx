@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import RecordCard from "@/components/RecordCard";
+import SwipeRecord from "@/components/SwipeRecord";
 import { listRecords } from "@/lib/db";
 import { loadLastScan } from "@/lib/lastScan";
 import type { TastingRecord } from "@/lib/types";
@@ -28,7 +28,9 @@ export default function RecordsPage() {
         </Link>
       </header>
 
-      {records && records.length > 0 && <p className="lead">これまでの記録 {records.length}件</p>}
+      {records && records.length > 0 && (
+        <p className="lead">これまでの記録 {records.length}件（左にスライドで削除、右で編集）</p>
+      )}
 
       <main className="content" style={{ paddingBottom: 96 }}>
         {/* お店でメニューを見たらすぐ撮って確認できるように、一覧のいちばん上に置く */}
@@ -46,7 +48,13 @@ export default function RecordsPage() {
             カフェで飲んだら「記録する」から残してみましょう。
           </p>
         )}
-        {records?.map((r) => <RecordCard key={r.id} record={r} />)}
+        {records?.map((r) => (
+          <SwipeRecord
+            key={r.id}
+            record={r}
+            onDeleted={(id) => setRecords((rs) => rs?.filter((x) => x.id !== id) ?? null)}
+          />
+        ))}
       </main>
 
       <Link href="/new" className="fab">
