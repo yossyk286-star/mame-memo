@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { photosOf, usePhotoURLs } from "@/lib/photo";
-import type { TastingRecord } from "@/lib/types";
+import type { Roast, TastingRecord } from "@/lib/types";
 
 export function stars(n: number) {
   return "★".repeat(n) + "☆".repeat(5 - n);
@@ -13,46 +13,57 @@ export function beanTitle(r: Pick<TastingRecord, "origin" | "farm">) {
   return [r.origin, r.farm].filter(Boolean).join(" ") || "（豆の名前なし）";
 }
 
+/** 焙煎度ごとの色（globals.css の --k-… ）と、写真がないときに出す1文字 */
+const ROAST_LOOK: Record<Roast, { color: string; mark: string }> = {
+  浅煎り: { color: "var(--k-light)", mark: "浅" },
+  中煎り: { color: "var(--k-medium)", mark: "中" },
+  深煎り: { color: "var(--k-dark)", mark: "深" },
+  不明: { color: "var(--k-unknown)", mark: "豆" },
+};
+
+export function roastColor(roast: Roast | null) {
+  return ROAST_LOOK[roast ?? "不明"].color;
+}
+
 /** 「2026-10-25」→「10/25」。今年以外は年も出す */
-function shortDate(date: string) {
+export function shortDate(date: string) {
   const [y, m, d] = date.split("-");
   const md = `${Number(m)}/${Number(d)}`;
   return Number(y) === new Date().getFullYear() ? md : `${y}/${md}`;
 }
 
-export default function RecordCard({ record: r }: { record: TastingRecord }) {
-  const [thumb] = usePhotoURLs(photosOf(r).slice(0, 1));
-  const tags = [r.roast, r.process, r.method, r.temp, r.style].filter((t) => t && t !== "不明");
+/** 写真があれば小さく、なければ焙煎度の色の四角に1文字 */
+function Thumb({ record: r }: { record: TastingRecord }) {
+  const [url] = usePhotoURLs(photosOf(r).slice(0, 1));
+  if (url) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url} alt="" className="thumb" style={{ borderColor: roastColor(r.roast) }} />;
+  }
   return (
-    <Link href={`/record?id=${r.id}`} className="card">
-      <div className="row" style={{ alignItems: "flex-start" }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="card-top">
-            <h2>{beanTitle(r)}</h2>
-            <span className="muted">{shortDate(r.date)}</span>
-          </div>
-          <p className="muted">{r.shop}</p>
+    <span className="thumb thumb-mark" style={{ background: roastColor(r.roast) }} aria-hidden="true">
+      {ROAST_LOOK[r.roast ?? "不明"].mark}
+    </span>
+  );
+}
+
+/** 記録の一覧の1行。2行に詰めて、画面にたくさん並ぶようにする。showDate=false は日付で区切った一覧用 */
+export default function RecordCard({ record: r, showDate = true }: { record: TastingRecord; showDate?: boolean }) {
+  const sub = [
+    ...[r.roast, r.process, r.method].filter((t) => t && t !== "不明"),
+    r.shop,
+    showDate && shortDate(r.date),
+  ].filter(Boolean);
+  return (
+    <Link href={`/record?id=${r.id}`} className="card record-row">
+      <Thumb record={r} />
+      <div className="record-row-body">
+        <div className="record-row-top">
+          <h2>{beanTitle(r)}</h2>
+          <span className="stars" aria-label={`5段階中${r.overall}`}>
+            {stars(r.overall)}
+          </span>
         </div>
-        {thumb && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumb} alt="" className="card-thumb" />
-        )}
-      </div>
-      {tags.length > 0 && (
-        <div className="tags">
-          {tags.map((t) => (
-            <span key={t} className="tag">
-              {t}
-            </span>
-          ))}
-        </div>
-      )}
-      <div className="row" style={{ alignItems: "center", fontSize: 13 }}>
-        <span className="muted">総合</span>
-        <span className="stars" aria-label={`5段階中${r.overall}`}>
-          {stars(r.overall)}
-        </span>
-        {r.flavors.length > 0 && <span className="muted">{r.flavors.join("・")}</span>}
+        <p className="muted">{sub.join("・")}</p>
       </div>
     </Link>
   );

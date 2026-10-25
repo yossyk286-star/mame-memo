@@ -59,6 +59,8 @@ function DetailBody() {
         ["酸味", scoreText(r.acidity)],
         ["苦味", scoreText(r.bitterness)],
         ["甘さ", scoreText(r.sweetness)],
+        ["コク", scoreText(r.body ?? null)],
+        ["香り", scoreText(r.aroma ?? null)],
         ["メモ", r.memo || "—"],
       ]
     : [];
@@ -98,6 +100,9 @@ function DetailBody() {
               ))}
             </dl>
           </div>
+          <Link href={`/compare?a=${r.id}`} className="btn-secondary">
+            ほかの記録とくらべる
+          </Link>
           <div className="row">
             <Link href={`/edit?id=${r.id}`} className="btn-secondary" style={{ flex: 1 }}>
               編集する
