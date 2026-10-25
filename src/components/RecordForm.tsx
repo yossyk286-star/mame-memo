@@ -85,10 +85,13 @@ function RatingRow({
 export default function RecordForm({
   initial,
   prefill,
+  onSaved,
 }: {
   initial?: TastingRecord;
   /** 新規作成時に先に入れておく値（メニュー読み取り結果など） */
   prefill?: Partial<RecordDraft>;
+  /** 保存後の動き。なければ一覧（編集なら詳細）に戻る */
+  onSaved?: (record: TastingRecord) => void;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<RecordDraft>(() => initial ?? { ...emptyDraft(), ...prefill });
@@ -142,6 +145,7 @@ export default function RecordForm({
       updatedAt: now,
     };
     await putRecord(record);
+    if (onSaved) return onSaved(record);
     router.replace(initial ? `/record?id=${record.id}` : "/");
   }
 
