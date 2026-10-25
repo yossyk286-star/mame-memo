@@ -579,3 +579,62 @@ textarea.input {
   right: 0;
   background: #a3261a;
 }
+
+/* 産地スタンプ帳 */
+.stamp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.stamp {
+  aspect-ratio: 1;
+  border: 1.5px dashed var(--line);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px;
+  text-align: center;
+  color: var(--muted);
+}
+.stamp-name {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.stamp-meta {
+  font-size: 10px;
+}
+.stamp-on {
+  border: 2px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  transform: rotate(-6deg);
+}
+
+/* 好みのタブの、まとめ画面への入口 */
+.hub {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.hub-item {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-decoration: none;
+  color: inherit;
+  font-size: 13px;
+}
+.hub-item strong {
+  font-size: 13px;
+  color: var(--accent-dark);
+}

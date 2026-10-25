@@ -27,6 +27,7 @@ export default function ScanPage() {
 
       <p className="lead">
         撮った結果は今日のあいだ残るので、あとから「記録する」でも同じ豆から選べます。
+        次に試したい豆は「☆ 気になる」で<Link href="/wishlist">気になる豆</Link>に残せます。
       </p>
 
       {beans && (
