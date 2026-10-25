@@ -1,0 +1,37 @@
+.box {
+  margin: 16px 16px 0;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shoot {
+  cursor: pointer;
+}
+
+.shoot[aria-disabled="true"] {
+  opacity: 0.6;
+}
+
+.bean {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bean h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+}

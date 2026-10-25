@@ -82,9 +82,16 @@ function RatingRow({
   );
 }
 
-export default function RecordForm({ initial }: { initial?: TastingRecord }) {
+export default function RecordForm({
+  initial,
+  prefill,
+}: {
+  initial?: TastingRecord;
+  /** 新規作成時に先に入れておく値（メニュー読み取り結果など） */
+  prefill?: Partial<RecordDraft>;
+}) {
   const router = useRouter();
-  const [draft, setDraft] = useState<RecordDraft>(() => initial ?? emptyDraft());
+  const [draft, setDraft] = useState<RecordDraft>(() => initial ?? { ...emptyDraft(), ...prefill });
   const [sheet, setSheet] = useState<GlossaryCategory | null>(null);
   const [newFlavor, setNewFlavor] = useState("");
   const [shopNames, setShopNames] = useState<string[]>([]);
