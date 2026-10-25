@@ -1,8 +1,9 @@
 import { photosOf } from "./photo";
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { ScannedBean } from "./menuScan";
+import { loadMyTerms, saveMyTerms, type MyTerm } from "./myTerms";
 import { loadPrefs, savePrefs } from "./prefs";
-import type { TastingRecord } from "./types";
+import type { Bag, TastingRecord } from "./types";
 
 /** メニューで見て「次に試したい」と印を付けた豆 */
 export type WishBean = ScannedBean & { id: string; savedAt: number };
@@ -19,13 +20,17 @@ interface MameDB extends DBSchema {
     key: string;
     value: WishBean;
   };
+  bags: {
+    key: string;
+    value: Bag;
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<MameDB>> | null = null;
 
 function getDB() {
   if (!dbPromise) {
-    dbPromise = openDB<MameDB>("mame-memo", 2, {
+    dbPromise = openDB<MameDB>("mame-memo", 3, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           const store = db.createObjectStore("records", { keyPath: "id" });
@@ -33,6 +38,8 @@ function getDB() {
         }
         // v2: 気になる豆
         if (oldVersion < 2) db.createObjectStore("wishes", { keyPath: "id" });
+        // v3: 家の豆
+        if (oldVersion < 3) db.createObjectStore("bags", { keyPath: "id" });
       },
     });
     // ブラウザに「消さないで」と依頼する（対応ブラウザのみ）
@@ -77,6 +84,24 @@ export async function deleteWish(id: string) {
   await (await getDB()).delete("wishes", id);
 }
 
+/** 家の豆。飲みかけを先に、新しく買った順 */
+export async function listBags(): Promise<Bag[]> {
+  const all = await (await getDB()).getAll("bags");
+  return all.sort((a, b) => Number(a.finished) - Number(b.finished) || b.createdAt - a.createdAt);
+}
+
+export async function getBag(id: string) {
+  return (await getDB()).get("bags", id);
+}
+
+export async function putBag(bag: Bag) {
+  await (await getDB()).put("bags", bag);
+}
+
+export async function deleteBag(id: string) {
+  await (await getDB()).delete("bags", id);
+}
+
 // --- 書き出し / 読み込み（バックアップ用） ---
 
 /** 書き出しファイルの記録。写真は data URL。version 2 までは photo に1枚だけ */
@@ -99,7 +124,7 @@ export async function exportJSON(): Promise<string> {
       photos: await Promise.all(photosOf({ ...r, photo: _old }).map(blobToDataURL)),
     })),
   );
-  return JSON.stringify({ app: "mame-memo", version: 3, records: out, wishes: await listWishes(), prefs: loadPrefs() });
+  return JSON.stringify({ app: "mame-memo", version: 3, records: out, wishes: await listWishes(), bags: await listBags(), prefs: loadPrefs(), myTerms: loadMyTerms() });
 }
 
 /** 同じ id の記録は上書きする。読み込んだ件数を返す */
@@ -116,11 +141,17 @@ export async function importJSON(text: string): Promise<number> {
       photos: await Promise.all((photos ?? (photo ? [photo] : [])).map(async (u) => (await fetch(u)).blob())),
     })),
   );
-  const tx = db.transaction(["records", "wishes"], "readwrite");
+  const tx = db.transaction(["records", "wishes", "bags"], "readwrite");
   for (const r of records) await tx.objectStore("records").put(r);
   // 気になる豆は v2 から。古い書き出しファイルにはない
   for (const w of (data.wishes ?? []) as WishBean[]) await tx.objectStore("wishes").put(w);
+  for (const b of (data.bags ?? []) as Bag[]) await tx.objectStore("bags").put(b);
   await tx.done;
   if (data.prefs) savePrefs({ ...loadPrefs(), ...data.prefs });
+  if (Array.isArray(data.myTerms)) {
+    const mine = loadMyTerms();
+    const added = (data.myTerms as MyTerm[]).filter((t) => !mine.some((m) => m.term === t.term));
+    saveMyTerms([...mine, ...added]);
+  }
   return data.records.length;
 }

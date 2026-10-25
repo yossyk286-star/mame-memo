@@ -1,3 +1,4 @@
+import { countryOf } from "./countries";
 import type { ScannedBean } from "./menuScan";
 import { hasPrefs, type MyPrefs } from "./prefs";
 import type { TastingRecord } from "./types";
@@ -68,6 +69,28 @@ export function scoreBeans(beans: ScannedBean[], records: TastingRecord[], prefs
       score += 0.4;
       reasons.push(`好きな${b.process}`);
     }
+    if (b.roast && prefs.avoidRoasts.includes(b.roast)) score -= 0.8;
+    if (b.recommendedMethod && prefs.methods.includes(b.recommendedMethod)) {
+      score += 0.3;
+      reasons.push(`好きな淹れ方（${b.recommendedMethod}）`);
+    }
+    const country = countryOf({ origin: b.origin, farm: b.farm }) ?? b.origin;
+    if (country && prefs.origins.some((o) => o === country || b.origin.includes(o) || b.name.includes(o))) {
+      score += 0.4;
+      reasons.push(`好きな産地（${country}）`);
+    }
+    // 酸味・苦味・コクの好みに、味の予想が近いほど上げ、離れているほど下げる
+    const taste = b.taste;
+    const near = taste
+      ? (["acidity", "bitterness", "body"] as const).filter((k) => {
+          const want = prefs[k];
+          if (want === null) return false;
+          const gap = Math.abs(taste[k] - want);
+          score += gap <= 1 ? 0.3 : gap >= 3 ? -0.3 : 0;
+          return gap <= 1;
+        })
+      : [];
+    if (near.length >= 2) reasons.push("好みの味の寄り方に近い");
     const prefLiked = flavors.filter((f) => prefs.likes.includes(f));
     const prefDisliked = flavors.filter((f) => prefs.dislikes.includes(f));
     score += 0.5 * prefLiked.length - 0.6 * prefDisliked.length;

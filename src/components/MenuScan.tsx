@@ -1,16 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { farmOf, type MenuScanResult, type ScannedBean } from "@/lib/menuScan";
+import {
+  beanToDraft,
+  farmOf,
+  type MenuScanResult,
+  type PairingResult,
+  type ScannedBean,
+} from "@/lib/menuScan";
 import { countryOf } from "@/lib/countries";
 import {
   deleteWish,
   listRecords,
   listWishes,
+  putBag,
   putWish,
   type WishBean,
 } from "@/lib/db";
-import { saveLastScan } from "@/lib/lastScan";
+import { saveLastScan, today } from "@/lib/lastScan";
+import { loadPasscode, PASSCODE_KEY } from "@/lib/passcode";
 import { shrinkPhoto } from "@/lib/photo";
 import { EMPTY_PREFS, loadPrefs } from "@/lib/prefs";
 import { bestPick, MIN_RECORDS, scoreBeans } from "@/lib/recommend";
@@ -18,7 +26,6 @@ import type { TastingRecord } from "@/lib/types";
 import styles from "./MenuScan.module.css";
 import TasteBars, { level } from "./TasteBars";
 
-const PASSCODE_KEY = "mame-memo:passcode";
 
 /** 今日の気分。押すと、味の予想からその気分に合う順に並べ替える */
 const MOODS: { label: string; score: (b: ScannedBean) => number }[] = [
@@ -52,13 +59,6 @@ const MOODS: { label: string; score: (b: ScannedBean) => number }[] = [
   },
 ];
 
-function loadPasscode() {
-  try {
-    return localStorage.getItem(PASSCODE_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -132,6 +132,15 @@ export default function MenuScan({
   const [records, setRecords] = useState<TastingRecord[]>([]);
   const [wishes, setWishes] = useState<WishBean[]>([]);
   const [prefs, setPrefs] = useState(EMPTY_PREFS);
+  // 頼むスイーツとの相性（豆の名前ごと）
+  const [sweet, setSweet] = useState("");
+  const [pairing, setPairing] = useState<{
+    sweet: string;
+    byName: Map<string, { score: number; reason: string }>;
+  } | null>(null);
+  const [pairingBusy, setPairingBusy] = useState(false);
+  // 買った豆を、家で何回かに分けて淹れる豆として登録する
+  const [bagged, setBagged] = useState<string[]>([]);
 
   // localStorage はブラウザでしか読めないので、表示後に読み込む
   useEffect(() => {
@@ -168,11 +177,73 @@ export default function MenuScan({
 
   // 気分を選んだら、その順に並べる（番号はおすすめの計算と同じ、元の並びのまま持つ）
   const [mood, setMood] = useState<string | null>(null);
+  // スイーツとの相性を出したときは、その順を優先する
   const order = useMemo(() => {
     const idx = beans.map((_, i) => i);
+    if (pairing) {
+      const s = (i: number) => pairing.byName.get(beans[i].name)?.score ?? 0;
+      return idx.sort((a, b) => s(b) - s(a));
+    }
     const m = MOODS.find((x) => x.label === mood);
     return m ? idx.sort((a, b) => m.score(beans[b]) - m.score(beans[a])) : idx;
-  }, [beans, mood]);
+  }, [beans, mood, pairing]);
+
+  async function addBag(b: ScannedBean) {
+    const d = beanToDraft(b);
+    await putBag({
+      id: crypto.randomUUID(),
+      origin: d.origin,
+      farm: d.farm,
+      roast: d.roast,
+      process: d.process,
+      shop: "",
+      note: b.explanation,
+      price: null,
+      boughtAt: today(),
+      finished: false,
+      createdAt: Date.now(),
+    });
+    setBagged((ns) => [...ns, b.name]);
+  }
+
+  /** いま頼む・食べているスイーツに合う順に並べる */
+  async function pairWith() {
+    const s = sweet.trim();
+    if (!s) return;
+    if (!passcode) return setError("先に合言葉を入れてください");
+    if (!navigator.onLine) return setError("オフラインのため調べられません");
+    setError("");
+    setPairingBusy(true);
+    try {
+      const res = await fetch("/api/read-menu", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sweet: s,
+          beans: beans.map(({ name, roast, process }) => ({ name, roast, process })),
+          passcode: passcode.trim().normalize("NFKC"),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) setSavedPasscode(false);
+      if (!res.ok) throw new Error(data.error ?? "相性を調べられませんでした");
+      const byName = new Map<string, { score: number; reason: string }>();
+      for (const r of (data as PairingResult).ranks) {
+        const bean = beans[r.index];
+        if (bean)
+          byName.set(bean.name, {
+            score: Math.min(5, Math.max(1, r.score)),
+            reason: r.reason,
+          });
+      }
+      setPairing({ sweet: s, byName });
+      setMood(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "相性を調べられませんでした");
+    } finally {
+      setPairingBusy(false);
+    }
+  }
   const hasTaste = beans.some((b) => b.taste);
 
   // 前に飲んだ豆と、まだ飲んだことのない国
@@ -215,6 +286,8 @@ export default function MenuScan({
     payload: () => Promise<{ image?: string; text?: string }>,
   ) {
     if (!passcode) return setError("先に合言葉を入れてください");
+    if (!navigator.onLine)
+      return setError("オフラインのため読み取れません。電波のあるところでもう一度お試しください");
 
     setError("");
     setStatus("reading");
@@ -238,6 +311,7 @@ export default function MenuScan({
       if (result.beans.length === 0)
         throw new Error("コーヒー豆のメニューが見つかりませんでした");
       setBeans(result.beans);
+      setPairing(null);
       saveLastScan(result.beans);
       onScanned?.(result.beans);
       setStatus("done");
@@ -391,7 +465,10 @@ export default function MenuScan({
               key={m.label}
               className="chip"
               aria-pressed={mood === m.label}
-              onClick={() => setMood(mood === m.label ? null : m.label)}
+              onClick={() => {
+                setMood(mood === m.label ? null : m.label);
+                setPairing(null);
+              }}
             >
               {m.label}
             </button>
@@ -399,9 +476,60 @@ export default function MenuScan({
         </div>
       )}
 
+      {beans.length > 1 && (
+        <form
+          className="row"
+          style={{ flexWrap: "nowrap" }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            pairWith();
+          }}
+        >
+          <label htmlFor="scan-sweet" className="visually-hidden">
+            一緒に食べるスイーツ
+          </label>
+          <input
+            id="scan-sweet"
+            className="input"
+            type="search"
+            enterKeyHint="go"
+            maxLength={40}
+            placeholder="スイーツに合う順（例：チーズケーキ）"
+            value={sweet}
+            onChange={(e) => setSweet(e.target.value)}
+          />
+          <button
+            type="submit"
+            className="btn-secondary"
+            disabled={!sweet.trim() || pairingBusy}
+          >
+            {pairingBusy ? "調べ中…" : "並べる"}
+          </button>
+        </form>
+      )}
+      {pairing && (
+        <div
+          className="row"
+          style={{ alignItems: "center", flexWrap: "nowrap" }}
+        >
+          <p className={styles.lead} style={{ flex: 1 }}>
+            「{pairing.sweet}」に合う順に並べました。
+          </p>
+          <button
+            type="button"
+            className="btn-ghost"
+            style={{ height: 36, padding: "0 12px", flexShrink: 0 }}
+            onClick={() => setPairing(null)}
+          >
+            元の順に戻す
+          </button>
+        </div>
+      )}
+
       {order.map((i) => {
         const b = beans[i];
         const badges = badgesOf(b);
+        const match = pairing?.byName.get(b.name);
         return (
           <article
             key={i}
@@ -414,6 +542,15 @@ export default function MenuScan({
               </div>
             )}
             <h3>{b.name}</h3>
+            {match && (
+              <p className={styles.match}>
+                <strong>
+                  {pairing?.sweet}との相性{" "}
+                  {"●".repeat(match.score) + "○".repeat(5 - match.score)}
+                </strong>
+                {match.reason}
+              </p>
+            )}
             {badges.length > 0 && (
               <div className={styles.badges}>
                 {badges.map((t) => (
@@ -474,6 +611,16 @@ export default function MenuScan({
               {wishOf(b)
                 ? "★ 気になる豆に入れました"
                 : "☆ 気になる（次に試す）"}
+            </button>
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={bagged.includes(b.name)}
+              onClick={() => addBag(b)}
+            >
+              {bagged.includes(b.name)
+                ? "家の豆に登録しました"
+                : "＋ 家の豆に登録（買った豆）"}
             </button>
           </article>
         );

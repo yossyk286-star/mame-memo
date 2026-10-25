@@ -1,14 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import MenuScan, { PickedBean } from "@/components/MenuScan";
 import RecordForm from "@/components/RecordForm";
-import { deleteWish, getWish } from "@/lib/db";
+import { beanTitle } from "@/components/RecordCard";
+import { deleteWish, getBag, getWish, listBags, listRecords } from "@/lib/db";
 import { loadLastScan, markRecorded } from "@/lib/lastScan";
 import { beanToDraft, type ScannedBean } from "@/lib/menuScan";
-import type { RecordDraft } from "@/lib/types";
+import type { Bag, RecordDraft } from "@/lib/types";
+
+/** 家の豆から記録する画面。豆の情報は登録したものを入れて、淹れ方と感想だけ書けばよいようにする */
+function BagRecord({ bag, count }: { bag: Bag; count: number }) {
+  const router = useRouter();
+  return (
+    <>
+      <section className="tips" style={{ margin: "16px 16px 0" }}>
+        <h2>家の豆：{beanTitle(bag)}</h2>
+        <p className="term-desc" style={{ margin: 0 }}>
+          {count + 1}回目の記録です。淹れ方や豆の量を変えたら、メモに残しておくと比べやすくなります。
+        </p>
+      </section>
+      <RecordForm
+        prefill={{
+          origin: bag.origin,
+          farm: bag.farm,
+          roast: bag.roast,
+          process: bag.process,
+          menuNote: bag.note,
+          shop: "家",
+          bagId: bag.id,
+        }}
+        beanFilled
+        onSaved={() => router.replace("/bags")}
+      />
+    </>
+  );
+}
 
 function NewRecord() {
   // メニュー確認の画面で「＋ 記録に追加」を押すと ?bean=豆の名前 で来る
@@ -16,6 +45,10 @@ function NewRecord() {
   const beanParam = params.get("bean");
   // 気になる豆の一覧から「＋ 記録に追加」で来たときは ?wish=id
   const wishParam = params.get("wish");
+  // 家の豆から「飲んだ・記録する」で来たときは ?bag=id
+  const bagParam = params.get("bag");
+  const [bag, setBag] = useState<{ bag: Bag; count: number } | null>(null);
+  const [openBags, setOpenBags] = useState(0);
   const [wishId, setWishId] = useState<string | null>(null);
   const [beans, setBeans] = useState<ScannedBean[]>([]);
   const [picked, setPicked] = useState<ScannedBean | null>(null);
@@ -51,7 +84,29 @@ function NewRecord() {
     });
   }, [wishParam]);
 
+  useEffect(() => {
+    listBags().then((bs) => setOpenBags(bs.filter((b) => !b.finished).length));
+    if (!bagParam) return;
+    Promise.all([getBag(bagParam), listRecords()]).then(([b, rs]) => {
+      if (b) setBag({ bag: b, count: rs.filter((r) => r.bagId === b.id).length });
+    });
+  }, [bagParam]);
+
   const remaining = beans.filter((b) => !savedNames.includes(b.name));
+
+  if (bagParam) {
+    return (
+      <>
+        <header className="sub-header">
+          <Link href="/bags" className="back">
+            ‹ 戻る
+          </Link>
+          <h1>家の豆を記録</h1>
+        </header>
+        {bag && <BagRecord bag={bag.bag} count={bag.count} />}
+      </>
+    );
+  }
 
   return (
     <>
@@ -82,6 +137,12 @@ function NewRecord() {
             記録の一覧へ
           </Link>
         </section>
+      )}
+
+      {!picked && saveCount === 0 && openBags > 0 && (
+        <Link href="/bags" className="btn-secondary" style={{ margin: "16px 16px 0" }}>
+          家の豆から記録する（{openBags}袋）
+        </Link>
       )}
 
       {picked ? (
