@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import SwipeRecord from "@/components/SwipeRecord";
-import { listRecords } from "@/lib/db";
+import { listRecords, putRecord } from "@/lib/db";
 import { loadLastScan } from "@/lib/lastScan";
+import { farmOf } from "@/lib/menuScan";
 import type { TastingRecord } from "@/lib/types";
 
 export default function RecordsPage() {
@@ -12,8 +13,24 @@ export default function RecordsPage() {
   const [todayBeans, setTodayBeans] = useState(0);
 
   useEffect(() => {
-    listRecords().then(setRecords);
-    setTodayBeans(loadLastScan()?.beans.length ?? 0);
+    const scan = loadLastScan();
+    setTodayBeans(scan?.beans.length ?? 0);
+    listRecords().then(async (rs) => {
+      // 農園名が空のまま保存された今日の記録に、今日読み取ったメニューの同じ国の豆から農園名を補う
+      // （同じ国の豆が1つだけのときだけ。どれか決められないときは触らない）
+      const filled = await Promise.all(
+        rs.map(async (r) => {
+          if (r.farm || !scan || r.date !== scan.date) return r;
+          const same = scan.beans.filter((b) => b.origin === r.origin || b.name === r.origin);
+          const farm = same.length === 1 ? farmOf(same[0]) : "";
+          if (!farm) return r;
+          const updated = { ...r, origin: same[0].origin || r.origin, farm, updatedAt: Date.now() };
+          await putRecord(updated);
+          return updated;
+        }),
+      );
+      setRecords(filled);
+    });
   }, []);
 
   return (
