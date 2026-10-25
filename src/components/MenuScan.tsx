@@ -25,10 +25,17 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /** 選んだ豆の解説とおすすめ（フォームの上に出しておく） */
-export function PickedBean({ bean }: { bean: ScannedBean }) {
+export function PickedBean({ bean, onChange }: { bean: ScannedBean; onChange?: () => void }) {
   return (
     <section className="tips" style={{ margin: "16px 16px 0" }}>
-      <h2>{bean.name}</h2>
+      <div className="card-top">
+        <h2>{bean.name}</h2>
+        {onChange && (
+          <button type="button" className="btn-ghost" onClick={onChange}>
+            別の豆にする
+          </button>
+        )}
+      </div>
       <p className="term-desc">{bean.explanation}</p>
       <p className="term-desc">
         <strong>おすすめ：</strong>
@@ -42,15 +49,21 @@ export function PickedBean({ bean }: { bean: ScannedBean }) {
 export default function MenuScan({
   onPick,
   savedPhoto,
+  initialBeans = [],
+  onScanned,
 }: {
   onPick: (bean: ScannedBean) => void;
   /** 記録に保存済みの写真。あればそれを読み取るボタンも出す */
   savedPhoto?: Blob | null;
+  /** 前に読み取った結果。あれば撮り直さずにその一覧から選べる */
+  initialBeans?: ScannedBean[];
+  /** 読み取れたら結果を親に渡す（続けて別の豆を記録するときに使う） */
+  onScanned?: (beans: ScannedBean[]) => void;
 }) {
   const [passcode, setPasscode] = useState("");
   const [savedPasscode, setSavedPasscode] = useState(false);
-  const [status, setStatus] = useState<"idle" | "reading" | "done">("idle");
-  const [beans, setBeans] = useState<ScannedBean[]>([]);
+  const [status, setStatus] = useState<"idle" | "reading" | "done">(initialBeans.length ? "done" : "idle");
+  const [beans, setBeans] = useState<ScannedBean[]>(initialBeans);
   const [error, setError] = useState("");
 
   // localStorage はブラウザでしか読めないので、表示後に読み込む
@@ -89,6 +102,7 @@ export default function MenuScan({
       const result = data as MenuScanResult;
       if (result.beans.length === 0) throw new Error("コーヒー豆のメニューが見つかりませんでした");
       setBeans(result.beans);
+      onScanned?.(result.beans);
       setStatus("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "読み取りに失敗しました");
