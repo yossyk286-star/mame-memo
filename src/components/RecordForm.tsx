@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MultiChips, SingleChips } from "./ChipGroup";
 import GlossarySheet from "./GlossarySheet";
@@ -13,7 +13,8 @@ import {
   type GlossaryCategory,
 } from "@/lib/glossary";
 import { today } from "@/lib/lastScan";
-import { shrinkPhoto } from "@/lib/photo";
+import { photosOf, shrinkPhotos } from "@/lib/photo";
+import { PhotoAddButton, PhotoRow } from "./PhotoAdd";
 import type { RecordDraft, Score, TastingRecord } from "@/lib/types";
 
 const SCORES: Score[] = [1, 2, 3, 4, 5];
@@ -36,7 +37,7 @@ function emptyDraft(): RecordDraft {
     sweetness: null,
     overall: null,
     memo: "",
-    photo: null,
+    photos: [],
   };
 }
 
@@ -109,8 +110,10 @@ export default function RecordForm({
   onSaved?: (record: TastingRecord) => void;
 }) {
   const router = useRouter();
-  const [draft, setDraft] = useState<RecordDraft>(
-    () => initial ?? { ...emptyDraft(), ...prefill },
+  const [draft, setDraft] = useState<RecordDraft>(() =>
+    initial
+      ? { ...initial, photos: photosOf(initial), photo: null }
+      : { ...emptyDraft(), ...prefill },
   );
   const [sheet, setSheet] = useState<GlossaryCategory | null>(null);
   const [newFlavor, setNewFlavor] = useState("");
@@ -132,15 +135,6 @@ export default function RecordForm({
     });
   }, [initial]);
 
-  const photoURL = useMemo(
-    () => (draft.photo ? URL.createObjectURL(draft.photo) : null),
-    [draft.photo],
-  );
-  useEffect(
-    () => () => void (photoURL && URL.revokeObjectURL(photoURL)),
-    [photoURL],
-  );
-
   const flavorOptions = [
     ...FLAVORS,
     ...draft.flavors.filter((f) => !FLAVORS.includes(f)),
@@ -152,11 +146,10 @@ export default function RecordForm({
     setNewFlavor("");
   }
 
-  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function onPhotos(files: FileList | null) {
     try {
-      set("photo", await shrinkPhoto(file));
+      const added = await shrinkPhotos(files);
+      setDraft((d) => ({ ...d, photos: [...d.photos, ...added] }));
     } catch {
       setError("写真を読み込めませんでした");
     }
@@ -407,29 +400,24 @@ export default function RecordForm({
         </div>
 
         <div className="field">
-          {photoURL && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoURL} alt="記録の写真" className="photo-preview" />
-          )}
+          <PhotoRow
+            photos={draft.photos}
+            onRemove={(i) =>
+              set(
+                "photos",
+                draft.photos.filter((_, k) => k !== i),
+              )
+            }
+          />
           <div className="row">
-            <label className="btn-ghost" style={{ flex: 1 }}>
-              {draft.photo ? "写真を変更" : "＋ 記録に写真を残す"}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={onPhoto}
-                className="visually-hidden"
-              />
-            </label>
-            {draft.photo && (
-              <button
-                type="button"
-                className="btn-secondary btn-danger"
-                onClick={() => set("photo", null)}
-              >
-                写真を外す
-              </button>
-            )}
+            <PhotoAddButton
+              label={
+                draft.photos.length > 0
+                  ? "＋ 写真をもっと追加"
+                  : "＋ 記録に写真を残す"
+              }
+              onFiles={onPhotos}
+            />
           </div>
         </div>
 

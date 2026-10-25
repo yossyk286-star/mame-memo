@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { beanTitle, stars } from "@/components/RecordCard";
-import { deleteRecord } from "@/lib/db";
+import { PhotoAddButton, PhotoRow } from "@/components/PhotoAdd";
+import { deleteRecord, putRecord } from "@/lib/db";
+import { photosOf, shrinkPhotos } from "@/lib/photo";
 import { useRecordFromQuery } from "@/lib/useRecord";
 import type { Score } from "@/lib/types";
 
@@ -14,9 +16,26 @@ function scoreText(s: Score | null) {
 
 function DetailBody() {
   const router = useRouter();
-  const r = useRecordFromQuery();
-  const photoURL = useMemo(() => (r?.photo ? URL.createObjectURL(r.photo) : null), [r]);
-  useEffect(() => () => void (photoURL && URL.revokeObjectURL(photoURL)), [photoURL]);
+  const loaded = useRecordFromQuery();
+  // 写真を足したらその場で表示を変える
+  const [r, setR] = useState(loaded);
+  useEffect(() => setR(loaded), [loaded]);
+  const [photoError, setPhotoError] = useState("");
+
+  /** 編集画面を開かずに、写真だけその場で足す */
+  async function addPhotos(files: FileList | null) {
+    if (!r) return;
+    try {
+      const added = await shrinkPhotos(files);
+      if (added.length === 0) return;
+      const next = { ...r, photos: [...photosOf(r), ...added], photo: null, updatedAt: Date.now() };
+      await putRecord(next);
+      setR(next);
+      setPhotoError("");
+    } catch {
+      setPhotoError("写真を読み込めませんでした");
+    }
+  }
 
   async function remove() {
     if (!r || !confirm("この記録を削除しますか？")) return;
@@ -54,9 +73,14 @@ function DetailBody() {
       {r === null && <p className="empty">記録が見つかりませんでした。</p>}
       {r && (
         <main className="content" style={{ paddingTop: 16 }}>
-          {photoURL && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoURL} alt="記録の写真" className="photo-preview" />
+          <PhotoRow photos={photosOf(r)} />
+          <div className="row">
+            <PhotoAddButton label={photosOf(r).length > 0 ? "＋ 写真をもっと追加" : "＋ 写真を追加"} onFiles={addPhotos} />
+          </div>
+          {photoError && (
+            <p className="error" role="alert">
+              {photoError}
+            </p>
           )}
           <div className="card">
             <h2 style={{ fontSize: 20 }}>{beanTitle(r)}</h2>

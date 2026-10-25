@@ -25,7 +25,10 @@ export interface TastingRecord {
   sweetness: Score | null;
   overall: Score;
   memo: string;
-  photo: Blob | null;
+  /** 自分で撮った写真（飲んだコーヒー、お店など）。何枚でも */
+  photos: Blob[];
+  /** 1枚だけだった頃の写真。読むときは photosOf() を使う */
+  photo?: Blob | null;
   createdAt: number;
   updatedAt: number;
 }
