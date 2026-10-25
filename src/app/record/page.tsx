@@ -9,8 +9,13 @@ import { recordImage, shareImage } from "@/lib/shareImage";
 import { PhotoAddButton, PhotoRow } from "@/components/PhotoAdd";
 import { deleteRecord, putRecord } from "@/lib/db";
 import { photosOf, shrinkPhotos } from "@/lib/photo";
+import { hasRecipe, recipeText } from "@/lib/recipe";
 import { useRecordFromQuery } from "@/lib/useRecord";
-import type { Score } from "@/lib/types";
+import AskAI from "@/components/AskAI";
+import type { QA, Score } from "@/lib/types";
+
+/** AI に聞くときにタップで入る質問 */
+const SUGGESTIONS = ["この豆に合う淹れ方は？", "もっとおいしく淹れるには？", "似た味の豆は？", "合うスイーツは？"];
 
 function scoreText(s: Score | null) {
   return s ? `${s} / 5` : "—";
@@ -61,6 +66,13 @@ function DetailBody() {
     await shareImage(blob, beanTitle(r)).catch(() => alert("共有できませんでした"));
   }
 
+  async function addQA(qa: QA) {
+    if (!r) return;
+    const next = { ...r, qa: [...(r.qa ?? []), qa] };
+    await putRecord(next);
+    setR(next);
+  }
+
   const rows: [string, string][] = r
     ? [
         ["日付", r.date],
@@ -70,6 +82,7 @@ function DetailBody() {
         ["焙煎度", r.roast ?? "—"],
         ["精製方法", r.process ?? "—"],
         ["抽出方法", r.method ?? "—"],
+        ...(hasRecipe(r.recipe) ? [["レシピ", recipeText(r.recipe)] as [string, string]] : []),
         ["温度・飲み方", [r.temp, r.style].filter(Boolean).join("・") || "—"],
         ["お店の説明", r.menuNote || "—"],
         ["合うスイーツ", r.sweets || "—"],
@@ -119,6 +132,12 @@ function DetailBody() {
               ))}
             </dl>
           </div>
+          <AskAI
+            context={[`豆：${beanTitle(r)}`, `総合：${r.overall} / 5`, ...rows.filter(([, v]) => v !== "—").map(([k, v]) => `${k}：${v}`)].join("\n")}
+            suggestions={SUGGESTIONS}
+            history={r.qa ?? []}
+            onAnswered={addQA}
+          />
           <button type="button" className="btn-secondary" onClick={share}>
             画像にして送る
           </button>

@@ -14,8 +14,9 @@ import {
 } from "@/lib/glossary";
 import { today } from "@/lib/lastScan";
 import { photosOf, shrinkPhotos } from "@/lib/photo";
+import { emptyRecipe, GRINDS, hasRecipe } from "@/lib/recipe";
 import { PhotoAddButton, PhotoRow } from "./PhotoAdd";
-import type { RecordDraft, Score, TastingRecord } from "@/lib/types";
+import type { Recipe, RecordDraft, Score, TastingRecord } from "@/lib/types";
 
 const SCORES: Score[] = [1, 2, 3, 4, 5];
 
@@ -126,6 +127,64 @@ function RatingRow({
           <span>{low}</span>
           <span>{high}</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** 数字だけの入力。全角やカンマが混ざっても数字だけ取り出す */
+function NumberField({
+  id,
+  label,
+  placeholder,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  placeholder: string;
+  value: number | null;
+  onChange: (v: number | null) => void;
+}) {
+  return (
+    <div className="field" style={{ flex: 1, minWidth: 0 }}>
+      <label className="label" htmlFor={id}>
+        {label}
+      </label>
+      <input
+        id={id}
+        className="input"
+        inputMode="numeric"
+        placeholder={placeholder}
+        value={value ?? ""}
+        onChange={(e) => {
+          const digits = e.target.value.normalize("NFKC").replace(/\D/g, "");
+          onChange(digits ? Number(digits) : null);
+        }}
+      />
+    </div>
+  );
+}
+
+/** 家で淹れたときの豆の量・お湯・温度・挽き目・時間 */
+function RecipeFields({ value, onChange }: { value: Recipe; onChange: (r: Recipe) => void }) {
+  const set = <K extends keyof Recipe>(key: K, v: Recipe[K]) => onChange({ ...value, [key]: v });
+  return (
+    <div className="recipe-fields">
+      <div className="row" style={{ flexWrap: "nowrap" }}>
+        <NumberField id="f-dose" label="豆（g）" placeholder="15" value={value.dose} onChange={(v) => set("dose", v)} />
+        <NumberField id="f-water" label="お湯（ml）" placeholder="240" value={value.water} onChange={(v) => set("water", v)} />
+        <NumberField id="f-tempc" label="湯温（℃）" placeholder="92" value={value.tempC} onChange={(v) => set("tempC", v)} />
+      </div>
+      <fieldset className="field">
+        <legend className="label">挽き目</legend>
+        <SingleChips options={GRINDS} value={value.grind} onChange={(v) => set("grind", v)} />
+      </fieldset>
+      <div className="field">
+        <label className="label" htmlFor="f-time">
+          抽出時間
+        </label>
+        <input id="f-time" className="input" placeholder="例：2:30" value={value.time} onChange={(e) => set("time", e.target.value)} />
       </div>
     </div>
   );
@@ -242,6 +301,7 @@ export default function RecordForm({
     const now = Date.now();
     const record: TastingRecord = {
       ...draft,
+      recipe: hasRecipe(draft.recipe) ? draft.recipe : undefined,
       shop: draft.shop.trim(),
       overall: draft.overall,
       id: initial?.id ?? crypto.randomUUID(),
@@ -352,6 +412,11 @@ export default function RecordForm({
           onChange={(v) => set("method", v)}
         />
       </fieldset>
+      {/* 家で淹れたときだけ使うので、店で飲んだ記録ではたたんでおく */}
+      <details className="bean-details" open={draft.shop.trim() === "家" || hasRecipe(draft.recipe)}>
+        <summary>家で淹れたレシピ（豆の量・お湯・挽き目）</summary>
+        <RecipeFields value={draft.recipe ?? emptyRecipe()} onChange={(r) => set("recipe", r)} />
+      </details>
       <div className="row" style={{ gap: 24 }}>
         <fieldset className="field">
           <legend className="label">温度</legend>

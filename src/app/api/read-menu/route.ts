@@ -13,6 +13,14 @@ const MAX_TEXT = 2000;
 // スイーツとの相性・辞典の言葉の文字数と、相性を見る豆の数の上限
 const MAX_WORD = 60;
 const MAX_PAIRING_BEANS = 40;
+// 記録について AI に聞くときの、質問・記録の要約の文字数と、続けて聞くときに渡す前の質問の数
+const MAX_ASK = 300;
+const MAX_CONTEXT = 1500;
+const MAX_HISTORY = 4;
+
+const ASK_SYSTEM = `あなたはコーヒーにくわしい、やさしい案内役です。利用者が自分の記録（飲んだコーヒーの感想）を見ながら質問します。
+記録の内容をふまえて、初心者にもわかる日本語で、3〜6文くらいで具体的に答えてください。淹れ方の質問には豆の量・お湯の量・温度・挽き目・時間などの数字も入れてください。
+見出しや箇条書きの記号（#、*、-）は使わず、ふつうの文章で答えてください。わからないことは推測だと言ってください。`;
 
 const SYSTEM = `あなたはカフェのメニューを読み取り、コーヒー初心者に解説するアシスタントです。
 メニューは写真か、利用者が打ち込んだ・貼り付けた文字（豆の名前だけのこともあります）で渡されます。
@@ -78,6 +86,44 @@ export async function POST(req: Request) {
       });
       if (!response.parsed_output) return error(422, "うまく判断できませんでした");
       return Response.json(response.parsed_output);
+    } catch (e) {
+      return apiError(e);
+    }
+  }
+
+  // 記録を見ながら AI に質問する（文字だけなので安い）
+  if (typeof body?.ask === "string") {
+    const ask = body.ask.trim();
+    const context = typeof body.context === "string" ? body.context.slice(0, MAX_CONTEXT) : "";
+    if (!ask || ask.length > MAX_ASK) return error(400, `質問は${MAX_ASK}文字までで入れてください`);
+    const history: { q: string; a: string }[] = Array.isArray(body.history)
+      ? body.history
+          .filter((h: unknown): h is { q: string; a: string } => {
+            const x = h as Record<string, unknown>;
+            return typeof x?.q === "string" && typeof x?.a === "string";
+          })
+          .slice(-MAX_HISTORY)
+          .map((h: { q: string; a: string }) => ({ q: h.q.slice(0, MAX_ASK), a: h.a.slice(0, 1500) }))
+      : [];
+    const turns = [...history, { q: ask, a: "" }];
+    const messages: Anthropic.MessageParam[] = turns.flatMap((t, i) => {
+      const q = i === 0 ? `## わたしの記録\n${context}\n\n## 質問\n${t.q}` : t.q;
+      return t.a ? [{ role: "user" as const, content: q }, { role: "assistant" as const, content: t.a }] : [{ role: "user" as const, content: q }];
+    });
+    try {
+      const response = await client.messages.create({
+        model: MODEL,
+        max_tokens: 1500,
+        system: ASK_SYSTEM,
+        output_config: { effort: "low" },
+        messages,
+      });
+      const answer = response.content
+        .flatMap((b) => (b.type === "text" ? [b.text] : []))
+        .join("")
+        .trim();
+      if (!answer) return error(422, "うまく答えられませんでした。聞き方を変えてみてください");
+      return Response.json({ answer });
     } catch (e) {
       return apiError(e);
     }
