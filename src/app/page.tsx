@@ -16,15 +16,26 @@ export default function RecordsPage() {
     const scan = loadLastScan();
     setTodayBeans(scan?.beans.length ?? 0);
     listRecords().then(async (rs) => {
-      // 農園名が空のまま保存された今日の記録に、今日読み取ったメニューの同じ国の豆から農園名を補う
-      // （同じ国の豆が1つだけのときだけ。どれか決められないときは触らない）
       const filled = await Promise.all(
         rs.map(async (r) => {
-          if (r.farm || !scan || r.date !== scan.date) return r;
-          const same = scan.beans.filter((b) => b.origin === r.origin || b.name === r.origin);
-          const farm = same.length === 1 ? farmOf(same[0]) : "";
-          if (!farm) return r;
-          const updated = { ...r, origin: same[0].origin || r.origin, farm, updatedAt: Date.now() };
+          if (!scan || r.date !== scan.date) return r;
+          let updated = r;
+          // 農園名が空のまま保存された今日の記録に、今日読み取ったメニューの同じ国の豆から農園名を補う
+          // （同じ国の豆が1つだけのときだけ。どれか決められないときは触らない）
+          if (!r.farm) {
+            const same = scan.beans.filter((b) => b.origin === r.origin || b.name === r.origin);
+            const farm = same.length === 1 ? farmOf(same[0]) : "";
+            if (farm) updated = { ...updated, origin: same[0].origin || r.origin, farm };
+          }
+          // 合うスイーツが入る前に記録した今日の豆にも、同じ豆の一言を入れる
+          if (!updated.sweets) {
+            const bean = scan.beans.find(
+              (b) => b.sweets && (b.origin || b.name) === updated.origin && farmOf(b) === updated.farm,
+            );
+            if (bean) updated = { ...updated, sweets: bean.sweets };
+          }
+          if (updated === r) return r;
+          updated = { ...updated, updatedAt: Date.now() };
           await putRecord(updated);
           return updated;
         }),

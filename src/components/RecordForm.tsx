@@ -234,6 +234,18 @@ export default function RecordForm({
           onChange={(e) => set("menuNote", e.target.value)}
         />
       </div>
+      <div className="field">
+        <label className="label" htmlFor="f-sweets">
+          合うスイーツ
+        </label>
+        <input
+          id="f-sweets"
+          className="input"
+          placeholder="例：チーズケーキ"
+          value={draft.sweets ?? ""}
+          onChange={(e) => set("sweets", e.target.value)}
+        />
+      </div>
     </>
   );
 
