@@ -12,16 +12,11 @@ import {
   ROASTS,
   type GlossaryCategory,
 } from "@/lib/glossary";
+import { today } from "@/lib/lastScan";
 import { shrinkPhoto } from "@/lib/photo";
 import type { RecordDraft, Score, TastingRecord } from "@/lib/types";
 
 const SCORES: Score[] = [1, 2, 3, 4, 5];
-
-function today() {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
 
 function emptyDraft(): RecordDraft {
   return {
