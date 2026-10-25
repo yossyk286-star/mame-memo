@@ -18,10 +18,7 @@ export default function ScanPage() {
 
   return (
     <>
-      <header className="sub-header">
-        <Link href="/" className="back">
-          ‹ 戻る
-        </Link>
+      <header className="page-header">
         <h1>メニューを見る</h1>
       </header>
 

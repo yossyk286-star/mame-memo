@@ -25,6 +25,9 @@ export interface TastingRecord {
   acidity: Score | null;
   bitterness: Score | null;
   sweetness: Score | null;
+  /** コク（口当たりの重さ）・香りの華やかさ。後から増やした項目なので古い記録にはない */
+  body?: Score | null;
+  aroma?: Score | null;
   overall: Score;
   memo: string;
   /** 自分で撮った写真（飲んだコーヒー、お店など）。何枚でも */
