@@ -31,7 +31,7 @@ export function PickedBean({ bean, onChange }: { bean: ScannedBean; onChange?: (
       <div className="card-top">
         <h2>{bean.name}</h2>
         {onChange && (
-          <button type="button" className="btn-ghost" onClick={onChange}>
+          <button type="button" className="btn-ghost" style={{ flexShrink: 0 }} onClick={onChange}>
             別の豆にする
           </button>
         )}
@@ -112,7 +112,11 @@ export default function MenuScan({
 
   return (
     <section className={styles.box} aria-label="メニューを撮って入力">
-      <p className={styles.lead}>メニューを撮ると、豆ごとに解説とおすすめの飲み方を出して、下の項目に入れます。</p>
+      <p className={styles.lead}>
+        {status === "done"
+          ? "飲んだ豆を選ぶと、豆の情報が入った状態で感想を書けます。"
+          : "メニューを撮ると、豆ごとに解説とおすすめの飲み方を出して、記録の項目に入れます。"}
+      </p>
       {!savedPasscode && (
         <div className="field">
           <label className="label" htmlFor="scan-pass">
@@ -183,8 +187,8 @@ export default function MenuScan({
             <strong>おすすめ：</strong>
             {b.recommendation}
           </p>
-          <button type="button" className="btn-secondary" onClick={() => onPick(b)}>
-            この豆の内容を入れる
+          <button type="button" className="btn-primary" onClick={() => onPick(b)}>
+            これを飲んだ
           </button>
         </article>
       ))}
