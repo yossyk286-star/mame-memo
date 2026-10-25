@@ -77,13 +77,13 @@ export default function MenuScan({
       const res = await fetch("/api/read-menu", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image, passcode }),
+        body: JSON.stringify({ image, passcode: passcode.trim().normalize("NFKC") }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) setSavedPasscode(false);
       if (!res.ok) throw new Error(data.error ?? "読み取りに失敗しました");
       try {
-        localStorage.setItem(PASSCODE_KEY, passcode);
+        localStorage.setItem(PASSCODE_KEY, passcode.trim().normalize("NFKC"));
       } catch {}
       setSavedPasscode(true);
       const result = data as MenuScanResult;
@@ -107,8 +107,10 @@ export default function MenuScan({
           <input
             id="scan-pass"
             className="input"
-            type="password"
+            type="text"
             autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
             value={passcode}
             onChange={(e) => setPasscode(e.target.value)}
           />
@@ -130,6 +132,14 @@ export default function MenuScan({
           className="visually-hidden"
         />
       </label>
+
+      {status !== "reading" && (
+        <label className="btn-secondary" style={{ cursor: "pointer" }}>
+          写真フォルダから選んで読み取る
+          {/* capture を付けないとカメラではなく写真の一覧が開く */}
+          <input type="file" accept="image/*" onChange={onPhoto} className="visually-hidden" />
+        </label>
+      )}
 
       {savedPhoto && status !== "reading" && (
         <button type="button" className="btn-secondary" onClick={() => scan(savedPhoto)}>

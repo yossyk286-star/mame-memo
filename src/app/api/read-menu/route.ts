@@ -22,8 +22,9 @@ ${CHOOSING_TIPS.map((t) => `- ${t}`).join("\n")}`;
 function passcodeOK(given: unknown) {
   const expected = process.env.APP_PASSCODE;
   if (!expected || typeof given !== "string") return false;
-  const a = Buffer.from(given);
-  const b = Buffer.from(expected);
+  // 日本語の合言葉も使えるよう、前後の空白と全角/半角の揺れをそろえて比べる
+  const a = Buffer.from(given.trim().normalize("NFKC"));
+  const b = Buffer.from(expected.trim().normalize("NFKC"));
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
