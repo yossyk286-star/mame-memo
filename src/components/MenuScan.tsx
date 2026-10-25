@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { MenuScanResult, ScannedBean } from "@/lib/menuScan";
+import { listRecords } from "@/lib/db";
 import { saveLastScan } from "@/lib/lastScan";
 import { shrinkPhoto } from "@/lib/photo";
+import { bestPick, MIN_RECORDS, scoreBeans } from "@/lib/recommend";
+import type { TastingRecord } from "@/lib/types";
 import styles from "./MenuScan.module.css";
 
 const PASSCODE_KEY = "mame-memo:passcode";
@@ -39,7 +42,7 @@ export function PickedBean({ bean, onChange }: { bean: ScannedBean; onChange?: (
       </div>
       <p className="term-desc">{bean.explanation}</p>
       <p className="term-desc">
-        <strong>おすすめ：</strong>
+        <strong>おすすめの飲み方：</strong>
         {bean.recommendation}
       </p>
     </section>
@@ -66,13 +69,19 @@ export default function MenuScan({
   const [status, setStatus] = useState<"idle" | "reading" | "done">(initialBeans.length ? "done" : "idle");
   const [beans, setBeans] = useState<ScannedBean[]>(initialBeans);
   const [error, setError] = useState("");
+  const [records, setRecords] = useState<TastingRecord[]>([]);
 
   // localStorage はブラウザでしか読めないので、表示後に読み込む
   useEffect(() => {
     const saved = loadPasscode();
     setPasscode(saved);
     setSavedPasscode(!!saved);
+    // これまでの記録から、好みに合いそうな豆におすすめを付ける
+    listRecords().then(setRecords);
   }, []);
+
+  const picks = useMemo(() => scoreBeans(beans, records), [beans, records]);
+  const best = picks ? bestPick(picks) : -1;
 
   async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -173,8 +182,21 @@ export default function MenuScan({
         </p>
       )}
 
+      {beans.length > 0 && !picks && (
+        <p className={styles.lead}>記録が{MIN_RECORDS}件以上たまると、好みに合いそうな豆に「おすすめ」を付けます。</p>
+      )}
+      {beans.length > 0 && picks && best < 0 && (
+        <p className={styles.lead}>今回は、これまでの好みとはっきり合う豆が見つかりませんでした。新しい味を試すチャンスです。</p>
+      )}
+
       {beans.map((b, i) => (
-        <article key={i} className={styles.bean}>
+        <article key={i} className={`${styles.bean} ${i === best ? styles.best : ""}`}>
+          {i === best && picks && (
+            <div className={styles.pick}>
+              <strong>あなたへのおすすめ</strong>
+              <span>{picks[i].reasons.join("、")}</span>
+            </div>
+          )}
           <h3>{b.name}</h3>
           <div className="tags">
             {[b.origin, b.roast, b.process].filter(Boolean).map((t) => (
@@ -186,7 +208,7 @@ export default function MenuScan({
           {b.menuNote && <p className="muted">メニューの説明：{b.menuNote}</p>}
           <p className={styles.text}>{b.explanation}</p>
           <p className={styles.text}>
-            <strong>おすすめ：</strong>
+            <strong>おすすめの飲み方：</strong>
             {b.recommendation}
           </p>
           <button type="button" className="btn-primary" onClick={() => onPick(b)}>

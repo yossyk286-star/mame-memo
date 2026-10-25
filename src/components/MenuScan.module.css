@@ -43,3 +43,26 @@
   font-size: 14px;
   line-height: 1.7;
 }
+
+.best {
+  outline: 2px solid var(--accent);
+}
+
+.pick {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: -2px 0 2px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--accent-dark);
+}
+
+.pick strong {
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.pick strong::before {
+  content: "★ ";
+}
