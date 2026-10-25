@@ -1,10 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { summarize, type GroupAverage } from "@/lib/analysis";
 import { listRecords } from "@/lib/db";
 import type { TastingRecord } from "@/lib/types";
 
 const MIN_RECORDS = 5;
+
+function Bars({ title, rows }: { title: string; rows: GroupAverage[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <section className="card" style={{ gap: 12 }}>
+      <h2 style={{ fontSize: 14 }}>{title}</h2>
+      {rows.map((r) => (
+        <div key={r.label} className="bar-row">
+          <span>{r.label}</span>
+          <div className="bar-track" aria-hidden="true">
+            <div className="bar-fill" style={{ width: `${(r.average / 5) * 100}%` }} />
+          </div>
+          <span className="bar-value">
+            {r.average.toFixed(1)}
+            <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>
+              {" "}
+              ({r.count})
+            </span>
+          </span>
+        </div>
+      ))}
+    </section>
+  );
+}
 
 export default function TastePage() {
   const [records, setRecords] = useState<TastingRecord[] | null>(null);
@@ -14,21 +39,50 @@ export default function TastePage() {
   }, []);
 
   const count = records?.length ?? 0;
+  const summary = useMemo(() => (records && count >= MIN_RECORDS ? summarize(records) : null), [records, count]);
 
   return (
     <>
       <header className="page-header">
         <h1>好み</h1>
       </header>
+      {summary && <p className="lead">記録 {count}件から。数字は総合の平均（カッコ内は件数）です。</p>}
       <main className="content">
-        {records && count < MIN_RECORDS && (
+        {records && !summary && (
           <p className="empty">
             記録が{MIN_RECORDS}件たまると、あなたの好みの傾向を表示します。
             <br />
             いま {count}件 / あと {MIN_RECORDS - count}件
           </p>
         )}
-        {/* 傾向の分析は次のステップで作る */}
+        {summary && (
+          <>
+            <section className="highlight">
+              <span style={{ fontSize: 12, opacity: 0.85 }}>いまの傾向</span>
+              {summary.bestCombo ? (
+                <p className="highlight-main">{summary.bestCombo.label} の評価が高めです</p>
+              ) : (
+                <p className="highlight-main">同じ焙煎度と抽出方法の組み合わせが2件以上たまると、ここに出ます</p>
+              )}
+            </section>
+            <Bars title="焙煎度ごと" rows={summary.byRoast} />
+            <Bars title="抽出方法ごと" rows={summary.byMethod} />
+            <Bars title="精製方法ごと" rows={summary.byProcess} />
+            <Bars title="温度・飲み方ごと" rows={summary.byStyle} />
+            {summary.topFlavors.length > 0 && (
+              <section className="card">
+                <h2 style={{ fontSize: 14 }}>よく感じる味</h2>
+                <div className="tags">
+                  {summary.topFlavors.map((f) => (
+                    <span key={f.label} className="tag" style={{ fontSize: 13 }}>
+                      {f.label} ×{f.count}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        )}
       </main>
     </>
   );
