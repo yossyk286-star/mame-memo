@@ -24,6 +24,7 @@ import { EMPTY_PREFS, loadPrefs } from "@/lib/prefs";
 import { bestPick, MIN_RECORDS, scoreBeans } from "@/lib/recommend";
 import type { TastingRecord } from "@/lib/types";
 import styles from "./MenuScan.module.css";
+import AskAI from "./AskAI";
 import TasteBars, { level } from "./TasteBars";
 
 
@@ -59,6 +60,25 @@ const MOODS: { label: string; score: (b: ScannedBean) => number }[] = [
   },
 ];
 
+
+/** 調べた豆について AI に聞くときの質問の例 */
+const ASK_SUGGESTIONS = ["どんな味？", "初心者でも飲みやすい？", "ミルクに合う？", "似た豆は？"];
+
+/** 調べた豆の情報を、AI に渡す文にする */
+function beanContext(b: ScannedBean) {
+  return [
+    "メニューで見つけた豆（まだ飲んでいません）",
+    `豆：${b.name}`,
+    b.origin && `産地：${b.origin}`,
+    b.roast && `焙煎度：${b.roast}`,
+    b.process && `精製方法：${b.process}`,
+    b.menuNote && `メニューの説明：${b.menuNote}`,
+    `解説：${b.explanation}`,
+    `おすすめの飲み方：${b.recommendation}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -595,6 +615,14 @@ export default function MenuScan({
                 </dl>
               </details>
             )}
+            <details className={styles.methods}>
+              <summary>AI に聞く</summary>
+              <AskAI
+                bare
+                context={beanContext(b)}
+                suggestions={ASK_SUGGESTIONS}
+              />
+            </details>
             <button
               type="button"
               className="btn-primary"
