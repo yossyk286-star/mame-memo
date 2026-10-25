@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { MenuScanResult, ScannedBean } from "@/lib/menuScan";
+import { saveLastScan } from "@/lib/lastScan";
 import { shrinkPhoto } from "@/lib/photo";
 import styles from "./MenuScan.module.css";
 
@@ -102,6 +103,7 @@ export default function MenuScan({
       const result = data as MenuScanResult;
       if (result.beans.length === 0) throw new Error("コーヒー豆のメニューが見つかりませんでした");
       setBeans(result.beans);
+      saveLastScan(result.beans);
       onScanned?.(result.beans);
       setStatus("done");
     } catch (err) {

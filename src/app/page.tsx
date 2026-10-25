@@ -4,13 +4,16 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import RecordCard from "@/components/RecordCard";
 import { listRecords } from "@/lib/db";
+import { loadLastScan } from "@/lib/lastScan";
 import type { TastingRecord } from "@/lib/types";
 
 export default function RecordsPage() {
   const [records, setRecords] = useState<TastingRecord[] | null>(null);
+  const [todayBeans, setTodayBeans] = useState(0);
 
   useEffect(() => {
     listRecords().then(setRecords);
+    setTodayBeans(loadLastScan()?.beans.length ?? 0);
   }, []);
 
   return (
@@ -28,6 +31,14 @@ export default function RecordsPage() {
       {records && records.length > 0 && <p className="lead">これまでの記録 {records.length}件</p>}
 
       <main className="content" style={{ paddingBottom: 96 }}>
+        {/* お店でメニューを見たらすぐ撮って確認できるように、一覧のいちばん上に置く */}
+        <Link href="/scan" className="btn-primary scan-link">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+            <circle cx="12" cy="13" r="3.5" />
+          </svg>
+          {todayBeans > 0 ? `今日のメニューを見る（${todayBeans}種類）` : "メニューを撮って選ぶ"}
+        </Link>
         {records?.length === 0 && (
           <p className="empty">
             まだ記録がありません。

@@ -540,3 +540,8 @@ textarea.input {
   flex-direction: column;
   gap: 16px;
 }
+
+.scan-link {
+  gap: 8px;
+  text-decoration: none;
+}
