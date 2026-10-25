@@ -638,3 +638,43 @@ textarea.input {
   font-size: 13px;
   color: var(--accent-dark);
 }
+button.stamp {
+  font: inherit;
+  cursor: pointer;
+}
+.stamp-on[aria-expanded="true"] {
+  background: var(--accent);
+  color: #fff;
+}
+.stamp-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.stamp-detail h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.stamp-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  text-decoration: none;
+  color: inherit;
+}
+.stamp-row-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+.stamp-row .stars {
+  font-size: 12px;
+}
+.stamp-row-sub {
+  grid-column: 1 / -1;
+  font-size: 12px;
+}
