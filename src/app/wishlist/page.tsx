@@ -51,7 +51,7 @@ export default function WishlistPage() {
             <p className="term-desc">{w.explanation}</p>
             <div className="row">
               <Link href={`/new?wish=${w.id}`} className="btn-primary" style={{ flex: 1 }}>
-                飲んだので記録する
+                ＋ 記録に追加
               </Link>
               <button type="button" className="btn-secondary btn-danger" onClick={() => remove(w.id)}>
                 外す
