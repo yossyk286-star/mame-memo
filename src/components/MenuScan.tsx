@@ -200,19 +200,30 @@ export default function MenuScan({
     if (file) await scan(file);
   }
 
+  // 写真が撮れないときや、店員さんに聞いた豆は文字で調べる
+  const [textOpen, setTextOpen] = useState(false);
+  const [text, setText] = useState("");
+
   async function scan(photo: Blob) {
+    // 料金は画像の大きさで決まるので、長辺1000pxまで縮めてから送る
+    await request(async () => ({
+      image: await blobToBase64(await shrinkPhoto(photo, 1000)),
+    }));
+  }
+
+  async function request(
+    payload: () => Promise<{ image?: string; text?: string }>,
+  ) {
     if (!passcode) return setError("先に合言葉を入れてください");
 
     setError("");
     setStatus("reading");
     try {
-      // 料金は画像の大きさで決まるので、長辺1000pxまで縮めてから送る
-      const image = await blobToBase64(await shrinkPhoto(photo, 1000));
       const res = await fetch("/api/read-menu", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          image,
+          ...(await payload()),
           passcode: passcode.trim().normalize("NFKC"),
         }),
       });
@@ -241,7 +252,7 @@ export default function MenuScan({
       <p className={styles.lead}>
         {status === "done"
           ? "「＋ 記録に追加」を押すと、豆の情報が入った状態で感想を書けます。"
-          : "メニューを撮ると、豆ごとに解説とおすすめの飲み方を出して、記録の項目に入れます。"}
+          : "メニューを撮るか文字で入れると、豆ごとに解説とおすすめの飲み方を出して、記録の項目に入れます。"}
       </p>
       {!savedPasscode && (
         <div className="field">
@@ -306,6 +317,38 @@ export default function MenuScan({
           />
         </label>
       )}
+
+      {status !== "reading" &&
+        (textOpen ? (
+          <div className="field">
+            <label className="label" htmlFor="scan-text">
+              豆の名前やメニューの文
+            </label>
+            <textarea
+              id="scan-text"
+              className="input"
+              placeholder="例：ケニア カリンドゥンドゥ 深煎り（メニューの文を貼り付けても大丈夫です）"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!text.trim()}
+              onClick={() => request(async () => ({ text: text.trim() }))}
+            >
+              この内容で調べる
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setTextOpen(true)}
+          >
+            文字で入力して調べる
+          </button>
+        ))}
 
       {savedPhoto && status !== "reading" && (
         <button

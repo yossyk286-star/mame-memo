@@ -8,9 +8,12 @@ import { MenuScanResultSchema } from "@/lib/menuScan";
 const MODEL = process.env.MENU_MODEL || "claude-haiku-5-5";
 // 端末側で縮小済みの JPEG を想定。大きすぎる画像は課金がかさむので断る
 const MAX_IMAGE_BASE64 = 1_500_000;
+// 文字で入力したときの上限（メニューの文を貼るくらいの長さ）
+const MAX_TEXT = 2000;
 
-const SYSTEM = `あなたはカフェのメニュー写真を読み取り、コーヒー初心者に解説するアシスタントです。
-写真に載っているコーヒー豆ごとに情報を取り出してください。書かれていないことは推測で埋めず、空文字か null にしてください。
+const SYSTEM = `あなたはカフェのメニューを読み取り、コーヒー初心者に解説するアシスタントです。
+メニューは写真か、利用者が打ち込んだ・貼り付けた文字（豆の名前だけのこともあります）で渡されます。
+載っているコーヒー豆ごとに情報を取り出してください。書かれていないことは推測で埋めず、空文字か null にしてください。
 ただし「味の予想」と「抽出方法ごとの違い」「合うスイーツ」だけは、メニューの説明・焙煎度・精製方法・産地から推定して必ず埋めてください。豆どうしの違いがわかるよう、相対的に付けてください。
 解説とおすすめは、次の用語集と選び方の目安に沿って、やさしい日本語で書いてください。
 
@@ -35,15 +38,43 @@ function error(status: number, message: string) {
 
 export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY || !process.env.APP_PASSCODE) {
-    return error(503, "読み取り機能の設定がまだです（API キーと合言葉を登録してください）");
+    return error(
+      503,
+      "読み取り機能の設定がまだです（API キーと合言葉を登録してください）",
+    );
   }
 
   const body = await req.json().catch(() => null);
   if (!passcodeOK(body?.passcode)) return error(401, "合言葉が違います");
 
   const image = body?.image;
-  if (typeof image !== "string" || image.length === 0) return error(400, "写真がありません");
-  if (image.length > MAX_IMAGE_BASE64) return error(413, "写真が大きすぎます");
+  const text = typeof body?.text === "string" ? body.text.trim() : "";
+  let content: Anthropic.ContentBlockParam[];
+  if (text) {
+    if (text.length > MAX_TEXT)
+      return error(413, `文字は${MAX_TEXT}文字までにしてください`);
+    content = [
+      {
+        type: "text",
+        text: `次のコーヒー豆について解説してください。\n\n${text}`,
+      },
+    ];
+  } else {
+    if (typeof image !== "string" || image.length === 0)
+      return error(400, "写真か文字を入れてください");
+    if (image.length > MAX_IMAGE_BASE64)
+      return error(413, "写真が大きすぎます");
+    content = [
+      {
+        type: "image",
+        source: { type: "base64", media_type: "image/jpeg", data: image },
+      },
+      {
+        type: "text",
+        text: "このメニューのコーヒー豆を読み取って解説してください。",
+      },
+    ];
+  }
 
   const client = new Anthropic();
   try {
@@ -51,28 +82,36 @@ export async function POST(req: Request) {
       model: MODEL,
       max_tokens: 8000,
       system: SYSTEM,
-      output_config: { effort: "low", format: zodOutputFormat(MenuScanResultSchema) },
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: image } },
-            { type: "text", text: "このメニューのコーヒー豆を読み取って解説してください。" },
-          ],
-        },
-      ],
+      output_config: {
+        effort: "low",
+        format: zodOutputFormat(MenuScanResultSchema),
+      },
+      messages: [{ role: "user", content }],
     });
 
     if (response.stop_reason === "refusal" || !response.parsed_output) {
-      return error(422, "うまく読み取れませんでした。もう一度撮ってみてください");
+      return error(
+        422,
+        text
+          ? "うまく読み取れませんでした。書き方を変えてみてください"
+          : "うまく読み取れませんでした。もう一度撮ってみてください",
+      );
     }
     return Response.json(response.parsed_output);
   } catch (e) {
-    if (e instanceof Anthropic.RateLimitError) return error(429, "混み合っています。少し待ってからもう一度お試しください");
-    if (e instanceof Anthropic.AuthenticationError) return error(503, "API キーが正しくないようです");
+    if (e instanceof Anthropic.RateLimitError)
+      return error(
+        429,
+        "混み合っています。少し待ってからもう一度お試しください",
+      );
+    if (e instanceof Anthropic.AuthenticationError)
+      return error(503, "API キーが正しくないようです");
     if (e instanceof Anthropic.APIError) {
       console.error("read-menu API error", e.status, e.message);
-      return error(502, "読み取りに失敗しました（利用上限に達した可能性があります）");
+      return error(
+        502,
+        "読み取りに失敗しました（利用上限に達した可能性があります）",
+      );
     }
     throw e;
   }
