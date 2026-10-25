@@ -277,7 +277,7 @@ export default function RecordForm({
           )}
           <div className="row">
             <label className="btn-ghost" style={{ flex: 1 }}>
-              {draft.photo ? "写真を変更" : "＋ 写真を追加"}
+              {draft.photo ? "写真を変更" : "＋ 記録に写真を残す"}
               <input type="file" accept="image/*" onChange={onPhoto} className="visually-hidden" />
             </label>
             {draft.photo && (

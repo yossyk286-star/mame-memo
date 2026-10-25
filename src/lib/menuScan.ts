@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { RecordDraft } from "./types";
 import { METHODS, PROCESSES, ROASTS } from "./glossary";
 
 /** メニュー写真から読み取った豆1つ分 */
@@ -20,3 +21,17 @@ export const MenuScanResultSchema = z.object({
 
 export type ScannedBean = z.infer<typeof ScannedBeanSchema>;
 export type MenuScanResult = z.infer<typeof MenuScanResultSchema>;
+
+/** 読み取った豆を記録フォームの値に変換する */
+export function beanToDraft(
+  b: ScannedBean,
+): Pick<RecordDraft, "origin" | "farm" | "roast" | "process" | "method" | "menuNote"> {
+  return {
+    origin: b.origin || b.name,
+    farm: b.farm,
+    roast: b.roast,
+    process: b.process,
+    method: b.recommendedMethod,
+    menuNote: b.menuNote,
+  };
+}
