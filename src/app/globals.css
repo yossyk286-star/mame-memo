@@ -522,3 +522,21 @@ textarea.input {
   text-align: right;
   font-weight: 700;
 }
+
+.bean-details {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+}
+.bean-details summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-dark);
+}
+.bean-details[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
