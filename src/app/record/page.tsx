@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useMemo } from "react";
-import { stars } from "@/components/RecordCard";
+import { beanTitle, stars } from "@/components/RecordCard";
 import { deleteRecord } from "@/lib/db";
 import { useRecordFromQuery } from "@/lib/useRecord";
 import type { Score } from "@/lib/types";
@@ -59,7 +59,7 @@ function DetailBody() {
             <img src={photoURL} alt="記録の写真" className="photo-preview" />
           )}
           <div className="card">
-            <h2 style={{ fontSize: 20 }}>{r.origin || r.farm || "（豆の名前なし）"}</h2>
+            <h2 style={{ fontSize: 20 }}>{beanTitle(r)}</h2>
             <p>
               <span className="muted">総合 </span>
               <span className="stars">{stars(r.overall)}</span>

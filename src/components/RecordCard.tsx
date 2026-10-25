@@ -5,6 +5,11 @@ export function stars(n: number) {
   return "★".repeat(n) + "☆".repeat(5 - n);
 }
 
+/** 一覧や詳細の見出し。「エチオピア イルガチェフェ グティティ」のように産地と農園・品種をつなげる */
+export function beanTitle(r: Pick<TastingRecord, "origin" | "farm">) {
+  return [r.origin, r.farm].filter(Boolean).join(" ") || "（豆の名前なし）";
+}
+
 /** 「2026-10-25」→「10/25」。今年以外は年も出す */
 function shortDate(date: string) {
   const [y, m, d] = date.split("-");
@@ -17,7 +22,7 @@ export default function RecordCard({ record: r }: { record: TastingRecord }) {
   return (
     <Link href={`/record?id=${r.id}`} className="card">
       <div className="card-top">
-        <h2>{r.origin || r.farm || "（豆の名前なし）"}</h2>
+        <h2>{beanTitle(r)}</h2>
         <span className="muted">{shortDate(r.date)}</span>
       </div>
       <p className="muted">{r.shop}</p>
