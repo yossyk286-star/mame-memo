@@ -97,6 +97,12 @@ export function PickedBean({
         <strong>おすすめの飲み方：</strong>
         {bean.recommendation}
       </p>
+      {bean.sweets && (
+        <p className="term-desc">
+          <strong>合うスイーツ：</strong>
+          {bean.sweets}
+        </p>
+      )}
     </section>
   );
 }
@@ -390,6 +396,12 @@ export default function MenuScan({
               <strong>おすすめの飲み方：</strong>
               {b.recommendation}
             </p>
+            {b.sweets && (
+              <p className={styles.text}>
+                <strong>合うスイーツ：</strong>
+                {b.sweets}
+              </p>
+            )}
             {b.methodNotes && b.methodNotes.length > 0 && (
               <details className={styles.methods}>
                 <summary>飲み方で比べる</summary>

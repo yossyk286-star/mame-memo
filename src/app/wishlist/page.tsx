@@ -49,6 +49,12 @@ export default function WishlistPage() {
             </div>
             {w.menuNote && <p className="muted">メニューの説明：{w.menuNote}</p>}
             <p className="term-desc">{w.explanation}</p>
+            {w.sweets && (
+              <p className="term-desc">
+                <strong>合うスイーツ：</strong>
+                {w.sweets}
+              </p>
+            )}
             <div className="row">
               <Link href={`/new?wish=${w.id}`} className="btn-primary" style={{ flex: 1 }}>
                 ＋ 記録に追加

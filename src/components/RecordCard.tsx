@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { photosOf, usePhotoURLs } from "@/lib/photo";
 import type { TastingRecord } from "@/lib/types";
 
 export function stars(n: number) {
@@ -18,14 +21,23 @@ function shortDate(date: string) {
 }
 
 export default function RecordCard({ record: r }: { record: TastingRecord }) {
+  const [thumb] = usePhotoURLs(photosOf(r).slice(0, 1));
   const tags = [r.roast, r.process, r.method, r.temp, r.style].filter((t) => t && t !== "不明");
   return (
     <Link href={`/record?id=${r.id}`} className="card">
-      <div className="card-top">
-        <h2>{beanTitle(r)}</h2>
-        <span className="muted">{shortDate(r.date)}</span>
+      <div className="row" style={{ alignItems: "flex-start" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="card-top">
+            <h2>{beanTitle(r)}</h2>
+            <span className="muted">{shortDate(r.date)}</span>
+          </div>
+          <p className="muted">{r.shop}</p>
+        </div>
+        {thumb && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={thumb} alt="" className="card-thumb" />
+        )}
       </div>
-      <p className="muted">{r.shop}</p>
       {tags.length > 0 && (
         <div className="tags">
           {tags.map((t) => (

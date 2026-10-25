@@ -20,6 +20,7 @@ export const ScannedBeanSchema = z.object({
   explanation: z.string().describe("この豆がどんな味か、初心者向けに2〜3文で"),
   recommendedMethod: z.enum(METHODS).nullable().describe("いちばんおすすめの抽出方法"),
   recommendation: z.string().describe("おすすめの抽出方法と飲み方（ホット/アイス、ブラック/ミルク）を理由つきで1〜2文"),
+  sweets: z.string().describe("この豆に合うスイーツを一言で（例：チーズケーキ。ベリーの酸味と合う）"),
   taste: z
     .object({
       acidity: TasteLevel.describe("酸味"),
@@ -44,11 +45,11 @@ export const MenuScanResultSchema = z.object({
 });
 
 /**
- * 読み取った豆。taste と methodNotes は後から増やした項目なので、
+ * 読み取った豆。taste・methodNotes・sweets は後から増やした項目なので、
  * 以前に保存した読み取り結果や気になる豆には入っていないことがある
  */
-export type ScannedBean = Omit<z.infer<typeof ScannedBeanSchema>, "taste" | "methodNotes"> &
-  Partial<Pick<z.infer<typeof ScannedBeanSchema>, "taste" | "methodNotes">>;
+export type ScannedBean = Omit<z.infer<typeof ScannedBeanSchema>, "taste" | "methodNotes" | "sweets"> &
+  Partial<Pick<z.infer<typeof ScannedBeanSchema>, "taste" | "methodNotes" | "sweets">>;
 export type BeanTaste = z.infer<typeof ScannedBeanSchema>["taste"];
 export type MenuScanResult = z.infer<typeof MenuScanResultSchema>;
 

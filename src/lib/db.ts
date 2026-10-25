@@ -1,3 +1,4 @@
+import { photosOf } from "./photo";
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { ScannedBean } from "./menuScan";
 import { loadPrefs, savePrefs } from "./prefs";
@@ -78,7 +79,8 @@ export async function deleteWish(id: string) {
 
 // --- 書き出し / 読み込み（バックアップ用） ---
 
-type ExportedRecord = Omit<TastingRecord, "photo"> & { photo: string | null };
+/** 書き出しファイルの記録。写真は data URL。version 2 までは photo に1枚だけ */
+type ExportedRecord = Omit<TastingRecord, "photo" | "photos"> & { photos?: string[]; photo?: string | null };
 
 function blobToDataURL(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -92,9 +94,12 @@ function blobToDataURL(blob: Blob): Promise<string> {
 export async function exportJSON(): Promise<string> {
   const records = await listRecords();
   const out: ExportedRecord[] = await Promise.all(
-    records.map(async (r) => ({ ...r, photo: r.photo ? await blobToDataURL(r.photo) : null })),
+    records.map(async ({ photo: _old, ...r }) => ({
+      ...r,
+      photos: await Promise.all(photosOf({ ...r, photo: _old }).map(blobToDataURL)),
+    })),
   );
-  return JSON.stringify({ app: "mame-memo", version: 2, records: out, wishes: await listWishes(), prefs: loadPrefs() });
+  return JSON.stringify({ app: "mame-memo", version: 3, records: out, wishes: await listWishes(), prefs: loadPrefs() });
 }
 
 /** 同じ id の記録は上書きする。読み込んだ件数を返す */
@@ -106,9 +111,9 @@ export async function importJSON(text: string): Promise<number> {
   const db = await getDB();
   // 写真の変換を先に済ませる（トランザクションの途中で待つと閉じてしまうため）
   const records = await Promise.all(
-    (data.records as ExportedRecord[]).map(async (r) => ({
+    (data.records as ExportedRecord[]).map(async ({ photo, photos, ...r }) => ({
       ...r,
-      photo: r.photo ? await (await fetch(r.photo)).blob() : null,
+      photos: await Promise.all((photos ?? (photo ? [photo] : [])).map(async (u) => (await fetch(u)).blob())),
     })),
   );
   const tx = db.transaction(["records", "wishes"], "readwrite");
