@@ -71,6 +71,10 @@ export default function TastePage() {
             <strong>気になる豆</strong>
             <span className="muted">{wishCount}件</span>
           </Link>
+          <Link href="/prefs" className="hub-item">
+            <strong>わたしの好み</strong>
+            <span className="muted">自分で登録</span>
+          </Link>
         </nav>
         {records && !summary && (
           <p className="empty">

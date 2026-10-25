@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { ScannedBean } from "./menuScan";
+import { loadPrefs, savePrefs } from "./prefs";
 import type { TastingRecord } from "./types";
 
 /** メニューで見て「次に試したい」と印を付けた豆 */
@@ -93,7 +94,7 @@ export async function exportJSON(): Promise<string> {
   const out: ExportedRecord[] = await Promise.all(
     records.map(async (r) => ({ ...r, photo: r.photo ? await blobToDataURL(r.photo) : null })),
   );
-  return JSON.stringify({ app: "mame-memo", version: 2, records: out, wishes: await listWishes() });
+  return JSON.stringify({ app: "mame-memo", version: 2, records: out, wishes: await listWishes(), prefs: loadPrefs() });
 }
 
 /** 同じ id の記録は上書きする。読み込んだ件数を返す */
@@ -115,5 +116,6 @@ export async function importJSON(text: string): Promise<number> {
   // 気になる豆は v2 から。古い書き出しファイルにはない
   for (const w of (data.wishes ?? []) as WishBean[]) await tx.objectStore("wishes").put(w);
   await tx.done;
+  if (data.prefs) savePrefs({ ...loadPrefs(), ...data.prefs });
   return data.records.length;
 }
