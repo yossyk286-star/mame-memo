@@ -29,6 +29,9 @@ const TABS = [
 // 入力・詳細画面はタブを出さない（保存ボタンと重なるため）
 const HIDDEN_ON = ["/new", "/edit"];
 
+// 好みのタブから開くまとめの画面
+const TASTE_PAGES = ["/taste", "/stamps", "/shops", "/shop", "/wishlist"];
+
 export default function TabBar() {
   const pathname = usePathname();
   if (HIDDEN_ON.includes(pathname)) return null;
@@ -37,7 +40,12 @@ export default function TabBar() {
     <nav className="tabbar" aria-label="メイン">
       <div className="tabbar-inner">
         {TABS.map((t) => {
-          const active = t.href === "/" ? pathname === "/" || pathname === "/record" : pathname.startsWith(t.href);
+          const active =
+            t.href === "/"
+              ? pathname === "/" || pathname === "/record"
+              : t.href === "/taste"
+                ? TASTE_PAGES.includes(pathname)
+                : pathname.startsWith(t.href);
           return (
             <Link key={t.href} href={t.href} className="tab" aria-current={active ? "page" : undefined}>
               <svg

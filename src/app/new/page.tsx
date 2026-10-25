@@ -5,13 +5,18 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import MenuScan, { PickedBean } from "@/components/MenuScan";
 import RecordForm from "@/components/RecordForm";
+import { deleteWish, getWish } from "@/lib/db";
 import { loadLastScan, markRecorded } from "@/lib/lastScan";
 import { beanToDraft, type ScannedBean } from "@/lib/menuScan";
 import type { RecordDraft } from "@/lib/types";
 
 function NewRecord() {
   // メニュー確認の画面で「これを飲んだ」を押すと ?bean=豆の名前 で来る
-  const beanParam = useSearchParams().get("bean");
+  const params = useSearchParams();
+  const beanParam = params.get("bean");
+  // 気になる豆の一覧から「飲んだので記録する」で来たときは ?wish=id
+  const wishParam = params.get("wish");
+  const [wishId, setWishId] = useState<string | null>(null);
   const [beans, setBeans] = useState<ScannedBean[]>([]);
   const [picked, setPicked] = useState<ScannedBean | null>(null);
   // 同じメニューから続けて記録するとき、店名と日付は引き継ぐ
@@ -36,6 +41,15 @@ function NewRecord() {
     }
     setLoaded(true);
   }, [beanParam]);
+
+  useEffect(() => {
+    if (!wishParam) return;
+    getWish(wishParam).then((w) => {
+      if (!w) return;
+      setPicked(w);
+      setWishId(w.id);
+    });
+  }, [wishParam]);
 
   const remaining = beans.filter((b) => !savedNames.includes(b.name));
 
@@ -108,6 +122,11 @@ function NewRecord() {
             if (picked) {
               setSavedNames((ns) => [...ns, picked.name]);
               markRecorded(picked.name);
+            }
+            // 飲んだので気になる豆からは外す
+            if (wishId) {
+              deleteWish(wishId);
+              setWishId(null);
             }
             setCarry({ shop: r.shop, date: r.date });
             setPicked(null);

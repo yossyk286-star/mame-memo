@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { MenuScanResult, ScannedBean } from "@/lib/menuScan";
-import { listRecords } from "@/lib/db";
+import { deleteWish, listRecords, listWishes, putWish, type WishBean } from "@/lib/db";
 import { saveLastScan } from "@/lib/lastScan";
 import { shrinkPhoto } from "@/lib/photo";
 import { bestPick, MIN_RECORDS, scoreBeans } from "@/lib/recommend";
@@ -70,6 +70,7 @@ export default function MenuScan({
   const [beans, setBeans] = useState<ScannedBean[]>(initialBeans);
   const [error, setError] = useState("");
   const [records, setRecords] = useState<TastingRecord[]>([]);
+  const [wishes, setWishes] = useState<WishBean[]>([]);
 
   // localStorage はブラウザでしか読めないので、表示後に読み込む
   useEffect(() => {
@@ -78,7 +79,23 @@ export default function MenuScan({
     setSavedPasscode(!!saved);
     // これまでの記録から、好みに合いそうな豆におすすめを付ける
     listRecords().then(setRecords);
+    listWishes().then(setWishes);
   }, []);
+
+  const wishOf = (b: ScannedBean) => wishes.find((w) => w.name === b.name && w.origin === b.origin);
+
+  // 今日は飲まないけど次に試したい豆に印を付ける（もう一度押すと外す）
+  async function toggleWish(b: ScannedBean) {
+    const wish = wishOf(b);
+    if (wish) {
+      await deleteWish(wish.id);
+      setWishes((ws) => ws.filter((w) => w.id !== wish.id));
+    } else {
+      const added = { ...b, id: crypto.randomUUID(), savedAt: Date.now() };
+      await putWish(added);
+      setWishes((ws) => [added, ...ws]);
+    }
+  }
 
   const picks = useMemo(() => scoreBeans(beans, records), [beans, records]);
   const best = picks ? bestPick(picks) : -1;
@@ -213,6 +230,9 @@ export default function MenuScan({
           </p>
           <button type="button" className="btn-primary" onClick={() => onPick(b)}>
             これを飲んだ
+          </button>
+          <button type="button" className="btn-secondary" aria-pressed={!!wishOf(b)} onClick={() => toggleWish(b)}>
+            {wishOf(b) ? "★ 気になる豆に入れました" : "☆ 気になる（次に試す）"}
           </button>
         </article>
       ))}

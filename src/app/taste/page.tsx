@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { summarize, type GroupAverage } from "@/lib/analysis";
-import { listRecords } from "@/lib/db";
+import { collectStamps } from "@/lib/countries";
+import { listRecords, listWishes } from "@/lib/db";
+import { groupByShop } from "@/lib/shops";
 import type { TastingRecord } from "@/lib/types";
 
 const MIN_RECORDS = 5;
@@ -33,10 +36,15 @@ function Bars({ title, rows }: { title: string; rows: GroupAverage[] }) {
 
 export default function TastePage() {
   const [records, setRecords] = useState<TastingRecord[] | null>(null);
+  const [wishCount, setWishCount] = useState(0);
 
   useEffect(() => {
     listRecords().then(setRecords);
+    listWishes().then((ws) => setWishCount(ws.length));
   }, []);
+
+  const stampInfo = useMemo(() => collectStamps(records ?? []), [records]);
+  const shopCount = useMemo(() => groupByShop(records ?? []).length, [records]);
 
   const count = records?.length ?? 0;
   const summary = useMemo(() => (records && count >= MIN_RECORDS ? summarize(records) : null), [records, count]);
@@ -48,6 +56,22 @@ export default function TastePage() {
       </header>
       {summary && <p className="lead">記録 {count}件から。数字は総合の平均（カッコ内は件数）です。</p>}
       <main className="content">
+        <nav className="hub" aria-label="記録のまとめ">
+          <Link href="/stamps" className="hub-item">
+            <strong>産地スタンプ帳</strong>
+            <span className="muted">
+              {stampInfo.stamps.size} / {stampInfo.total}カ国
+            </span>
+          </Link>
+          <Link href="/shops" className="hub-item">
+            <strong>お店</strong>
+            <span className="muted">{shopCount}軒</span>
+          </Link>
+          <Link href="/wishlist" className="hub-item">
+            <strong>気になる豆</strong>
+            <span className="muted">{wishCount}件</span>
+          </Link>
+        </nav>
         {records && !summary && (
           <p className="empty">
             記録が{MIN_RECORDS}件たまると、あなたの好みの傾向を表示します。
