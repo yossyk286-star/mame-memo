@@ -1,4 +1,5 @@
 import type { ScannedBean } from "./menuScan";
+import { hasPrefs, type MyPrefs } from "./prefs";
 import type { TastingRecord } from "./types";
 
 /** フレーバータグごとに、メニューの説明で使われがちな言葉 */
@@ -32,13 +33,17 @@ function flavorsIn(text: string, custom: string[]) {
 }
 
 /**
- * これまでの記録の総合評価から、メニューの豆それぞれの「好みに合いそう度」を出す。
- * 平均より高く評価した焙煎度・精製方法・味に近いほど高い。記録が少ないときは null
+ * これまでの記録の総合評価と、自分で登録した好みから、メニューの豆それぞれの「好みに合いそう度」を出す。
+ * 平均より高く評価した焙煎度・精製方法・味や、登録した好みに近いほど高い。
+ * 記録が少なく好みの登録もないときは null
  */
-export function scoreBeans(beans: ScannedBean[], records: TastingRecord[]): BeanPick[] | null {
-  if (records.length < MIN_RECORDS) return null;
-  const base = average(records.map((r) => r.overall));
-  const custom = [...new Set(records.flatMap((r) => r.flavors))].filter((f) => !(f in FLAVOR_WORDS));
+export function scoreBeans(beans: ScannedBean[], records: TastingRecord[], prefs: MyPrefs): BeanPick[] | null {
+  const useRecords = records.length >= MIN_RECORDS;
+  if (!useRecords && !hasPrefs(prefs)) return null;
+  const base = useRecords ? average(records.map((r) => r.overall)) : 0;
+  const custom = [...new Set([...records.flatMap((r) => r.flavors), ...prefs.likes, ...prefs.dislikes])].filter(
+    (f) => !(f in FLAVOR_WORDS),
+  );
 
   // 焙煎度や精製方法が同じ記録の平均と、全体の平均の差。件数が少ないうちは控えめに効かせる
   function lean(label: string | null, key: (r: TastingRecord) => string | null) {
@@ -52,6 +57,23 @@ export function scoreBeans(beans: ScannedBean[], records: TastingRecord[]): Bean
   return beans.map((b) => {
     let score = 0;
     const reasons: string[] = [];
+    const flavors = flavorsIn(`${b.menuNote} ${b.name}`, custom);
+
+    // 自分で登録した好み
+    if (b.roast && prefs.roasts.includes(b.roast)) {
+      score += 0.6;
+      reasons.push(`好きな${b.roast}`);
+    }
+    if (b.process && prefs.processes.includes(b.process)) {
+      score += 0.4;
+      reasons.push(`好きな${b.process}`);
+    }
+    const prefLiked = flavors.filter((f) => prefs.likes.includes(f));
+    const prefDisliked = flavors.filter((f) => prefs.dislikes.includes(f));
+    score += 0.5 * prefLiked.length - 0.6 * prefDisliked.length;
+    if (prefLiked.length > 0) reasons.push(`好きな味（${prefLiked.join("・")}）`);
+
+    if (!useRecords) return { score, reasons };
 
     // 同じ豆を前に飲んでいれば、その評価がいちばん確か
     const same = records.filter((r) => r.origin && r.farm && b.origin === r.origin && b.farm === r.farm);
@@ -72,12 +94,13 @@ export function scoreBeans(beans: ScannedBean[], records: TastingRecord[]): Bean
       if (process.avg >= 4 && process.weight > 0) reasons.push(`${b.process}の評価が高め（平均★${process.avg.toFixed(1)}）`);
     }
 
-    // 高く評価した記録で感じた味が、メニューの説明にどれだけあるか
-    const flavors = flavorsIn(`${b.menuNote} ${b.name}`, custom);
-    const liked = flavors.filter((f) => records.some((r) => r.overall >= 4 && r.flavors.includes(f)));
+    // 高く評価した記録で感じた味が、メニューの説明にどれだけあるか（登録した好みと重なる分は数えない）
+    const liked = flavors.filter(
+      (f) => !prefLiked.includes(f) && records.some((r) => r.overall >= 4 && r.flavors.includes(f)),
+    );
     const disliked = flavors.filter((f) => records.some((r) => r.overall <= 2 && r.flavors.includes(f)));
     score += 0.4 * liked.length - 0.4 * disliked.length;
-    if (liked.length > 0) reasons.push(`好きな味（${liked.join("・")}）が入っている`);
+    if (liked.length > 0) reasons.push(`高評価のときの味（${liked.join("・")}）が入っている`);
 
     return { score, reasons };
   });

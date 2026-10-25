@@ -5,6 +5,7 @@ import type { MenuScanResult, ScannedBean } from "@/lib/menuScan";
 import { deleteWish, listRecords, listWishes, putWish, type WishBean } from "@/lib/db";
 import { saveLastScan } from "@/lib/lastScan";
 import { shrinkPhoto } from "@/lib/photo";
+import { EMPTY_PREFS, loadPrefs } from "@/lib/prefs";
 import { bestPick, MIN_RECORDS, scoreBeans } from "@/lib/recommend";
 import type { TastingRecord } from "@/lib/types";
 import styles from "./MenuScan.module.css";
@@ -71,6 +72,7 @@ export default function MenuScan({
   const [error, setError] = useState("");
   const [records, setRecords] = useState<TastingRecord[]>([]);
   const [wishes, setWishes] = useState<WishBean[]>([]);
+  const [prefs, setPrefs] = useState(EMPTY_PREFS);
 
   // localStorage はブラウザでしか読めないので、表示後に読み込む
   useEffect(() => {
@@ -80,6 +82,7 @@ export default function MenuScan({
     // これまでの記録から、好みに合いそうな豆におすすめを付ける
     listRecords().then(setRecords);
     listWishes().then(setWishes);
+    setPrefs(loadPrefs());
   }, []);
 
   const wishOf = (b: ScannedBean) => wishes.find((w) => w.name === b.name && w.origin === b.origin);
@@ -97,7 +100,7 @@ export default function MenuScan({
     }
   }
 
-  const picks = useMemo(() => scoreBeans(beans, records), [beans, records]);
+  const picks = useMemo(() => scoreBeans(beans, records, prefs), [beans, records, prefs]);
   const best = picks ? bestPick(picks) : -1;
 
   async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -200,7 +203,9 @@ export default function MenuScan({
       )}
 
       {beans.length > 0 && !picks && (
-        <p className={styles.lead}>記録が{MIN_RECORDS}件以上たまると、好みに合いそうな豆に「おすすめ」を付けます。</p>
+        <p className={styles.lead}>
+          記録が{MIN_RECORDS}件以上たまるか、「好み」タブの「わたしの好み」を登録すると、好みに合いそうな豆に「おすすめ」を付けます。
+        </p>
       )}
       {beans.length > 0 && picks && best < 0 && (
         <p className={styles.lead}>今回は、これまでの好みとはっきり合う豆が見つかりませんでした。新しい味を試すチャンスです。</p>
