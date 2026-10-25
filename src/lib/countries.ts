@@ -64,9 +64,9 @@ export function countryOf(r: Pick<TastingRecord, "origin" | "farm">): string | n
   return null;
 }
 
-export type Stamp = { count: number; best: number };
+export type Stamp = { count: number; best: number; records: TastingRecord[] };
 
-/** 国ごとの杯数と最高評価。リストにない産地は others に産地欄のまま入れる */
+/** 国ごとの杯数・最高評価・その国の記録。リストにない産地は others に産地欄のまま入れる */
 export function collectStamps(records: TastingRecord[]) {
   const stamps = new Map<string, Stamp>();
   const others = new Map<string, Stamp>();
@@ -75,8 +75,8 @@ export function collectStamps(records: TastingRecord[]) {
     const key = country ?? r.origin.trim();
     if (!key) continue;
     const map = country ? stamps : others;
-    const s = map.get(key) ?? { count: 0, best: 0 };
-    map.set(key, { count: s.count + 1, best: Math.max(s.best, r.overall) });
+    const s = map.get(key) ?? { count: 0, best: 0, records: [] };
+    map.set(key, { count: s.count + 1, best: Math.max(s.best, r.overall), records: [...s.records, r] });
   }
   return { stamps, others, total: ALL.length };
 }
