@@ -1,6 +1,7 @@
 import type { Method, Process, Roast } from "./types";
 
-export type GlossaryCategory = "精製" | "抽出" | "焙煎" | "フレーバー";
+export const CATEGORIES = ["精製", "抽出", "焙煎", "フレーバー"] as const;
+export type GlossaryCategory = (typeof CATEGORIES)[number];
 
 export interface Term {
   category: GlossaryCategory;

@@ -13,6 +13,10 @@ export function beanTitle(r: Pick<TastingRecord, "origin" | "farm">) {
   return [r.origin, r.farm].filter(Boolean).join(" ") || "（豆の名前なし）";
 }
 
+export function yen(n: number) {
+  return `${Math.round(n).toLocaleString("ja-JP")}円`;
+}
+
 /** 焙煎度ごとの色（globals.css の --k-… ）と、写真がないときに出す1文字 */
 const ROAST_LOOK: Record<Roast, { color: string; mark: string }> = {
   浅煎り: { color: "var(--k-light)", mark: "浅" },
@@ -51,6 +55,7 @@ export default function RecordCard({ record: r, showDate = true }: { record: Tas
   const sub = [
     ...[r.roast, r.process, r.method].filter((t) => t && t !== "不明"),
     r.shop,
+    r.price && yen(r.price),
     showDate && shortDate(r.date),
   ].filter(Boolean);
   return (

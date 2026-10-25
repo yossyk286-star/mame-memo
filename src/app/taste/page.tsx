@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { beanTitle, stars, yen } from "@/components/RecordCard";
+import TasteMap from "@/components/TasteMap";
 import { summarize, type GroupAverage } from "@/lib/analysis";
 import { collectStamps } from "@/lib/countries";
-import { listRecords, listWishes } from "@/lib/db";
+import { listBags, listRecords, listWishes } from "@/lib/db";
+import { nextIdeas } from "@/lib/nextBean";
+import { loadPrefs } from "@/lib/prefs";
 import { groupByShop } from "@/lib/shops";
 import type { TastingRecord } from "@/lib/types";
 
@@ -34,17 +38,61 @@ function Bars({ title, rows }: { title: string; rows: GroupAverage[] }) {
   );
 }
 
+function average(xs: number[]) {
+  return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+
+/** 値段を入れた記録の平均と、安くて評価の高かったお酒 */
+function PriceCard({ records, budget }: { records: TastingRecord[]; budget: number | null }) {
+  const priced = records.filter((r) => r.price);
+  if (priced.length === 0) return null;
+  const liked = priced.filter((r) => r.overall >= 4);
+  // 評価が高い順、同じなら安い順
+  const bargain = [...liked].sort((a, b) => b.overall - a.overall || a.price! - b.price!)[0];
+  return (
+    <section className="card" style={{ gap: 6 }}>
+      <h2 style={{ fontSize: 14 }}>値段</h2>
+      <p style={{ margin: 0, fontSize: 14 }}>
+        1杯の平均 <strong>{yen(average(priced.map((r) => r.price!)))}</strong>
+        <span className="muted">（{priced.length}杯）</span>
+      </p>
+      {liked.length > 0 && (
+        <p style={{ margin: 0, fontSize: 14 }}>
+          ★4以上だった豆の平均 <strong>{yen(average(liked.map((r) => r.price!)))}</strong>
+        </p>
+      )}
+      {budget && (
+        <p style={{ margin: 0, fontSize: 14 }}>
+          予算 {yen(budget)} 以内：{priced.filter((r) => r.price! <= budget).length} / {priced.length}杯
+        </p>
+      )}
+      {bargain && (
+        <p style={{ margin: 0, fontSize: 14 }}>
+          お値打ちだった豆：
+          <Link href={`/record?id=${bargain.id}`}>
+            {beanTitle(bargain)}（{stars(bargain.overall)}・{yen(bargain.price!)}）
+          </Link>
+        </p>
+      )}
+    </section>
+  );
+}
+
 export default function TastePage() {
   const [records, setRecords] = useState<TastingRecord[] | null>(null);
   const [wishCount, setWishCount] = useState(0);
+  const [bagCount, setBagCount] = useState(0);
 
   useEffect(() => {
     listRecords().then(setRecords);
     listWishes().then((ws) => setWishCount(ws.length));
+    listBags().then((bs) => setBagCount(bs.filter((b) => !b.finished).length));
   }, []);
 
   const stampInfo = useMemo(() => collectStamps(records ?? []), [records]);
   const shopCount = useMemo(() => groupByShop(records ?? []).length, [records]);
+
+  const ideas = useMemo(() => (records ? nextIdeas(records, loadPrefs()) : []), [records]);
 
   const count = records?.length ?? 0;
   const summary = useMemo(() => (records && count >= MIN_RECORDS ? summarize(records) : null), [records, count]);
@@ -71,11 +119,31 @@ export default function TastePage() {
             <strong>気になる豆</strong>
             <span className="muted">{wishCount}件</span>
           </Link>
+          <Link href="/bags" className="hub-item">
+            <strong>家の豆</strong>
+            <span className="muted">{bagCount}袋</span>
+          </Link>
           <Link href="/prefs" className="hub-item">
             <strong>わたしの好み</strong>
             <span className="muted">自分で登録</span>
           </Link>
         </nav>
+        {ideas.length > 0 && (
+          <section className="tips">
+            <h2>次の一杯に</h2>
+            <ul className="next-list">
+              {ideas.map((i) => (
+                <li key={i.title}>
+                  <strong>{i.title}</strong>
+                  <span>{i.reason}</span>
+                  {i.description && <span className="muted">{i.description}</span>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {records && records.length > 0 && <TasteMap records={records} />}
+        {records && <PriceCard records={records} budget={loadPrefs().budget} />}
         {records && !summary && (
           <p className="empty">
             記録が{MIN_RECORDS}件たまると、あなたの好みの傾向を表示します。

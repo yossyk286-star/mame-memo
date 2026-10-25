@@ -29,6 +29,10 @@ export interface TastingRecord {
   body?: Score | null;
   aroma?: Score | null;
   overall: Score;
+  /** 1杯の値段（円）。値段の欄ができる前の記録にはない */
+  price?: number | null;
+  /** 家の豆（買った豆）から記録したときの、その豆の id */
+  bagId?: string;
   memo: string;
   /** 自分で撮った写真（飲んだコーヒー、お店など）。何枚でも */
   photos: Blob[];
@@ -41,3 +45,24 @@ export interface TastingRecord {
 export type RecordDraft = Omit<TastingRecord, "id" | "createdAt" | "updatedAt" | "overall"> & {
   overall: Score | null;
 };
+
+/** 家で淹れるために買った豆。何回かに分けて記録できる */
+export interface Bag {
+  id: string;
+  /** 産地（国） */
+  origin: string;
+  farm: string;
+  roast: Roast | null;
+  process: Process | null;
+  /** 買ったお店 */
+  shop: string;
+  /** お店の説明や AI の説明など */
+  note: string;
+  /** 買った値段（円） */
+  price: number | null;
+  /** 買った日 YYYY-MM-DD */
+  boughtAt: string;
+  /** 飲みきったら true */
+  finished: boolean;
+  createdAt: number;
+}

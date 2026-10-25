@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { beanTitle, stars } from "@/components/RecordCard";
+import { beanTitle, stars, yen } from "@/components/RecordCard";
+import { TASTE_AXES } from "@/lib/axes";
+import { recordImage, shareImage } from "@/lib/shareImage";
 import { PhotoAddButton, PhotoRow } from "@/components/PhotoAdd";
 import { deleteRecord, putRecord } from "@/lib/db";
 import { photosOf, shrinkPhotos } from "@/lib/photo";
@@ -43,6 +45,22 @@ function DetailBody() {
     router.replace("/");
   }
 
+  async function share() {
+    if (!r) return;
+    const blob = await recordImage({
+      title: beanTitle(r),
+      overall: r.overall,
+      tags: [r.roast, r.process, r.method, r.temp, r.style].filter((t): t is NonNullable<typeof t> => !!t && t !== "不明"),
+      axes: TASTE_AXES.map(([label]) => label),
+      values: TASTE_AXES.map(([, get]) => get(r)),
+      flavors: r.flavors,
+      memo: r.memo,
+      footer: [r.shop, r.date.replaceAll("-", "/")].filter(Boolean).join("・"),
+      photo: photosOf(r)[0] ?? null,
+    });
+    await shareImage(blob, beanTitle(r)).catch(() => alert("共有できませんでした"));
+  }
+
   const rows: [string, string][] = r
     ? [
         ["日付", r.date],
@@ -61,6 +79,7 @@ function DetailBody() {
         ["甘さ", scoreText(r.sweetness)],
         ["コク", scoreText(r.body ?? null)],
         ["香り", scoreText(r.aroma ?? null)],
+        ["値段", r.price ? yen(r.price) : "—"],
         ["メモ", r.memo || "—"],
       ]
     : [];
@@ -100,6 +119,9 @@ function DetailBody() {
               ))}
             </dl>
           </div>
+          <button type="button" className="btn-secondary" onClick={share}>
+            画像にして送る
+          </button>
           <Link href={`/compare?a=${r.id}`} className="btn-secondary">
             ほかの記録とくらべる
           </Link>

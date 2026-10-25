@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { RecordDraft } from "./types";
-import { METHODS, PROCESSES, ROASTS } from "./glossary";
+import { CATEGORIES, METHODS, PROCESSES, ROASTS } from "./glossary";
 
 /** 味の強さ。1（弱い）〜5（強い） */
 const TasteLevel = z.number().int().describe("1（弱い）〜5（強い）の整数");
@@ -81,3 +81,27 @@ export function beanToDraft(
     sweets: b.sweets ?? "",
   };
 }
+
+/** 食べているスイーツとの相性。豆は送った順の番号で返す */
+export const PairingResultSchema = z.object({
+  ranks: z.array(
+    z.object({
+      index: z.number().int().describe("豆の番号（0から）"),
+      score: z.number().int().describe("スイーツとの相性。1（合わない）〜5（とても合う）"),
+      reason: z.string().describe("なぜ合う・合わないか、20〜40字くらいで"),
+    }),
+  ),
+});
+
+export type PairingResult = z.infer<typeof PairingResultSchema>;
+
+/** 辞典に足す用語を調べた結果 */
+export const TermLookupSchema = z.object({
+  found: z.boolean().describe("コーヒーに関係する言葉として説明できれば true。関係ない・わからなければ false"),
+  term: z.string().describe("用語（表記をととのえたもの）"),
+  reading: z.string().describe("読み（英語ならカタカナ、漢字ならひらがな）。不要なら空文字"),
+  category: z.enum(CATEGORIES).describe("いちばん近い分類"),
+  description: z.string().describe("初心者向けのやさしい説明。辞典のほかの用語と同じく2文くらい、50〜90字"),
+});
+
+export type TermLookup = z.infer<typeof TermLookupSchema>;
