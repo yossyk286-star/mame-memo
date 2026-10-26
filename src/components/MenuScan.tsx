@@ -20,6 +20,7 @@ import {
 import { findKnownBean } from "@/lib/knownBeans";
 import { saveLastScan, today } from "@/lib/lastScan";
 import { findSaved, recentSaved, saveLookups } from "@/lib/savedLookups";
+import { MOODS, moodFromText, type Mood } from "@/lib/moods";
 import { loadPasscode, PASSCODE_KEY } from "@/lib/passcode";
 import { shrinkPhoto } from "@/lib/photo";
 import { EMPTY_PREFS, loadPrefs } from "@/lib/prefs";
@@ -27,40 +28,10 @@ import { bestPick, MIN_RECORDS, scoreBeans } from "@/lib/recommend";
 import type { TastingRecord } from "@/lib/types";
 import styles from "./MenuScan.module.css";
 import AskAI from "./AskAI";
-import TasteBars, { level } from "./TasteBars";
+import MoodPicker from "./MoodPicker";
+import TasteBars from "./TasteBars";
 
 
-/** 今日の気分。押すと、味の予想からその気分に合う順に並べ替える */
-const MOODS: { label: string; score: (b: ScannedBean) => number }[] = [
-  {
-    label: "すっきり",
-    score: ({ taste: t }) =>
-      t
-        ? level(t.acidity) - 0.7 * level(t.bitterness) - 0.3 * level(t.body)
-        : 0,
-  },
-  {
-    label: "甘め",
-    score: ({ taste: t }) =>
-      t ? level(t.sweetness) + 0.2 * level(t.body) - 0.2 * level(t.acidity) : 0,
-  },
-  {
-    label: "しっかり苦め",
-    score: ({ taste: t }) =>
-      t ? level(t.bitterness) + 0.6 * level(t.body) : 0,
-  },
-  {
-    label: "ミルクに合う",
-    // ミルクに負けないコクと苦味があり、酸味が強すぎないもの
-    score: ({ taste: t, roast }) =>
-      t
-        ? level(t.body) +
-          0.7 * level(t.bitterness) -
-          0.5 * level(t.acidity) +
-          (roast === "深煎り" ? 1 : 0)
-        : 0,
-  },
-];
 
 
 /** 調べた豆について AI に聞くときの質問の例 */
@@ -158,6 +129,8 @@ export default function MenuScan({
   const [sweet, setSweet] = useState("");
   const [pairing, setPairing] = useState<{
     sweet: string;
+    /** スイーツではなく、文字で入れた気分を AI に聞いたとき */
+    mood?: boolean;
     byName: Map<string, { score: number; reason: string }>;
   } | null>(null);
   const [pairingBusy, setPairingBusy] = useState(false);
@@ -202,7 +175,7 @@ export default function MenuScan({
   const best = picks ? bestPick(picks) : -1;
 
   // 気分を選んだら、その順に並べる（番号はおすすめの計算と同じ、元の並びのまま持つ）
-  const [mood, setMood] = useState<string | null>(null);
+  const [mood, setMood] = useState<Mood | null>(null);
   // スイーツとの相性を出したときは、その順を優先する
   const order = useMemo(() => {
     const idx = beans.map((_, i) => i);
@@ -210,8 +183,7 @@ export default function MenuScan({
       const s = (i: number) => pairing.byName.get(beans[i].name)?.score ?? 0;
       return idx.sort((a, b) => s(b) - s(a));
     }
-    const m = MOODS.find((x) => x.label === mood);
-    return m ? idx.sort((a, b) => m.score(beans[b]) - m.score(beans[a])) : idx;
+    return mood ? idx.sort((a, b) => mood.score(beans[b]) - mood.score(beans[a])) : idx;
   }, [beans, mood, pairing]);
 
   async function addBag(b: ScannedBean) {
@@ -232,9 +204,8 @@ export default function MenuScan({
     setBagged((ns) => [...ns, b.name]);
   }
 
-  /** いま頼む・食べているスイーツに合う順に並べる */
-  async function pairWith() {
-    const s = sweet.trim();
+  /** いま頼む・食べているスイーツか、文字で入れた気分に合う順に並べる */
+  async function pairWith(s = sweet.trim(), asMood = false) {
     if (!s) return;
     if (!passcode) return setError("先に合言葉を入れてください");
     if (!navigator.onLine) return setError("オフラインのため調べられません");
@@ -245,7 +216,7 @@ export default function MenuScan({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sweet: s,
+          [asMood ? "mood" : "sweet"]: s,
           beans: beans.map(({ name, roast, process }) => ({ name, roast, process })),
           passcode: passcode.trim().normalize("NFKC"),
         }),
@@ -262,7 +233,7 @@ export default function MenuScan({
             reason: r.reason,
           });
       }
-      setPairing({ sweet: s, byName });
+      setPairing({ sweet: s, mood: asMood, byName });
       setMood(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "相性を調べられませんでした");
@@ -270,7 +241,6 @@ export default function MenuScan({
       setPairingBusy(false);
     }
   }
-  const hasTaste = beans.some((b) => b.taste);
 
   // 前に飲んだ豆と、まだ飲んだことのない国
   const drunkCountries = useMemo(
@@ -527,28 +497,27 @@ export default function MenuScan({
         </p>
       )}
 
-      {hasTaste && beans.length > 1 && (
-        <div
-          className={styles.moods}
-          role="group"
-          aria-label="今日の気分で並べ替え"
-        >
-          <span>今日の気分：</span>
-          {MOODS.map((m) => (
-            <button
-              type="button"
-              key={m.label}
-              className="chip"
-              aria-pressed={mood === m.label}
-              onClick={() => {
-                setMood(mood === m.label ? null : m.label);
-                setPairing(null);
-              }}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+      {beans.length > 1 && (
+        <MoodPicker
+          labels={MOODS.map((m) => m.label)}
+          suggest={(q) => MOODS.filter((m) => m.label.includes(q) || m.words.test(q)).map((m) => m.label)}
+          value={mood?.label ?? (pairing?.mood ? pairing.sweet : null)}
+          busy={pairingBusy}
+          onPick={(label) => {
+            setMood(MOODS.find((m) => m.label === label) ?? null);
+            setPairing((p) => (label || p?.mood ? null : p));
+          }}
+          onText={(t) => {
+            const m = moodFromText(t);
+            if (m) {
+              setMood(m);
+              setPairing(null);
+            } else pairWith(t, true);
+          }}
+        />
+      )}
+      {mood && !MOODS.some((m) => m.label === mood.label) && (
+        <p className={styles.lead}>「{mood.label}」に合いそうな順に並べました（AI は使っていません）。</p>
       )}
 
       {beans.length > 1 && (
@@ -588,7 +557,9 @@ export default function MenuScan({
           style={{ alignItems: "center", flexWrap: "nowrap" }}
         >
           <p className={styles.lead} style={{ flex: 1 }}>
-            「{pairing.sweet}」に合う順に並べました。
+            {pairing.mood
+              ? `「${pairing.sweet}」の気分に合う順に並べました。`
+              : `「${pairing.sweet}」に合う順に並べました。`}
           </p>
           <button
             type="button"
@@ -620,7 +591,7 @@ export default function MenuScan({
             {match && (
               <p className={styles.match}>
                 <strong>
-                  {pairing?.sweet}との相性{" "}
+                  {pairing?.mood ? "気分に合う度" : `${pairing?.sweet}との相性`}{" "}
                   {"●".repeat(match.score) + "○".repeat(5 - match.score)}
                 </strong>
                 {match.reason}
