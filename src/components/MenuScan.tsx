@@ -28,6 +28,7 @@ import { bestPick, MIN_RECORDS, scoreBeans } from "@/lib/recommend";
 import type { TastingRecord } from "@/lib/types";
 import styles from "./MenuScan.module.css";
 import AskAI from "./AskAI";
+import Hint from "./Hint";
 import MoodPicker from "./MoodPicker";
 import TasteBars from "./TasteBars";
 
@@ -36,6 +37,20 @@ import TasteBars from "./TasteBars";
 
 /** 調べた豆について AI に聞くときの質問の例 */
 const ASK_SUGGESTIONS = ["どんな味？", "初心者でも飲みやすい？", "ミルクに合う？", "似た豆は？"];
+
+/** 閉じたカードに出す、味のひとこと（2つまで） */
+function tasteWords({ taste: t }: ScannedBean) {
+  if (!t) return "";
+  const w = [
+    t.sweetness >= 4 && "甘め",
+    t.acidity >= 4 && "酸味しっかり",
+    t.acidity <= 1 && "酸味ひかえめ",
+    t.bitterness >= 4 && "苦め",
+    t.body >= 4 && "コク",
+    t.body <= 1 && "軽め",
+  ].filter((x): x is string => !!x);
+  return w.length ? w.slice(0, 2).join("・") : "バランス型";
+}
 
 /** 調べた豆の情報を、AI に渡す文にする */
 function beanContext(b: ScannedBean) {
@@ -176,6 +191,9 @@ export default function MenuScan({
 
   // 気分を選んだら、その順に並べる（番号はおすすめの計算と同じ、元の並びのまま持つ）
   const [mood, setMood] = useState<Mood | null>(null);
+  const [sortOpen, setSortOpen] = useState(false);
+  // タップで開いているカード（1杯だけのときは最初から開く）
+  const [openCard, setOpenCard] = useState<string | null>(null);
   // スイーツとの相性を出したときは、その順を優先する
   const order = useMemo(() => {
     const idx = beans.map((_, i) => i);
@@ -185,6 +203,13 @@ export default function MenuScan({
     }
     return mood ? idx.sort((a, b) => mood.score(beans[b]) - mood.score(beans[a])) : idx;
   }, [beans, mood, pairing]);
+  const sortSummary = mood
+    ? `気分：${mood.label}`
+    : pairing
+      ? pairing.mood
+        ? `気分：${pairing.sweet}`
+        : `スイーツ：${pairing.sweet}`
+      : "";
 
   async function addBag(b: ScannedBean) {
     const d = beanToDraft(b);
@@ -285,6 +310,7 @@ export default function MenuScan({
     setBeans(next);
     onScanned?.(next);
     setStatus("done");
+    setTextOpen(false);
     setError("");
     setLocalHit({ name: b.name, how, query: q });
   }
@@ -340,6 +366,7 @@ export default function MenuScan({
       saveLastScan(result.beans);
       onScanned?.(result.beans);
       setStatus("done");
+      setTextOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "読み取りに失敗しました");
       setStatus("idle");
@@ -348,11 +375,15 @@ export default function MenuScan({
 
   return (
     <section className={styles.box} aria-label="メニューを撮って入力">
-      <p className={styles.lead}>
-        {status === "done"
-          ? "「＋ 記録に追加」を押すと、豆の情報が入った状態で感想を書けます。"
-          : "メニューを撮るか文字で入れると、豆ごとに解説とおすすめの飲み方を出して、記録の項目に入れます。"}
-      </p>
+      {status === "done" ? (
+        <Hint id="scan-done" className={styles.lead}>
+          豆の名前をタップすると、説明や飲み方が開きます。「＋記録」を押すと、豆の情報が入った状態で感想を書けます。
+        </Hint>
+      ) : (
+        <p className={styles.lead}>
+          メニューを撮るか文字で入れると、豆ごとに解説とおすすめの飲み方を出して、記録の項目に入れます。
+        </p>
+      )}
       {!savedPasscode && (
         <div className="field">
           <label className="label" htmlFor="scan-pass">
@@ -371,6 +402,7 @@ export default function MenuScan({
         </div>
       )}
 
+      <div className={status === "done" ? styles.shootRow : styles.shootCol}>
       <label
         className={`btn-primary ${styles.shoot}`}
         aria-disabled={status === "reading"}
@@ -392,7 +424,7 @@ export default function MenuScan({
         {status === "reading"
           ? "読み取り中…"
           : status === "done"
-            ? "撮り直す"
+            ? "撮る"
             : "メニューを撮って読み取る"}
         <input
           type="file"
@@ -406,7 +438,7 @@ export default function MenuScan({
 
       {status !== "reading" && (
         <label className="btn-secondary" style={{ cursor: "pointer" }}>
-          写真フォルダから選んで読み取る
+          {status === "done" ? "写真から" : "写真フォルダから選んで読み取る"}
           {/* capture を付けないとカメラではなく写真の一覧が開く */}
           <input
             type="file"
@@ -416,6 +448,13 @@ export default function MenuScan({
           />
         </label>
       )}
+
+        {status === "done" && !textOpen && (
+          <button type="button" className="btn-secondary" onClick={() => setTextOpen(true)}>
+            文字で
+          </button>
+        )}
+      </div>
 
       {status !== "reading" &&
         (textOpen ? (
@@ -440,13 +479,15 @@ export default function MenuScan({
             </button>
           </div>
         ) : (
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => setTextOpen(true)}
-          >
-            文字で入力して調べる
-          </button>
+          status !== "done" && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setTextOpen(true)}
+            >
+              文字で入力して調べる
+            </button>
+          )
         ))}
 
       {status !== "reading" && recent.length > 0 && (
@@ -486,10 +527,10 @@ export default function MenuScan({
       )}
 
       {beans.length > 0 && !picks && (
-        <p className={styles.lead}>
+        <Hint id="scan-picks" className={styles.lead}>
           記録が{MIN_RECORDS}
           件以上たまるか、「好み」タブの「わたしの好み」を登録すると、好みに合いそうな豆に「おすすめ」を付けます。
-        </p>
+        </Hint>
       )}
       {beans.length > 0 && picks && best < 0 && (
         <p className={styles.lead}>
@@ -497,6 +538,22 @@ export default function MenuScan({
         </p>
       )}
 
+      {beans.length > 1 && (
+        <div className="row" style={{ alignItems: "center", flexWrap: "nowrap" }}>
+          <button
+            type="button"
+            className="chip"
+            aria-expanded={sortOpen}
+            aria-pressed={sortOpen}
+            onClick={() => setSortOpen(!sortOpen)}
+          >
+            ⇅ 並び替え
+          </button>
+          {sortSummary && <span className={styles.sortNow}>{sortSummary}</span>}
+        </div>
+      )}
+      {beans.length > 1 && sortOpen && (
+        <div className={styles.sortPanel}>
       {beans.length > 1 && (
         <MoodPicker
           labels={MOODS.map((m) => m.label)}
@@ -516,10 +573,6 @@ export default function MenuScan({
           }}
         />
       )}
-      {mood && !MOODS.some((m) => m.label === mood.label) && (
-        <p className={styles.lead}>「{mood.label}」に合いそうな順に並べました（AI は使っていません）。</p>
-      )}
-
       {beans.length > 1 && (
         <form
           className="row"
@@ -551,6 +604,12 @@ export default function MenuScan({
           </button>
         </form>
       )}
+        </div>
+      )}
+      {mood && !MOODS.some((m) => m.label === mood.label) && (
+        <p className={styles.lead}>「{mood.label}」に合いそうな順に並べました（AI は使っていません）。</p>
+      )}
+
       {pairing && (
         <div
           className="row"
@@ -576,6 +635,9 @@ export default function MenuScan({
         const b = beans[i];
         const badges = badgesOf(b);
         const match = pairing?.byName.get(b.name);
+        const open = beans.length === 1 || openCard === b.name;
+        const wished = !!wishOf(b);
+        const words = tasteWords(b);
         return (
           <article
             key={i}
@@ -587,95 +649,116 @@ export default function MenuScan({
                 <span>{picks[i].reasons.join("、")}</span>
               </div>
             )}
-            <h3>{b.name}</h3>
-            {match && (
-              <p className={styles.match}>
-                <strong>
-                  {pairing?.mood ? "気分に合う度" : `${pairing?.sweet}との相性`}{" "}
-                  {"●".repeat(match.score) + "○".repeat(5 - match.score)}
-                </strong>
-                {match.reason}
-              </p>
-            )}
-            {badges.length > 0 && (
-              <div className={styles.badges}>
-                {badges.map((t) => (
-                  <span key={t} className={styles.badge}>
-                    {t}
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="tags">
-              {[b.origin, b.roast, b.process].filter(Boolean).map((t) => (
-                <span key={t} className="tag">
-                  {t}
-                </span>
-              ))}
-            </div>
-            {b.taste && <TasteBars taste={b.taste} />}
-            {b.menuNote && (
-              <p className="muted">メニューの説明：{b.menuNote}</p>
-            )}
-            <p className={styles.text}>{b.explanation}</p>
-            <p className={styles.text}>
-              <strong>おすすめの飲み方：</strong>
-              {b.recommendation}
-            </p>
-            {b.sweets && (
-              <p className={styles.text}>
-                <strong>合うスイーツ：</strong>
-                {b.sweets}
-              </p>
-            )}
-            {b.methodNotes && b.methodNotes.length > 0 && (
-              <details className={styles.methods}>
-                <summary>飲み方で比べる</summary>
-                <dl>
-                  {b.methodNotes.map((m) => (
-                    <div key={m.method} style={{ display: "contents" }}>
-                      <dt>{m.method}</dt>
-                      <dd>{m.note}</dd>
-                    </div>
+            <button
+              type="button"
+              className={styles.cardHead}
+              aria-expanded={open}
+              onClick={() => setOpenCard(open ? null : b.name)}
+            >
+              <span className={styles.cardTop}>
+                <span className={styles.name}>{b.name}</span>
+                {b.roast && <span className={styles.abv}>{b.roast}</span>}
+              </span>
+            </button>
+            {open && (
+              <>
+                {match && (
+                  <p className={styles.match}>
+                    <strong>
+                      {pairing?.mood ? "気分に合う度" : `${pairing?.sweet}との相性`}{" "}
+                      {"●".repeat(match.score) + "○".repeat(5 - match.score)}
+                    </strong>
+                    {match.reason}
+                  </p>
+                )}
+                {badges.length > 0 && (
+                  <div className={styles.badges}>
+                    {badges.map((t) => (
+                      <span key={t} className={styles.badge}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="tags">
+                  {[b.origin, b.roast, b.process].filter(Boolean).map((t) => (
+                    <span key={t} className="tag">
+                      {t}
+                    </span>
                   ))}
-                </dl>
-              </details>
+                </div>
+                {b.taste && <TasteBars taste={b.taste} />}
+                {b.menuNote && <p className="muted">メニューの説明：{b.menuNote}</p>}
+                <p className={styles.text}>{b.explanation}</p>
+                <p className={styles.text}>
+                  <strong>おすすめの飲み方：</strong>
+                  {b.recommendation}
+                </p>
+                {b.sweets && (
+                  <p className={styles.text}>
+                    <strong>合うスイーツ：</strong>
+                    {b.sweets}
+                  </p>
+                )}
+                {b.methodNotes && b.methodNotes.length > 0 && (
+                  <details className={styles.methods}>
+                    <summary>飲み方で比べる</summary>
+                    <dl>
+                      {b.methodNotes.map((m) => (
+                        <div key={m.method} style={{ display: "contents" }}>
+                          <dt>{m.method}</dt>
+                          <dd>{m.note}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </details>
+                )}
+                <details className={styles.methods}>
+                  <summary>AI に聞く</summary>
+                  <AskAI bare context={beanContext(b)} suggestions={ASK_SUGGESTIONS} />
+                </details>
+              </>
             )}
-            <details className={styles.methods}>
-              <summary>AI に聞く</summary>
-              <AskAI
-                bare
-                context={beanContext(b)}
-                suggestions={ASK_SUGGESTIONS}
-              />
-            </details>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => onPick(b)}
-            >
-              ＋ 記録に追加
-            </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              aria-pressed={!!wishOf(b)}
-              onClick={() => toggleWish(b)}
-            >
-              {wishOf(b)
-                ? "★ 気になる豆に入れました"
-                : "☆ 気になる（次に試す）"}
-            </button>
-            <button
-              type="button"
-              className="btn-ghost"
-              disabled={bagged.includes(b.name)}
-              onClick={() => addBag(b)}
-            >
-              {bagged.includes(b.name)
-                ? "家の豆に登録しました"
-                : "＋ 家の豆に登録（買った豆）"}
-            </button>
+            <div className={styles.actions}>
+              {!open && (
+                <button type="button" className={styles.oneLine} onClick={() => setOpenCard(b.name)}>
+                  {match && `${"●".repeat(match.score)}${"○".repeat(5 - match.score)} `}
+                  {[words, b.origin].filter(Boolean).join("｜") || "タップで詳しく"}
+                </button>
+              )}
+              <button
+                type="button"
+                className={`${styles.act} ${styles.actMain}`}
+                style={open ? { flex: 1 } : undefined}
+                onClick={() => onPick(b)}
+              >
+                ＋記録
+              </button>
+              <button
+                type="button"
+                className={styles.act}
+                aria-pressed={wished}
+                aria-label={wished ? "気になるから外す" : "気になる（次に試す）"}
+                onClick={() => toggleWish(b)}
+              >
+                {wished ? "★" : "☆"}
+              </button>
+              {open ? (
+                <button
+                  type="button"
+                  className={styles.act}
+                  disabled={bagged.includes(b.name)}
+                  aria-label="家の豆に登録（買った豆）"
+                  onClick={() => addBag(b)}
+                >
+                  {bagged.includes(b.name) ? "登録済み" : "家の豆"}
+                </button>
+              ) : (
+                <button type="button" className={styles.act} aria-label="詳しく見る" onClick={() => setOpenCard(b.name)}>
+                  ⋯
+                </button>
+              )}
+            </div>
           </article>
         );
       })}
