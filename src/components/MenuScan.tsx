@@ -17,7 +17,9 @@ import {
   putWish,
   type WishBean,
 } from "@/lib/db";
+import { findKnownBean } from "@/lib/knownBeans";
 import { saveLastScan, today } from "@/lib/lastScan";
+import { findSaved, recentSaved, saveLookups } from "@/lib/savedLookups";
 import { loadPasscode, PASSCODE_KEY } from "@/lib/passcode";
 import { shrinkPhoto } from "@/lib/photo";
 import { EMPTY_PREFS, loadPrefs } from "@/lib/prefs";
@@ -161,6 +163,9 @@ export default function MenuScan({
   const [pairingBusy, setPairingBusy] = useState(false);
   // 買った豆を、家で何回かに分けて淹れる豆として登録する
   const [bagged, setBagged] = useState<string[]>([]);
+  // AI を使わずに出したとき、どこから出したか（調べ直すボタン用）
+  const [localHit, setLocalHit] = useState<{ name: string; how: string; query: string } | null>(null);
+  const [recent, setRecent] = useState<ScannedBean[]>([]);
 
   // localStorage はブラウザでしか読めないので、表示後に読み込む
   useEffect(() => {
@@ -171,6 +176,7 @@ export default function MenuScan({
     listRecords().then(setRecords);
     listWishes().then(setWishes);
     setPrefs(loadPrefs());
+    setRecent(recentSaved(8));
   }, []);
 
   const wishOf = (b: ScannedBean) =>
@@ -302,9 +308,35 @@ export default function MenuScan({
     }));
   }
 
+  /** 調べ済みの豆を一覧の先頭に出す（AI は使わない） */
+  function showLocal(b: ScannedBean, how: string, q: string) {
+    const next = [b, ...beans.filter((x) => x.name !== b.name)];
+    saveLastScan(next);
+    setBeans(next);
+    onScanned?.(next);
+    setStatus("done");
+    setError("");
+    setLocalHit({ name: b.name, how, query: q });
+  }
+
+  /** 文字で調べる。アプリに入っている産地・銘柄と、前に調べた豆は AI を呼ばずに出す（無料・オフラインでも出る） */
+  async function lookupText(fresh = false, q = text.trim()) {
+    if (!q) return;
+    setLocalHit(null);
+    if (!fresh) {
+      const known = findKnownBean(q);
+      if (known) return (showLocal(known, "アプリに入っている情報", q), setText(""));
+      const saved = findSaved(q);
+      if (saved) return (showLocal(saved, "前に調べた情報", q), setText(""));
+    }
+    await request(async () => ({ text: q }), q);
+  }
+
   async function request(
     payload: () => Promise<{ image?: string; text?: string }>,
+    query?: string,
   ) {
+    setLocalHit(null);
     if (!passcode) return setError("先に合言葉を入れてください");
     if (!navigator.onLine)
       return setError("オフラインのため読み取れません。電波のあるところでもう一度お試しください");
@@ -330,6 +362,9 @@ export default function MenuScan({
       const result = data as MenuScanResult;
       if (result.beans.length === 0)
         throw new Error("コーヒー豆のメニューが見つかりませんでした");
+      // 次からは AI を呼ばずに出せるよう保存しておく
+      saveLookups(result.beans, query);
+      setRecent(recentSaved(8));
       setBeans(result.beans);
       setPairing(null);
       saveLastScan(result.beans);
@@ -429,7 +464,7 @@ export default function MenuScan({
               type="button"
               className="btn-primary"
               disabled={!text.trim()}
-              onClick={() => request(async () => ({ text: text.trim() }))}
+              onClick={() => lookupText()}
             >
               この内容で調べる
             </button>
@@ -443,6 +478,26 @@ export default function MenuScan({
             文字で入力して調べる
           </button>
         ))}
+
+      {status !== "reading" && recent.length > 0 && (
+        <div className="scroll-row" aria-label="前に調べた豆">
+          {recent.map((b) => (
+            <button key={b.name} type="button" className="chip" onClick={() => lookupText(false, b.name)}>
+              {b.name}
+            </button>
+          ))}
+        </div>
+      )}
+      {localHit && (
+        <p className={styles.lead} style={{ margin: 0 }}>
+          「{localHit.name}」は{localHit.how}から出しました（AI は使っていません）。{" "}
+          {passcode && (
+            <button type="button" className="btn-ghost" style={{ height: 28, padding: "0 8px", fontSize: 12 }} onClick={() => lookupText(true, localHit.query)}>
+              AI で調べ直す
+            </button>
+          )}
+        </p>
+      )}
 
       {savedPhoto && status !== "reading" && (
         <button

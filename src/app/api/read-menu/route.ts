@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { timingSafeEqual } from "node:crypto";
+import { BEAN_REFERENCE } from "@/lib/knownBeans";
 import { CHOOSING_TIPS, TERMS } from "@/lib/glossary";
 import { MenuScanResultSchema, PairingResultSchema, TermLookupSchema } from "@/lib/menuScan";
 
@@ -32,7 +33,10 @@ const SYSTEM = `あなたはカフェのメニューを読み取り、コーヒ�
 ${TERMS.map((t) => `- ${t.term}（${t.category}）: ${t.description}`).join("\n")}
 
 ## 選び方の目安
-${CHOOSING_TIPS.map((t) => `- ${t}`).join("\n")}`;
+${CHOOSING_TIPS.map((t) => `- ${t}`).join("\n")}
+
+## よく見かける産地・銘柄の傾向（メニューの説明がなければ参考にする）
+${BEAN_REFERENCE}`;
 
 function passcodeOK(given: unknown) {
   const expected = process.env.APP_PASSCODE;

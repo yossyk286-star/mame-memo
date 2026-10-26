@@ -2,15 +2,32 @@
 
 import { useEffect, useState } from "react";
 import DailyQuiz from "@/components/DailyQuiz";
-import { CATEGORIES, CHOOSING_TIPS, TERMS, type GlossaryCategory } from "@/lib/glossary";
+import {
+  CATEGORIES,
+  CHOOSING_TIPS,
+  TERMS,
+  type GlossaryCategory,
+} from "@/lib/glossary";
+import { DRINKS } from "@/lib/knownBeans";
 import type { TermLookup } from "@/lib/menuScan";
 import { loadMyTerms, saveMyTerms, type MyTerm } from "@/lib/myTerms";
 import { loadPasscode, normalizePasscode, savePasscode } from "@/lib/passcode";
 
-const FILTERS: ("すべて" | "自分で追加" | GlossaryCategory)[] = ["すべて", "自分で追加", ...CATEGORIES];
+const FILTERS: ("すべて" | "自分で追加" | "ドリンク" | GlossaryCategory)[] = [
+  "すべて",
+  "自分で追加",
+  "ドリンク",
+  ...CATEGORIES,
+];
 
 /** 辞典にない言葉を AI に調べてもらい、自分の辞典に足す */
-function AddTerm({ query, onAdded }: { query: string; onAdded: (t: MyTerm) => void }) {
+function AddTerm({
+  query,
+  onAdded,
+}: {
+  query: string;
+  onAdded: (t: MyTerm) => void;
+}) {
   const [passcode, setPasscode] = useState("");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -31,7 +48,10 @@ function AddTerm({ query, onAdded }: { query: string; onAdded: (t: MyTerm) => vo
       const res = await fetch("/api/read-menu", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ term: query.trim(), passcode: normalizePasscode(passcode) }),
+        body: JSON.stringify({
+          term: query.trim(),
+          passcode: normalizePasscode(passcode),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) setSaved(false);
@@ -53,10 +73,14 @@ function AddTerm({ query, onAdded }: { query: string; onAdded: (t: MyTerm) => vo
   }
 
   return (
-    <section className="tips" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <section
+      className="tips"
+      style={{ display: "flex", flexDirection: "column", gap: 8 }}
+    >
       <h2 style={{ margin: 0 }}>「{query.trim()}」を調べて辞典に追加</h2>
       <p className="term-desc" style={{ margin: 0 }}>
-        AI が初心者向けの説明を書いて、「自分で追加」に入れます（1回0.1円くらい）。
+        AI
+        が初心者向けの説明を書いて、「自分で追加」に入れます（1回0.1円くらい）。
       </p>
       {!saved && (
         <input
@@ -69,7 +93,12 @@ function AddTerm({ query, onAdded }: { query: string; onAdded: (t: MyTerm) => vo
           onChange={(e) => setPasscode(e.target.value)}
         />
       )}
-      <button type="button" className="btn-primary" onClick={lookup} disabled={busy}>
+      <button
+        type="button"
+        className="btn-primary"
+        onClick={lookup}
+        disabled={busy}
+      >
         {busy ? "調べています…" : "調べて追加する"}
       </button>
       {error && (
@@ -107,14 +136,34 @@ export default function GlossaryPage() {
   }
 
   const q = query.trim().toLowerCase();
-  const all = [...myTerms.map((t) => ({ ...t, mine: true })), ...TERMS.map((t) => ({ ...t, mine: false }))];
+  const all = [
+    ...myTerms.map((t) => ({ ...t, mine: true })),
+    ...TERMS.map((t) => ({ ...t, mine: false })),
+  ];
   const terms = all.filter(
     (t) =>
-      (filter === "すべて" || (filter === "自分で追加" ? t.mine : t.category === filter)) &&
-      (!q || [t.term, t.reading ?? "", t.description].some((s) => s.toLowerCase().includes(q))),
+      (filter === "すべて" ||
+        (filter === "自分で追加" ? t.mine : t.category === filter)) &&
+      (!q ||
+        [t.term, t.reading ?? "", t.description].some((s) =>
+          s.toLowerCase().includes(q),
+        )),
   );
+  // ドリンクは「ドリンク」で一覧、「すべて」では検索したときだけ出す
+  const drinks =
+    filter === "ドリンク" || (filter === "すべて" && q)
+      ? DRINKS.filter(
+          (d) =>
+            !q ||
+            [d.name, d.recipe, d.description].some((s) =>
+              s.toLowerCase().includes(q),
+            ),
+        )
+      : [];
   // 言葉そのものが辞典にないときだけ、調べて足すボタンを出す
-  const exact = all.some((t) => t.term.toLowerCase() === q || t.reading === q);
+  const exact =
+    all.some((t) => t.term.toLowerCase() === q || t.reading === q) ||
+    DRINKS.some((d) => d.name.toLowerCase() === q);
 
   return (
     <>
@@ -137,11 +186,19 @@ export default function GlossaryPage() {
           }}
         />
         <div className="scroll-row">
-          {FILTERS.filter((c) => c !== "自分で追加" || myTerms.length > 0).map((c) => (
-            <button key={c} type="button" className="chip" aria-pressed={filter === c} onClick={() => setFilter(c)}>
-              {c}
-            </button>
-          ))}
+          {FILTERS.filter((c) => c !== "自分で追加" || myTerms.length > 0).map(
+            (c) => (
+              <button
+                key={c}
+                type="button"
+                className="chip"
+                aria-pressed={filter === c}
+                onClick={() => setFilter(c)}
+              >
+                {c}
+              </button>
+            ),
+          )}
         </div>
       </div>
       <main className="content" style={{ gap: 10 }}>
@@ -157,35 +214,66 @@ export default function GlossaryPage() {
           </section>
         )}
         {q && !exact && <AddTerm key={q} query={query} onAdded={add} />}
-        {terms.map((t) => (
+        {drinks.map((d) => (
           <article
-            key={`${t.mine}-${t.term}`}
+            key={`drink-${d.name}`}
             className="card"
-            style={{ gap: 4, padding: "12px 16px", outline: justAdded === t.term ? "2px solid var(--accent)" : undefined }}
+            style={{ gap: 4, padding: "12px 16px" }}
           >
             <div className="card-top">
-              <h3 style={{ fontSize: 15 }}>
-                {t.term}
-                {t.reading && <span className="muted">（{t.reading}）</span>}
-              </h3>
+              <h3 style={{ fontSize: 15 }}>{d.name}</h3>
               <span className="muted" style={{ fontSize: 11 }}>
-                {t.mine ? `自分で追加・${t.category}` : t.category}
+                ドリンク
               </span>
             </div>
-            <p className="term-desc">{t.description}</p>
-            {t.mine && (
-              <button
-                type="button"
-                className="btn-ghost"
-                style={{ height: 32, alignSelf: "flex-end", padding: "0 12px", fontSize: 12 }}
-                onClick={() => remove(t.term)}
-              >
-                辞典から外す
-              </button>
-            )}
+            <p className="term-desc">{d.description}</p>
+            <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+              作り方：{d.recipe}
+            </p>
           </article>
         ))}
-        {terms.length === 0 && !q && <p className="empty">まだありません。</p>}
+        {filter !== "ドリンク" &&
+          terms.map((t) => (
+            <article
+              key={`${t.mine}-${t.term}`}
+              className="card"
+              style={{
+                gap: 4,
+                padding: "12px 16px",
+                outline:
+                  justAdded === t.term ? "2px solid var(--accent)" : undefined,
+              }}
+            >
+              <div className="card-top">
+                <h3 style={{ fontSize: 15 }}>
+                  {t.term}
+                  {t.reading && <span className="muted">（{t.reading}）</span>}
+                </h3>
+                <span className="muted" style={{ fontSize: 11 }}>
+                  {t.mine ? `自分で追加・${t.category}` : t.category}
+                </span>
+              </div>
+              <p className="term-desc">{t.description}</p>
+              {t.mine && (
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  style={{
+                    height: 32,
+                    alignSelf: "flex-end",
+                    padding: "0 12px",
+                    fontSize: 12,
+                  }}
+                  onClick={() => remove(t.term)}
+                >
+                  辞典から外す
+                </button>
+              )}
+            </article>
+          ))}
+        {filter !== "ドリンク" && terms.length === 0 && !q && (
+          <p className="empty">まだありません。</p>
+        )}
       </main>
     </>
   );

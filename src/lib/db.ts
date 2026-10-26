@@ -2,6 +2,7 @@ import { photosOf } from "./photo";
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { ScannedBean } from "./menuScan";
 import { loadMyTerms, saveMyTerms, type MyTerm } from "./myTerms";
+import { exportSaved, importSaved } from "./savedLookups";
 import { loadPrefs, savePrefs } from "./prefs";
 import type { Bag, TastingRecord } from "./types";
 
@@ -124,7 +125,7 @@ export async function exportJSON(): Promise<string> {
       photos: await Promise.all(photosOf({ ...r, photo: _old }).map(blobToDataURL)),
     })),
   );
-  return JSON.stringify({ app: "mame-memo", version: 3, records: out, wishes: await listWishes(), bags: await listBags(), prefs: loadPrefs(), myTerms: loadMyTerms() });
+  return JSON.stringify({ app: "mame-memo", version: 3, records: out, wishes: await listWishes(), bags: await listBags(), prefs: loadPrefs(), myTerms: loadMyTerms(), lookups: exportSaved() });
 }
 
 /** 同じ id の記録は上書きする。読み込んだ件数を返す */
@@ -148,6 +149,7 @@ export async function importJSON(text: string): Promise<number> {
   for (const b of (data.bags ?? []) as Bag[]) await tx.objectStore("bags").put(b);
   await tx.done;
   if (data.prefs) savePrefs({ ...loadPrefs(), ...data.prefs });
+  importSaved(data.lookups);
   if (Array.isArray(data.myTerms)) {
     const mine = loadMyTerms();
     const added = (data.myTerms as MyTerm[]).filter((t) => !mine.some((m) => m.term === t.term));
