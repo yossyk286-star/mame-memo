@@ -18,8 +18,8 @@ const MAX_ASK = 300;
 const MAX_CONTEXT = 1500;
 const MAX_HISTORY = 4;
 
-const ASK_SYSTEM = `あなたはコーヒーにくわしい、やさしい案内役です。利用者が自分の記録（飲んだコーヒーの感想）を見ながら質問します。
-記録の内容をふまえて、初心者にもわかる日本語で、3〜6文くらいで具体的に答えてください。淹れ方の質問には豆の量・お湯の量・温度・挽き目・時間などの数字も入れてください。
+const ASK_SYSTEM = `あなたはコーヒーにくわしい、やさしい案内役です。利用者が自分の記録（飲んだコーヒーの感想）や、メニューで見つけた豆の情報を見ながら質問します。
+その内容をふまえて、初心者にもわかる日本語で、3〜6文くらいで具体的に答えてください。淹れ方の質問には豆の量・お湯の量・温度・挽き目・時間などの数字も入れてください。
 見出しや箇条書きの記号（#、*、-）は使わず、ふつうの文章で答えてください。わからないことは推測だと言ってください。`;
 
 const SYSTEM = `あなたはカフェのメニューを読み取り、コーヒー初心者に解説するアシスタントです。
@@ -107,7 +107,7 @@ export async function POST(req: Request) {
       : [];
     const turns = [...history, { q: ask, a: "" }];
     const messages: Anthropic.MessageParam[] = turns.flatMap((t, i) => {
-      const q = i === 0 ? `## わたしの記録\n${context}\n\n## 質問\n${t.q}` : t.q;
+      const q = i === 0 ? `## 見ているもの\n${context}\n\n## 質問\n${t.q}` : t.q;
       return t.a ? [{ role: "user" as const, content: q }, { role: "assistant" as const, content: t.a }] : [{ role: "user" as const, content: q }];
     });
     try {
