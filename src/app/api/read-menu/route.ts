@@ -64,11 +64,12 @@ export async function POST(req: Request) {
 
   const client = new Anthropic();
 
-  // 食べているスイーツと、読み取り済みの豆の相性（文字だけなので安い）
-  if (typeof body?.sweet === "string") {
-    const sweet = body.sweet.trim();
+  // 食べているスイーツか今日の気分と、読み取り済みの豆の相性（文字だけなので安い）
+  if (typeof body?.sweet === "string" || typeof body?.mood === "string") {
+    const isMood = typeof body?.mood === "string";
+    const sweet = String(isMood ? body.mood : body.sweet).trim();
     const beans = Array.isArray(body.beans) ? body.beans.slice(0, MAX_PAIRING_BEANS) : [];
-    if (!sweet || sweet.length > MAX_WORD) return error(400, "スイーツの名前を入れてください");
+    if (!sweet || sweet.length > MAX_WORD) return error(400, isMood ? "気分を入れてください" : "スイーツの名前を入れてください");
     if (beans.length === 0) return error(400, "豆がありません");
     const list = beans
       .map((b: Record<string, unknown>, i: number) =>
@@ -84,7 +85,9 @@ export async function POST(req: Request) {
         messages: [
           {
             role: "user",
-            content: `いま「${sweet}」を食べています（これから頼むところです）。次のコーヒー豆それぞれについて、このスイーツとの相性を付けてください。全部の豆に付け、違いがわかるよう相対的に付けてください。\n\n${list}`,
+            content: isMood
+              ? `今日の気分は「${sweet}」です。次のコーヒー豆それぞれについて、この気分にどれくらい合うかを付けてください（score は相性と同じ1〜5、reason はなぜ合う・合わないか）。全部の豆に付け、違いがわかるよう相対的に付けてください。\n\n${list}`
+              : `いま「${sweet}」を食べています（これから頼むところです）。次のコーヒー豆それぞれについて、このスイーツとの相性を付けてください。全部の豆に付け、違いがわかるよう相対的に付けてください。\n\n${list}`,
           },
         ],
       });
