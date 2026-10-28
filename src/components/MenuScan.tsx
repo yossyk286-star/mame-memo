@@ -842,10 +842,10 @@ export default function MenuScan({
                   type="button"
                   className={styles.act}
                   disabled={bagged.includes(b.name)}
-                  aria-label="家の豆に登録（買った豆）"
+                  aria-label="家の豆に登録（買って家にある豆）"
                   onClick={() => addBag(b)}
                 >
-                  {bagged.includes(b.name) ? "登録済み" : "家の豆"}
+                  {bagged.includes(b.name) ? "家の豆 ✓" : "＋家の豆"}
                 </button>
               ) : (
                 <button type="button" className={styles.act} aria-label="詳しく見る" onClick={() => setOpenCard(b.name)}>
