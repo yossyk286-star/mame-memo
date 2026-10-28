@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { beanTitle, stars, yen } from "@/components/RecordCard";
 import { listRecords } from "@/lib/db";
+import { ROASTS } from "@/lib/glossary";
 import { today } from "@/lib/lastScan";
 import { MOODS } from "@/lib/moods";
 import { loadPrefs, type MyPrefs } from "@/lib/prefs";
@@ -56,6 +57,11 @@ export default function ShowPage() {
   }, []);
 
   const roasts = useMemo(() => (records && prefs ? showRoasts(records, prefs) : []), [records, prefs]);
+  // 今日の気分では、記録がない焙煎度も選べるようにする（よく飲む焙煎度が先）
+  const roastOptions = useMemo(
+    () => (mode === "mood" ? [...new Set([...roasts, ...ROASTS.filter((r) => r !== "不明")])] : roasts),
+    [mode, roasts],
+  );
   const card = useMemo(
     () => (records && prefs ? buildShowCard(records, prefs, roast) : null),
     [records, prefs, roast],
@@ -92,7 +98,15 @@ export default function ShowPage() {
           {/* 相手に向けているあいだは、カードが上に来るよう選ぶところを隠す */}
           {!flipped && (
             <div className="show-modes" role="group" aria-label="見せるもの">
-              <button type="button" aria-pressed={mode === "prefs"} onClick={() => setMode("prefs")}>
+              <button
+                type="button"
+                aria-pressed={mode === "prefs"}
+                onClick={() => {
+                  setMode("prefs");
+                  // 今日の気分で記録のない焙煎度を選んでいたら、ぜんぶに戻す
+                  if (roast && !roasts.includes(roast)) setRoast(null);
+                }}
+              >
                 いつもの好み
               </button>
               <button type="button" aria-pressed={mode === "mood"} onClick={() => setMode("mood")}>
@@ -100,16 +114,25 @@ export default function ShowPage() {
               </button>
             </div>
           )}
-          {!flipped && roasts.length > 1 && (
-            <div className="row" role="group" aria-label="焙煎度">
-              <button type="button" className="chip" aria-pressed={roast === null} onClick={() => setRoast(null)}>
-                ぜんぶ
-              </button>
-              {roasts.map((r) => (
-                <button key={r} type="button" className="chip" aria-pressed={roast === r} onClick={() => setRoast(r)}>
-                  {r}
+          {!flipped && roastOptions.length > 1 && (
+            <div className="field">
+              <span className="label">{mode === "mood" ? "飲みたい焙煎度" : "焙煎度"}</span>
+              <div className="row" role="group" aria-label={mode === "mood" ? "飲みたい焙煎度" : "焙煎度"}>
+                <button type="button" className="chip" aria-pressed={roast === null} onClick={() => setRoast(null)}>
+                  {mode === "mood" ? "おまかせ" : "ぜんぶ"}
                 </button>
-              ))}
+                {roastOptions.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className="chip"
+                    aria-pressed={roast === r}
+                    onClick={() => setRoast(r)}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -191,7 +214,8 @@ export default function ShowPage() {
                 <section className="show-card" data-flipped={flipped || undefined} aria-label="今日の気分">
                   <p className="show-ask">
                     <span>今日は</span>
-                    <span>こういう{roast ? `${roast}の` : ""}コーヒーが</span>
+                    <span>こういう{roast ? `${roast}の` : ""}</span>
+                    <span>コーヒーが</span>
                     <span>飲みたいです</span>
                   </p>
                   <div className="show-taste">
@@ -202,7 +226,7 @@ export default function ShowPage() {
                     ))}
                   </div>
                   <div className="show-rows">
-                    <Row label="苦手" items={card.dislikes} />
+                    <Row label="苦手" items={card.dislikes.filter((d) => d !== roast)} />
                     {card.budget && <Row label="予算" items={[`1杯 ${yen(card.budget)}くらいまで`]} />}
                   </div>
                   <p className="show-thanks">
@@ -214,7 +238,8 @@ export default function ShowPage() {
                 <section className="show-card" data-flipped={flipped || undefined} aria-label="わたしの好み">
                   <p className="show-ask">
                     {/* 変なところで折り返さないよう、言葉のまとまりごとに区切る */}
-                    <span>こういう{roast ? `${roast}の` : ""}コーヒーが</span>
+                    <span>こういう{roast ? `${roast}の` : ""}</span>
+                    <span>コーヒーが</span>
                     <span>好きです</span>
                   </p>
                   {card.taste.length > 0 && (
