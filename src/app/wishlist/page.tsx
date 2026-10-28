@@ -1,12 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import BeanSortBar from "@/components/BeanSortBar";
+import { areaOf, sortBy, type SortKey } from "@/lib/beanSort";
 import { deleteWish, listWishes, type WishBean } from "@/lib/db";
+import type { Roast } from "@/lib/types";
 
 /** メニューで「気になる」と印を付けた、次に試したい豆の一覧 */
 export default function WishlistPage() {
   const [wishes, setWishes] = useState<WishBean[] | null>(null);
+  const [roast, setRoast] = useState<Roast | null>(null);
+  const [area, setArea] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortKey>("default");
 
   useEffect(() => {
     listWishes().then(setWishes);
@@ -17,6 +23,23 @@ export default function WishlistPage() {
     setWishes((ws) => ws?.filter((w) => w.id !== id) ?? null);
   }
 
+  // 味の予想（taste）は後から増やした項目なので、古い気になる豆にはない
+  const shown = useMemo(
+    () =>
+      sortBy(
+        (wishes ?? []).filter((w) => (!roast || w.roast === roast) && (!area || areaOf(w) === area)),
+        sort,
+        (w) => ({
+          acidity: w.taste?.acidity ?? null,
+          bitterness: w.taste?.bitterness ?? null,
+          sweetness: w.taste?.sweetness ?? null,
+          body: w.taste?.body ?? null,
+          roast: w.roast,
+        }),
+      ),
+    [wishes, roast, area, sort],
+  );
+
   return (
     <>
       <header className="page-header">
@@ -24,6 +47,22 @@ export default function WishlistPage() {
       </header>
 
       <main className="content" style={{ paddingTop: 16 }}>
+        {wishes && wishes.length > 1 && (
+          <div className="filter-bar">
+            <BeanSortBar
+              roasts={wishes.map((w) => w.roast)}
+              roast={roast}
+              onRoast={setRoast}
+              areas={wishes.map(areaOf)}
+              area={area}
+              onArea={setArea}
+              sort={sort}
+              onSort={setSort}
+              sorts={["acid", "bitter", "sweet", "body", "light", "dark"]}
+              defaultLabel="新しい順"
+            />
+          </div>
+        )}
         {wishes?.length === 0 && (
           <p className="empty">
             まだありません。
@@ -31,7 +70,8 @@ export default function WishlistPage() {
             メニューを撮ったときに「☆ 気になる」を押すと、ここに残ります。
           </p>
         )}
-        {wishes?.map((w) => (
+        {wishes && wishes.length > 0 && shown.length === 0 && <p className="empty">当てはまる豆がありません。</p>}
+        {shown.map((w) => (
           <article key={w.id} className="card">
             <div className="card-top">
               <h2>{w.name}</h2>

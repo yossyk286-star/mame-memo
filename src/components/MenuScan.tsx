@@ -8,6 +8,7 @@ import {
   type PairingResult,
   type ScannedBean,
 } from "@/lib/menuScan";
+import { AREAS, ROAST_FILTERS, areaOf } from "@/lib/beanSort";
 import { countryOf } from "@/lib/countries";
 import {
   deleteWish,
@@ -25,9 +26,10 @@ import { loadPasscode, PASSCODE_KEY } from "@/lib/passcode";
 import { shrinkPhoto } from "@/lib/photo";
 import { EMPTY_PREFS, loadPrefs } from "@/lib/prefs";
 import { bestPick, MIN_RECORDS, scoreBeans } from "@/lib/recommend";
-import type { TastingRecord } from "@/lib/types";
+import type { Roast, TastingRecord } from "@/lib/types";
 import styles from "./MenuScan.module.css";
 import AskAI from "./AskAI";
+import { roastColor } from "./RecordCard";
 import Hint from "./Hint";
 import MoodPicker from "./MoodPicker";
 import TasteBars from "./TasteBars";
@@ -219,25 +221,35 @@ export default function MenuScan({
 
   // 気分を選んだら、その順に並べる（番号はおすすめの計算と同じ、元の並びのまま持つ）
   const [mood, setMood] = useState<Mood | null>(null);
+  const [roast, setRoast] = useState<Roast | null>(null);
+  const [area, setArea] = useState<string | null>(null);
   const [sortOpen, setSortOpen] = useState(false);
   // タップで開いているカード（1杯だけのときは最初から開く）
   const [openCard, setOpenCard] = useState<string | null>(null);
   // スイーツとの相性を出したときは、その順を優先する
+  const roastsHere = ROAST_FILTERS.filter((r) => beans.some((b) => b.roast === r));
+  const areasHere = AREAS.filter((a) => beans.some((b) => areaOf(b) === a));
+  // 調べ直してその焙煎度・地域がなくなったときは絞り込みを外す
+  const activeRoast = roast && roastsHere.length > 1 && roastsHere.includes(roast) ? roast : null;
+  const activeArea = area && areasHere.length > 1 && areasHere.includes(area) ? area : null;
   const order = useMemo(() => {
-    const idx = beans.map((_, i) => i);
+    const idx = beans
+      .map((_, i) => i)
+      .filter((i) => (!activeRoast || beans[i].roast === activeRoast) && (!activeArea || areaOf(beans[i]) === activeArea));
     if (pairing) {
       const s = (i: number) => pairing.byName.get(beans[i].name)?.score ?? 0;
       return idx.sort((a, b) => s(b) - s(a));
     }
     return mood ? idx.sort((a, b) => mood.score(beans[b]) - mood.score(beans[a])) : idx;
-  }, [beans, mood, pairing]);
-  const sortSummary = mood
-    ? `気分：${mood.label}`
-    : pairing
-      ? pairing.mood
-        ? `気分：${pairing.sweet}`
-        : `スイーツ：${pairing.sweet}`
-      : "";
+  }, [beans, mood, pairing, activeRoast, activeArea]);
+  const sortSummary = [
+    activeRoast,
+    activeArea,
+    mood && `気分：${mood.label}`,
+    pairing && (pairing.mood ? `気分：${pairing.sweet}` : `スイーツ：${pairing.sweet}`),
+  ]
+    .filter(Boolean)
+    .join("／");
 
   async function addBag(b: ScannedBean) {
     const d = beanToDraft(b);
@@ -639,6 +651,33 @@ export default function MenuScan({
       )}
       {beans.length > 1 && sortOpen && (
         <div className={styles.sortPanel}>
+      {(roastsHere.length > 1 || areasHere.length > 1) && (
+        <div className="scroll-row" role="group" aria-label="焙煎度と産地で絞り込み">
+          {(roastsHere.length > 1 ? roastsHere : []).map((r) => (
+            <button
+              key={r}
+              type="button"
+              className="chip kind-chip"
+              style={{ "--kc": roastColor(r) } as React.CSSProperties}
+              aria-pressed={activeRoast === r}
+              onClick={() => setRoast(activeRoast === r ? null : r)}
+            >
+              {r}
+            </button>
+          ))}
+          {(areasHere.length > 1 ? areasHere : []).map((a) => (
+            <button
+              key={a}
+              type="button"
+              className="chip"
+              aria-pressed={activeArea === a}
+              onClick={() => setArea(activeArea === a ? null : a)}
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+      )}
       {beans.length > 1 && (
         <MoodPicker
           labels={MOODS.map((m) => m.label)}

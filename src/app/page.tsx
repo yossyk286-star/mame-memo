@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { roastColor } from "@/components/RecordCard";
+import BeanSortBar from "@/components/BeanSortBar";
 import SwipeRecord from "@/components/SwipeRecord";
 import { listRecords, putRecord } from "@/lib/db";
-import { ROASTS } from "@/lib/glossary";
+import { areaOf, sortBy, type SortKey } from "@/lib/beanSort";
 import { loadLastScan } from "@/lib/lastScan";
 import { farmOf } from "@/lib/menuScan";
 import type { Roast, TastingRecord } from "@/lib/types";
@@ -24,6 +24,8 @@ export default function RecordsPage() {
   const [records, setRecords] = useState<TastingRecord[] | null>(null);
   const [query, setQuery] = useState("");
   const [roast, setRoast] = useState<Roast | null>(null);
+  const [area, setArea] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortKey>("default");
   const [goodOnly, setGoodOnly] = useState(false);
 
   useEffect(() => {
@@ -57,18 +59,31 @@ export default function RecordsPage() {
     });
   }, []);
 
-  // 焙煎度・★4以上・名前などで絞り込み、日付ごとにまとめる（記録は新しい順に並んでいる）
+  // 焙煎度・産地・★4以上・名前などで絞り込み、日付ごとにまとめる（記録は新しい順に並んでいる）
+  // 酸味・苦味などで並び替えたときは、日付で区切らず1つにまとめる
   const days = useMemo(() => {
     const q = query.trim().toLowerCase();
     const hit = (records ?? []).filter(
       (r) =>
         (!roast || r.roast === roast) &&
+        (!area || areaOf(r) === area) &&
         (!goodOnly || r.overall >= 4) &&
         (!q ||
           [r.origin, r.farm, r.shop, r.process ?? "", r.method ?? "", r.memo, ...r.flavors].some((s) =>
             s.toLowerCase().includes(q),
           )),
     );
+    if (sort !== "default") {
+      const sorted = sortBy(hit, sort, (r) => ({
+        acidity: r.acidity,
+        bitterness: r.bitterness,
+        sweetness: r.sweetness,
+        body: r.body ?? null,
+        roast: r.roast,
+        rating: r.overall,
+      }));
+      return sorted.length ? [{ date: "", records: sorted }] : [];
+    }
     const out: { date: string; records: TastingRecord[] }[] = [];
     for (const r of hit) {
       const last = out[out.length - 1];
@@ -76,10 +91,10 @@ export default function RecordsPage() {
       else out.push({ date: r.date, records: [r] });
     }
     return out;
-  }, [records, query, roast, goodOnly]);
+  }, [records, query, roast, area, goodOnly, sort]);
 
-  const filtering = !!query.trim() || !!roast || goodOnly;
-  const roastsUsed = ROASTS.filter((k) => k !== "不明" && records?.some((r) => r.roast === k));
+  const filtering = !!query.trim() || !!roast || !!area || goodOnly;
+  const areasUsed = useMemo(() => [...new Set((records ?? []).map(areaOf))], [records]);
 
   return (
     <>
@@ -111,23 +126,23 @@ export default function RecordsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <div className="scroll-row" role="group" aria-label="絞り込み">
-              <button type="button" className="chip" aria-pressed={goodOnly} onClick={() => setGoodOnly(!goodOnly)}>
-                ★4以上
-              </button>
-              {roastsUsed.map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  className="chip kind-chip"
-                  style={{ "--kc": roastColor(k) } as React.CSSProperties}
-                  aria-pressed={roast === k}
-                  onClick={() => setRoast(roast === k ? null : k)}
-                >
-                  {k}
+            <BeanSortBar
+              roasts={(records ?? []).map((r) => r.roast)}
+              roast={roast}
+              onRoast={setRoast}
+              areas={areasUsed}
+              area={area}
+              onArea={setArea}
+              sort={sort}
+              onSort={setSort}
+              sorts={["acid", "bitter", "sweet", "body", "light", "dark", "rating"]}
+              defaultLabel="日付順"
+              extra={
+                <button type="button" className="chip" aria-pressed={goodOnly} onClick={() => setGoodOnly(!goodOnly)}>
+                  ★4以上
                 </button>
-              ))}
-            </div>
+              }
+            />
           </div>
         )}
         {records?.length === 0 && (
@@ -142,13 +157,13 @@ export default function RecordsPage() {
         )}
         {days.map((day) => (
           <section key={day.date} className="day">
-            <h2 className="date-head">{dateHead(day.date)}</h2>
+            {day.date && <h2 className="date-head">{dateHead(day.date)}</h2>}
             <div className="list-group">
               {day.records.map((r) => (
                 <SwipeRecord
                   key={r.id}
                   record={r}
-                  showDate={false}
+                  showDate={!day.date}
                   onDeleted={(id) => setRecords((rs) => rs?.filter((x) => x.id !== id) ?? null)}
                 />
               ))}
