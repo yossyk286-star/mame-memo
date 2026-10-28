@@ -89,5 +89,7 @@ export interface Bag {
   boughtAt: string;
   /** 飲みきったら true */
   finished: boolean;
+  /** 残りわずかのしるし。後から増やした項目なので古い豆にはない */
+  low?: boolean;
   createdAt: number;
 }

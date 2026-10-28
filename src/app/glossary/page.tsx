@@ -10,6 +10,7 @@ import {
 } from "@/lib/glossary";
 import { DRINKS } from "@/lib/knownBeans";
 import type { TermLookup } from "@/lib/menuScan";
+import { announceBuddy } from "@/lib/buddy";
 import { loadMyTerms, saveMyTerms, type MyTerm } from "@/lib/myTerms";
 import { loadPasscode, normalizePasscode, savePasscode } from "@/lib/passcode";
 
@@ -124,6 +125,7 @@ export default function GlossaryPage() {
     setMyTerms(next);
     saveMyTerms(next);
     setJustAdded(t.term);
+    announceBuddy({ mood: "wow", text: `「${t.term}」を覚えたね。ひとつ詳しくなった！` });
     setQuery(t.term);
     setFilter("すべて");
   }

@@ -25,6 +25,7 @@ import { MOODS, moodFromText, type Mood } from "@/lib/moods";
 import { loadPasscode, PASSCODE_KEY } from "@/lib/passcode";
 import { shrinkPhoto } from "@/lib/photo";
 import { EMPTY_PREFS, loadPrefs } from "@/lib/prefs";
+import { announceBuddy } from "@/lib/buddy";
 import { bestPick, MIN_RECORDS, scoreBeans } from "@/lib/recommend";
 import type { Roast, TastingRecord } from "@/lib/types";
 import styles from "./MenuScan.module.css";
@@ -36,6 +37,8 @@ import TasteBars from "./TasteBars";
 
 
 
+/** 相棒が「好きなやつ」を教えた一覧。アプリを開いている間は同じ一覧で何度も言わない */
+const announcedScans = new Set<string>();
 
 /** 調べた豆について AI に聞くときの質問の例 */
 const ASK_SUGGESTIONS = ["どんな味？", "初心者でも飲みやすい？", "ミルクに合う？", "似た豆は？"];
@@ -218,6 +221,14 @@ export default function MenuScan({
     [beans, records, prefs],
   );
   const best = picks ? bestPick(picks) : -1;
+  // 好みど真ん中の豆があれば、相棒がそっと教える（同じ一覧では1回だけ）
+  useEffect(() => {
+    if (best < 0) return;
+    const key = beans.map((b) => b.name).join("|");
+    if (announcedScans.has(key)) return;
+    announcedScans.add(key);
+    announceBuddy({ mood: "happy", text: `「${beans[best].name}」、きっと好きなやつだよ` });
+  }, [best, beans]);
 
   // 気分を選んだら、その順に並べる（番号はおすすめの計算と同じ、元の並びのまま持つ）
   const [mood, setMood] = useState<Mood | null>(null);

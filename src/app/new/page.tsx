@@ -191,6 +191,7 @@ function NewRecord() {
           key={`${saveCount}:${picked?.name ?? "blank"}`}
           prefill={{ ...carry, ...(picked ? beanToDraft(picked) : {}) }}
           beanFilled={!!picked}
+          fromWish={!!wishId}
           onSaved={(r) => {
             if (picked) {
               setSavedNames((ns) => [...ns, picked.name]);

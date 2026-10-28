@@ -228,6 +228,7 @@ export default function RecordForm({
   initial,
   prefill,
   beanFilled = false,
+  fromWish = false,
   onSaved,
 }: {
   initial?: TastingRecord;
@@ -235,6 +236,8 @@ export default function RecordForm({
   prefill?: Partial<RecordDraft>;
   /** 豆の情報が読み取りで入っているとき true。感想を先に出し、豆の情報はたたむ */
   beanFilled?: boolean;
+  /** 気になるリストの豆を記録するとき true（相棒が「ついに飲めたね」と言う） */
+  fromWish?: boolean;
   /** 保存後の動き。なければ一覧（編集なら詳細）に戻る */
   onSaved?: (record: TastingRecord) => void;
 }) {
@@ -317,7 +320,7 @@ export default function RecordForm({
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) await new Promise((r) => setTimeout(r, 700));
     setSaved(false);
     // 新しい記録のときだけ、相棒がひとこと言う
-    if (!initial) listRecords().then((all) => announceBuddy(buddyLine(record, all)));
+    if (!initial) listRecords().then((all) => announceBuddy(buddyLine(record, all, { fromWish })));
     if (onSaved) return onSaved(record);
     router.replace(initial ? `/record?id=${record.id}` : "/");
   }
