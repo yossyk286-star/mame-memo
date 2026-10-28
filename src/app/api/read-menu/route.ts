@@ -3,6 +3,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { timingSafeEqual } from "node:crypto";
 import { BEAN_REFERENCE } from "@/lib/knownBeans";
 import { CHOOSING_TIPS, TERMS } from "@/lib/glossary";
+import { FoodPairingSchema } from "@/lib/foodPairing";
 import { MenuScanResultSchema, PairingResultSchema, TermLookupSchema } from "@/lib/menuScan";
 
 // 料金を抑えるため一番安いモデルを使う。変えたいときは環境変数 MENU_MODEL で上書き
@@ -72,6 +73,33 @@ export async function POST(req: Request) {
   if (!passcodeOK(body?.passcode)) return error(401, "合言葉が違います");
 
   const client = new Anthropic();
+
+  // 料理・食べ物から、合うコーヒーを選ぶ（メニューがなくても使える。文字だけなので安い）
+  if (typeof body?.food === "string") {
+    const food = body.food.trim();
+    if (!food || food.length > MAX_WORD) return error(400, "料理の名前を入れてください");
+    const likes = typeof body.likes === "string" ? body.likes.slice(0, 200) : "";
+    try {
+      const response = await client.messages.parse({
+        model: MODEL,
+        max_tokens: 2000,
+        system: "あなたはコーヒーと食べ物の組み合わせにくわしい、やさしい案内役です。初心者にもわかる日本語で答えてください。",
+        output_config: { effort: "low", format: zodOutputFormat(FoodPairingSchema) },
+        messages: [
+          {
+            role: "user",
+            content: `「${food}」に合うコーヒーを3つ選んでください。焙煎度・産地・飲み方（ブラック、ミルク、アイスなど）を、重ならないように、合う順に選んでください。${likes ? `\n\n利用者の好み（合うものの中から、なるべく好みに寄せる）：${likes}` : ""}`,
+          },
+        ],
+      });
+      const parsed = response.parsed_output;
+      if (!parsed) return error(422, "うまく判断できませんでした");
+      if (!parsed.found || parsed.picks.length === 0) return error(422, "料理や食べ物の名前を入れてください");
+      return Response.json(parsed);
+    } catch (e) {
+      return apiError(e);
+    }
+  }
 
   // 食べているスイーツか今日の気分と、読み取り済みの豆の相性（文字だけなので安い）
   if (typeof body?.sweet === "string" || typeof body?.mood === "string") {
