@@ -137,9 +137,10 @@ function DetailBody() {
       {r === null && <p className="empty">記録が見つかりませんでした。</p>}
       {r && (
         <main className="content" style={{ paddingTop: 16 }}>
-          <PhotoRow photos={photosOf(r)} />
-          <div className="row">
-            <PhotoAddButton label={photosOf(r).length > 0 ? "＋ 写真をもっと追加" : "＋ 写真を追加"} onFiles={addPhotos} />
+          {/* 写真があるときは右下に小さく重ね、ないときも幅いっぱいにしない */}
+          <div className="photo-wrap">
+            <PhotoRow photos={photosOf(r)} />
+            <PhotoAddButton chip label={photosOf(r).length > 0 ? "＋ 写真" : "＋ 写真を追加"} onFiles={addPhotos} />
           </div>
           {photoError && (
             <p className="error" role="alert">
