@@ -125,12 +125,25 @@ function BagCard({
           <i className="kind-dot" style={{ background: roastColor(b.roast) }} aria-hidden="true" />
           {beanTitle(b)}
         </h2>
-        {b.finished && <span className="muted">飲みきった</span>}
+        <span style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+          {b.finished && <span className="muted">飲みきった</span>}
+          {/* 削除はあまり使わないので、ボタンの列から外して右上に小さく置く */}
+          <button type="button" className="text-btn text-danger" onClick={() => onDelete(b.id)}>
+            削除
+          </button>
+        </span>
       </div>
       <p className="muted" style={{ margin: 0, fontSize: 13 }}>
         {[[b.roast, b.process].filter((t) => t && t !== "不明").join("・"), b.shop, b.price && yen(b.price), `${b.boughtAt.slice(5).replace("-", "/")}に購入`]
           .filter(Boolean)
-          .join("・")}
+          .map((t, i, all) => (
+            // 「1,500/円」のように1つの項目の途中で折り返さないよう、項目ごとにまとめる。
+            // 「・」は行の頭に来られないので、前の項目の後ろに付けて、そこで折り返せるようにする
+            <span key={i} style={{ whiteSpace: "nowrap" }}>
+              {t}
+              {i < all.length - 1 && "・"}
+            </span>
+          ))}
       </p>
       <p style={{ margin: 0, fontSize: 14 }}>
         {mine.length > 0 ? (
@@ -158,7 +171,7 @@ function BagCard({
           ))}
         </details>
       )}
-      <div className="row">
+      <div className="row" style={{ flexWrap: "nowrap" }}>
         {!b.finished && (
           <Link href={`/new?bag=${b.id}`} className="btn-primary" style={{ flex: 1, whiteSpace: "nowrap" }}>
             飲んだ・記録する
@@ -166,9 +179,6 @@ function BagCard({
         )}
         <button type="button" className="btn-secondary" onClick={() => onChange({ ...b, finished: !b.finished })}>
           {b.finished ? "まだある" : "飲みきった"}
-        </button>
-        <button type="button" className="btn-secondary btn-danger" onClick={() => onDelete(b.id)}>
-          削除
         </button>
       </div>
     </article>
