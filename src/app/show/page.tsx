@@ -23,6 +23,8 @@ export default function ShowPage() {
   const [records, setRecords] = useState<TastingRecord[] | null>(null);
   const [prefs, setPrefs] = useState<MyPrefs | null>(null);
   const [roast, setRoast] = useState<Roast | null>(null);
+  // カウンター越しに店員さんへ向けるため、カードだけ上下を逆さにする
+  const [flipped, setFlipped] = useState(false);
 
   useEffect(() => {
     setPrefs(loadPrefs());
@@ -82,51 +84,74 @@ export default function ShowPage() {
               <Link href="/prefs">わたしの好み</Link>を登録するか、★4以上の記録がたまるとここに出ます。
             </p>
           ) : (
-            <section className="show-card" aria-label="わたしの好み">
-              <p className="show-ask">
-                {/* 変なところで折り返さないよう、言葉のまとまりごとに区切る */}
-                <span>こういう{roast ? `${roast}の` : ""}コーヒーが</span>
-                <span>好きです</span>
-              </p>
-              {card.taste.length > 0 && (
-                <div className="show-taste">
-                  {card.taste.map((t) => (
-                    <span key={t} className="show-pill">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div className="show-rows">
-                <Row label="焙煎度" items={card.roasts} />
-                <Row label="産地" items={card.origins} />
-                <Row label="精製" items={card.processes} />
-                <Row label="淹れ方" items={card.methods} />
-                <Row label="飲み方" items={card.ways} />
-                <Row label="好きな味" items={card.likes} />
-                <Row label="苦手" items={card.dislikes} />
-                {card.budget && <Row label="予算" items={[`1杯 ${yen(card.budget)}くらいまで`]} />}
-              </div>
-              {card.favorites.length > 0 && (
-                <div className="show-favs">
-                  <span className="show-label">おいしかった豆</span>
-                  <ul>
-                    {card.favorites.map((r) => (
-                      <li key={r.id}>
-                        <strong>{beanTitle(r)}</strong>
-                        <span className="muted">
-                          {[r.roast !== "不明" && r.roast, r.shop].filter(Boolean).join("・")} {stars(r.overall)}
-                        </span>
-                      </li>
+            <>
+              <button
+                type="button"
+                className="btn-secondary show-flip"
+                aria-pressed={flipped}
+                onClick={() => setFlipped(!flipped)}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" />
+                </svg>
+                {flipped ? "向きを戻す" : "上下を逆にして相手に向ける"}
+              </button>
+              <section className="show-card" data-flipped={flipped || undefined} aria-label="わたしの好み">
+                <p className="show-ask">
+                  {/* 変なところで折り返さないよう、言葉のまとまりごとに区切る */}
+                  <span>こういう{roast ? `${roast}の` : ""}コーヒーが</span>
+                  <span>好きです</span>
+                </p>
+                {card.taste.length > 0 && (
+                  <div className="show-taste">
+                    {card.taste.map((t) => (
+                      <span key={t} className="show-pill">
+                        {t}
+                      </span>
                     ))}
-                  </ul>
+                  </div>
+                )}
+                <div className="show-rows">
+                  <Row label="焙煎度" items={card.roasts} />
+                  <Row label="産地" items={card.origins} />
+                  <Row label="精製" items={card.processes} />
+                  <Row label="淹れ方" items={card.methods} />
+                  <Row label="飲み方" items={card.ways} />
+                  <Row label="好きな味" items={card.likes} />
+                  <Row label="苦手" items={card.dislikes} />
+                  {card.budget && <Row label="予算" items={[`1杯 ${yen(card.budget)}くらいまで`]} />}
                 </div>
-              )}
-              <p className="show-thanks">
-                <span>おすすめがあれば</span>
-                <span>教えてください</span>
-              </p>
-            </section>
+                {card.favorites.length > 0 && (
+                  <div className="show-favs">
+                    <span className="show-label">おいしかった豆</span>
+                    <ul>
+                      {card.favorites.map((r) => (
+                        <li key={r.id}>
+                          <strong>{beanTitle(r)}</strong>
+                          <span className="muted">
+                            {[r.roast !== "不明" && r.roast, r.shop].filter(Boolean).join("・")} {stars(r.overall)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <p className="show-thanks">
+                  <span>おすすめがあれば</span>
+                  <span>教えてください</span>
+                </p>
+              </section>
+            </>
           )}
         </main>
       )}
