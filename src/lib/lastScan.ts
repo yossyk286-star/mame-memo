@@ -9,6 +9,8 @@ export type LastScan = {
 };
 
 const KEY = "mame-memo:last-scan";
+/** 一覧が変わったときに流す合図（下のタブの件数を合わせる） */
+export const LAST_SCAN_EVENT = "mame-memo:last-scan-changed";
 
 export function today() {
   const d = new Date();
@@ -30,10 +32,12 @@ function store(scan: LastScan) {
   try {
     localStorage.setItem(KEY, JSON.stringify(scan));
   } catch {}
+  window.dispatchEvent(new Event(LAST_SCAN_EVENT));
 }
 
-export function saveLastScan(beans: ScannedBean[]) {
-  store({ date: today(), beans, recorded: [] });
+/** recorded は一覧から豆を外したときに、すでに記録した分を引き継ぐのに使う */
+export function saveLastScan(beans: ScannedBean[], recorded: string[] = []) {
+  store({ date: today(), beans, recorded });
 }
 
 export function markRecorded(name: string) {

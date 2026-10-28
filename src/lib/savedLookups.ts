@@ -53,6 +53,14 @@ export function recentSaved(n: number) {
     .map(({ bean }) => bean);
 }
 
+/** 前に調べた豆から外す（その豆の名前で引けるものと、調べた言葉で引けるものをまとめて消す） */
+export function forgetSaved(name: string) {
+  const kept = Object.entries(load()).filter(([, v]) => v.bean.name !== name);
+  try {
+    localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(kept)));
+  } catch {}
+}
+
 /** バックアップ用 */
 export function exportSaved() {
   return load();
