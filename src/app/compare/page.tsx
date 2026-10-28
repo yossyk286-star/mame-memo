@@ -109,14 +109,22 @@ function CompareBody() {
               {pair.map((r, i) => (
                 <Link key={r.id} href={`/record?id=${r.id}`} className="compare-name">
                   <i style={{ background: SERIES_COLORS[i] }} aria-hidden="true" />
-                  <span>
-                    <strong>{beanTitle(r)}</strong>
-                    <span className="stars">{stars(r.overall)}</span>
-                  </span>
+                  <strong>{beanTitle(r)}</strong>
                 </Link>
               ))}
             </div>
             <section className="card">
+              <div className="compare-overall" aria-label="総合評価">
+                {pair.map((r, i) => (
+                  <div key={r.id}>
+                    <span className="muted">総合評価</span>
+                    <strong style={{ color: SERIES_COLORS[i] }}>{r.overall.toFixed(1)}</strong>
+                    <span className="stars" style={{ color: SERIES_COLORS[i] }}>
+                      {stars(r.overall)}
+                    </span>
+                  </div>
+                ))}
+              </div>
               <RadarChart
                 axes={TASTE_AXES.map(([label]) => label)}
                 series={pair.map((r) => ({ label: beanTitle(r), values: TASTE_AXES.map(([, get]) => get(r) ?? null) }))}
@@ -153,6 +161,7 @@ function CompareBody() {
                   pair.map((r) => ({
                     label: beanTitle(r),
                     sub: [r.roast, r.process, r.method].filter((t) => t && t !== "不明").join("・"),
+                    overall: r.overall,
                     values: TASTE_AXES.map(([, get]) => get(r)),
                   })),
                 );
