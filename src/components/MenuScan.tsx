@@ -18,8 +18,8 @@ import {
   type WishBean,
 } from "@/lib/db";
 import { findKnownBean } from "@/lib/knownBeans";
-import { saveLastScan, today } from "@/lib/lastScan";
-import { findSaved, recentSaved, saveLookups } from "@/lib/savedLookups";
+import { loadLastScan, saveLastScan, today } from "@/lib/lastScan";
+import { findSaved, forgetSaved, recentSaved, saveLookups } from "@/lib/savedLookups";
 import { MOODS, moodFromText, type Mood } from "@/lib/moods";
 import { loadPasscode, PASSCODE_KEY } from "@/lib/passcode";
 import { shrinkPhoto } from "@/lib/photo";
@@ -167,6 +167,32 @@ export default function MenuScan({
     setRecent(recentSaved(8));
   }, []);
 
+  // 調べた結果を一覧から外す（今日の一覧からだけ。前に調べた情報は残るので、また調べても AI は使わない）
+  const [undo, setUndo] = useState<{ label: string; beans: ScannedBean[] } | null>(null);
+  function replaceBeans(next: ScannedBean[]) {
+    saveLastScan(next, loadLastScan()?.recorded ?? []);
+    setBeans(next);
+    onScanned?.(next);
+    if (next.length === 0) {
+      setStatus("idle");
+      setPairing(null);
+    }
+  }
+  function hide(names: string[], label: string) {
+    setUndo({ label, beans });
+    setLocalHit(null);
+    replaceBeans(beans.filter((b) => !names.includes(b.name)));
+  }
+
+  // 「前に調べた豆」の候補を消すモード
+  const [editRecent, setEditRecent] = useState(false);
+  function forget(name: string) {
+    forgetSaved(name);
+    const next = recentSaved(8);
+    setRecent(next);
+    if (next.length === 0) setEditRecent(false);
+  }
+
   const wishOf = (b: ScannedBean) =>
     wishes.find((w) => w.name === b.name && w.origin === b.origin);
 
@@ -312,6 +338,7 @@ export default function MenuScan({
     setStatus("done");
     setTextOpen(false);
     setError("");
+    setUndo(null);
     setLocalHit({ name: b.name, how, query: q });
   }
 
@@ -366,6 +393,7 @@ export default function MenuScan({
       saveLastScan(result.beans);
       onScanned?.(result.beans);
       setStatus("done");
+      setUndo(null);
       setTextOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "読み取りに失敗しました");
@@ -492,11 +520,31 @@ export default function MenuScan({
 
       {status !== "reading" && recent.length > 0 && (
         <div className="scroll-row" aria-label="前に調べた豆">
-          {recent.map((b) => (
-            <button key={b.name} type="button" className="chip" onClick={() => lookupText(false, b.name)}>
-              {b.name}
-            </button>
-          ))}
+          {recent.map((b) =>
+            editRecent ? (
+              <button
+                key={b.name}
+                type="button"
+                className={`chip ${styles.forget}`}
+                aria-label={`${b.name}を前に調べた豆から消す`}
+                onClick={() => forget(b.name)}
+              >
+                {b.name} ✕
+              </button>
+            ) : (
+              <button key={b.name} type="button" className="chip" onClick={() => lookupText(false, b.name)}>
+                {b.name}
+              </button>
+            ),
+          )}
+          <button
+            type="button"
+            className={`chip ${styles.editChip}`}
+            aria-pressed={editRecent}
+            onClick={() => setEditRecent(!editRecent)}
+          >
+            {editRecent ? "完了" : "✎ 消す"}
+          </button>
         </div>
       )}
       {localHit && (
@@ -520,6 +568,25 @@ export default function MenuScan({
         </button>
       )}
 
+      {undo && (
+        <div className="row" style={{ alignItems: "center", flexWrap: "nowrap" }}>
+          <p className={styles.lead} style={{ flex: 1, margin: 0 }} role="status">
+            {undo.label}を一覧から外しました。
+          </p>
+          <button
+            type="button"
+            className="btn-ghost"
+            style={{ height: 36, padding: "0 12px", flexShrink: 0 }}
+            onClick={() => {
+              replaceBeans(undo.beans);
+              setStatus("done");
+              setUndo(null);
+            }}
+          >
+            元に戻す
+          </button>
+        </div>
+      )}
       {error && (
         <p className="error" role="alert">
           {error}
@@ -550,6 +617,14 @@ export default function MenuScan({
             ⇅ 並び替え
           </button>
           {sortSummary && <span className={styles.sortNow}>{sortSummary}</span>}
+          <button
+            type="button"
+            className="btn-ghost"
+            style={{ height: 36, padding: "0 12px", flexShrink: 0, marginLeft: "auto" }}
+            onClick={() => hide(beans.map((b) => b.name), `${beans.length}種類すべて`)}
+          >
+            すべて消す
+          </button>
         </div>
       )}
       {beans.length > 1 && sortOpen && (
@@ -643,6 +718,15 @@ export default function MenuScan({
             key={i}
             className={`${styles.bean} ${i === best ? styles.best : ""}`}
           >
+            {/* 右上の角に置き、度数や「＋記録」から離して押し間違いを防ぐ */}
+            <button
+              type="button"
+              className={styles.remove}
+              aria-label={`${b.name}を一覧から外す`}
+              onClick={() => hide([b.name], `「${b.name}」`)}
+            >
+              ✕
+            </button>
             {i === best && picks && (
               <div className={styles.pick}>
                 <strong>あなたへのおすすめ</strong>
