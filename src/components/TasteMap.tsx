@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import RecordCard from "./RecordCard";
-import type { TastingRecord } from "@/lib/types";
+import RecordCard, { roastColor } from "./RecordCard";
+import { ROAST_FILTERS } from "@/lib/beanSort";
+import type { Roast, TastingRecord } from "@/lib/types";
 
 const LEVELS = [1, 2, 3, 4, 5] as const;
 
@@ -21,12 +22,16 @@ function cellColor(avg: number) {
 
 /**
  * 酸味（横）と苦味（縦）で記録を並べた味の地図。
- * マスの数字は杯数、色の濃さは総合の平均。マスを押すとそのお酒を出す
+ * マスの数字は杯数、色の濃さは総合の平均。マスを押すとそのお酒を出す。
+ * 2種類以上あれば、焙煎度で絞り込める
  */
 export default function TasteMap({ records }: { records: TastingRecord[] }) {
   const [selected, setSelected] = useState<string | null>(null);
-  const placed = records.filter((r) => r.acidity && r.bitterness);
-  if (placed.length === 0) {
+  const [roast, setRoast] = useState<Roast | null>(null);
+  const all = records.filter((r) => r.acidity && r.bitterness);
+  const roasts = ROAST_FILTERS.filter((x) => all.some((r) => r.roast === x));
+  const placed = roast ? all.filter((r) => r.roast === roast) : all;
+  if (all.length === 0) {
     return (
       <section className="card">
         <h2 style={{ fontSize: 14 }}>味マップ</h2>
@@ -54,9 +59,39 @@ export default function TasteMap({ records }: { records: TastingRecord[] }) {
   return (
     <section className="card" style={{ gap: 10 }}>
       <h2 style={{ fontSize: 14 }}>味マップ</h2>
+      {roasts.length > 1 && (
+        <div className="scroll-row" role="group" aria-label="味マップを焙煎度で絞り込み">
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={roast === null}
+            onClick={() => {
+              setRoast(null);
+              setSelected(null);
+            }}
+          >
+            すべて
+          </button>
+          {roasts.map((x) => (
+            <button
+              key={x}
+              type="button"
+              className="chip kind-chip"
+              style={{ "--kc": roastColor(x) } as React.CSSProperties}
+              aria-pressed={roast === x}
+              onClick={() => {
+                setRoast(roast === x ? null : x);
+                setSelected(null);
+              }}
+            >
+              {x}
+            </button>
+          ))}
+        </div>
+      )}
       {center && (
         <p style={{ margin: 0, fontSize: 14 }}>
-          高く評価した豆は<strong>{ACID_WORDS[center.acid]}・{BITTER_WORDS[center.bitter]}</strong>のあたりに集まっています。
+          {roast ? `${roast}で` : ""}高く評価した豆は<strong>{ACID_WORDS[center.acid]}・{BITTER_WORDS[center.bitter]}</strong>のあたりに集まっています。
         </p>
       )}
       <div className="taste-map">
