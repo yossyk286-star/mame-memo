@@ -83,7 +83,11 @@ export default function ShowPage() {
             </p>
           ) : (
             <section className="show-card" aria-label="わたしの好み">
-              <p className="show-ask">こういう{roast ? `${roast}の` : ""}コーヒーが好きです</p>
+              <p className="show-ask">
+                {/* 変なところで折り返さないよう、言葉のまとまりごとに区切る */}
+                <span>こういう{roast ? `${roast}の` : ""}コーヒーが</span>
+                <span>好きです</span>
+              </p>
               {card.taste.length > 0 && (
                 <div className="show-taste">
                   {card.taste.map((t) => (
@@ -118,7 +122,10 @@ export default function ShowPage() {
                   </ul>
                 </div>
               )}
-              <p className="show-thanks">おすすめがあれば教えてください</p>
+              <p className="show-thanks">
+                <span>おすすめがあれば</span>
+                <span>教えてください</span>
+              </p>
             </section>
           )}
         </main>
