@@ -130,7 +130,7 @@ function DetailBody() {
     <>
       <header className="sub-header">
         <Link href="/" className="back">
-          ‹ 一覧
+          ‹ 戻る
         </Link>
         <h1>記録</h1>
       </header>
@@ -163,7 +163,7 @@ function DetailBody() {
                     ))}
                   </div>
                 ) : null}
-                <h2>{beanTitle(r)}</h2>
+                <h2 className={beanTitle(r).length > 18 ? "is-long" : undefined}>{beanTitle(r)}</h2>
               </div>
               <div className="detail-score" aria-label={`総合 5段階中${r.overall}`}>
                 <span className="detail-score-label">総合</span>
