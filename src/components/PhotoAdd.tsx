@@ -23,10 +23,18 @@ export function PhotoRow({ photos, onRemove }: { photos: Blob[]; onRemove?: (i: 
   );
 }
 
-/** 写真を選ぶボタン。複数まとめて選べる（カメラで撮るのも可） */
-export function PhotoAddButton({ label, onFiles }: { label: string; onFiles: (files: FileList | null) => void }) {
+/** 写真を選ぶボタン。複数まとめて選べる（カメラで撮るのも可）。chip なら小さな丸いボタンにする */
+export function PhotoAddButton({
+  label,
+  onFiles,
+  chip = false,
+}: {
+  label: string;
+  onFiles: (files: FileList | null) => void;
+  chip?: boolean;
+}) {
   return (
-    <label className="btn-ghost" style={{ flex: 1 }}>
+    <label className={chip ? "photo-add-chip" : "btn-ghost"} style={chip ? undefined : { flex: 1 }}>
       {label}
       <input
         type="file"

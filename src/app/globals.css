@@ -991,6 +991,31 @@ button.stamp {
   height: auto;
   max-height: 280px;
 }
+.photo-wrap {
+  position: relative;
+}
+.photo-add-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+/* 写真の上では右下に重ねる */
+.photo-wrap:has(.photo-row) .photo-add-chip {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
 .photo-remove {
   position: absolute;
   top: 6px;
