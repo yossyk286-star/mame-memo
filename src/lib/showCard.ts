@@ -116,3 +116,44 @@ export function isEmptyCard(c: ShowCard) {
   const lists = [c.taste, c.roasts, c.processes, c.origins, c.methods, c.ways, c.likes, c.dislikes, c.favorites];
   return lists.every((l) => l.length === 0) && !c.budget;
 }
+
+/** 今日の気分（src/lib/moods.ts の MOODS）を、店員さんに伝わる言い方にする。ないものはそのまま出す */
+const MOOD_PHRASES: Record<string, string> = {
+  すっきり: "すっきりしたもの",
+  甘め: "甘みのあるもの",
+  しっかり苦め: "苦味がしっかり",
+  ミルクに合う: "ミルクに合うもの",
+  フルーティー: "フルーティーなもの",
+  華やかな香り: "香りが華やか",
+  酸味しっかり: "酸味がしっかり",
+  酸味ひかえめ: "酸味は控えめ",
+  まろやか: "まろやかなもの",
+  "軽め・あっさり": "軽めであっさり",
+  濃いめで目を覚ます: "濃いめのもの",
+  ほっと一息: "ほっとできるもの",
+  アイスで飲みたい: "アイスで",
+  スイーツと一緒に: "スイーツに合うもの",
+  飲みやすい: "飲みやすいもの",
+};
+
+export function moodPhrase(label: string) {
+  return MOOD_PHRASES[label] ?? label;
+}
+
+const MOOD_KEY = "mame-memo:show-mood";
+
+/** 選んだ今日の気分。同じ日のうちは開き直しても残す */
+export function loadTodayMoods(today: string): string[] {
+  try {
+    const saved = JSON.parse(localStorage.getItem(MOOD_KEY) ?? "null");
+    return saved?.date === today && Array.isArray(saved.moods) ? saved.moods : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveTodayMoods(today: string, moods: string[]) {
+  try {
+    localStorage.setItem(MOOD_KEY, JSON.stringify({ date: today, moods }));
+  } catch {}
+}
