@@ -25,6 +25,7 @@
 }
 
 .bean {
+  position: relative;
   background: var(--surface);
   border-radius: 12px;
   padding: 14px 16px;
@@ -284,30 +285,26 @@
   font-weight: 700;
 }
 
-/* カードの名前の行。右端に一覧から外す ✕ を置く */
-.headRow {
-  display: flex;
-  align-items: flex-start;
-  gap: 4px;
-}
-
-.headRow .cardHead {
-  flex: 1;
-  min-width: 0;
-}
-
+/* 一覧から外す ✕。カードの右上の角に置く */
 .remove {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  margin: -6px -8px -6px 0;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: 0;
-  border-radius: 16px;
+  border-radius: 18px;
   background: none;
   color: var(--muted);
   font-size: 15px;
   cursor: pointer;
+}
+
+/* ✕ と重ならないよう、カードの1行目は右をあける */
+.bean > .pick,
+.bean > .cardHead {
+  padding-right: 28px;
 }
 
 .forget {
