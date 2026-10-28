@@ -135,6 +135,8 @@ export default function MenuScan({
   const [status, setStatus] = useState<"idle" | "reading" | "done">(
     initialBeans.length ? "done" : "idle",
   );
+  // 文字で調べている最中はその言葉。写真の読み取りと出し分ける
+  const [searching, setSearching] = useState<string | null>(null);
   const [beans, setBeans] = useState<ScannedBean[]>(initialBeans);
   const [error, setError] = useState("");
   const [records, setRecords] = useState<TastingRecord[]>([]);
@@ -365,6 +367,7 @@ export default function MenuScan({
       return setError("オフラインのため読み取れません。電波のあるところでもう一度お試しください");
 
     setError("");
+    setSearching(query ?? null);
     setStatus("reading");
     try {
       const res = await fetch("/api/read-menu", {
@@ -449,7 +452,7 @@ export default function MenuScan({
           <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
           <circle cx="12" cy="13" r="3.5" />
         </svg>
-        {status === "reading"
+        {status === "reading" && !searching
           ? "読み取り中…"
           : status === "done"
             ? "撮る"
@@ -555,6 +558,13 @@ export default function MenuScan({
               AI で調べ直す
             </button>
           )}
+        </p>
+      )}
+
+      {status === "reading" && searching && (
+        <p className={styles.lead} role="status">
+          {/* メニューの文を貼ったときは長いので名前は出さない */}
+          {searching.length > 20 ? "入れた文から調べています…" : `「${searching}」を調べています…`}
         </p>
       )}
 
