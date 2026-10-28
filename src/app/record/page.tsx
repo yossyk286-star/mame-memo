@@ -76,7 +76,7 @@ function DetailBody() {
   const rows: [string, string][] = r
     ? [
         ["日付", r.date],
-        ["店名", r.shop],
+        ["飲んだ場所", r.shop],
         ["産地", r.origin || "—"],
         ["農園・品種", r.farm || "—"],
         ["焙煎度", r.roast ?? "—"],
