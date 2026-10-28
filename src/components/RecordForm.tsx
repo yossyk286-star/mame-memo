@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MultiChips, SingleChips } from "./ChipGroup";
 import GlossarySheet from "./GlossarySheet";
+import SavedCheck from "./SavedCheck";
 import { putRecord, listRecords } from "@/lib/db";
 import {
   FLAVORS,
@@ -247,6 +248,7 @@ export default function RecordForm({
   const [shopNames, setShopNames] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   // 編集はふだん全部の項目を見たいので「くわしく」から。新規は前に選んだほう
   const [mode, setModeState] = useState<FormMode>("くわしく");
   useEffect(() => {
@@ -309,6 +311,10 @@ export default function RecordForm({
       updatedAt: now,
     };
     await putRecord(record);
+    // ✓ を少し見せてから移る（動きを減らす設定の人はすぐ移る）
+    setSaved(true);
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) await new Promise((r) => setTimeout(r, 700));
+    setSaved(false);
     if (onSaved) return onSaved(record);
     router.replace(initial ? `/record?id=${record.id}` : "/");
   }
@@ -632,6 +638,7 @@ export default function RecordForm({
           </p>
         )}
 
+        {saved && <SavedCheck />}
         <div className="save-bar">
           <button type="submit" className="btn-primary" disabled={saving}>
             {saving ? "保存中…" : "保存する"}
