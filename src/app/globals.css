@@ -38,6 +38,13 @@
   --k-medium: #8a5530;
   --k-dark: #4a2a1a;
   --k-unknown: #8a8079;
+  /* 相棒のコーヒー豆 */
+  --buddy-body: #b9804f;
+  --buddy-crease: rgba(60, 28, 12, 0.55);
+  --buddy-ink: #2a160b;
+  --buddy-blush: rgba(255, 128, 130, 0.55);
+  --buddy-drop: #3aa8d8;
+  --buddy-spark: #e0a020;
   --radius: 16px;
   --tabbar-h: 60px;
   color-scheme: light;
@@ -68,6 +75,7 @@
     --k-medium: #b07a52;
     --k-dark: #8a5a42;
     --k-unknown: #9a918a;
+    --buddy-body: #a87148;
     color-scheme: dark;
   }
 }
@@ -94,6 +102,7 @@
   --k-medium: #b07a52;
   --k-dark: #8a5a42;
   --k-unknown: #9a918a;
+  --buddy-body: #a87148;
   color-scheme: dark;
 }
 
@@ -2117,4 +2126,98 @@ body::before {
   height: env(safe-area-inset-top);
   background: var(--bg);
   pointer-events: none;
+}
+
+/* --- 相棒：記録を保存すると下から出てきてひとこと --- */
+.buddy {
+  position: fixed;
+  left: 50%;
+  /* 「＋ 記録する」ボタンの上に出す */
+  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 74px);
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  width: min(calc(100% - 32px), 420px);
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transform: translateX(-50%);
+}
+.buddy-face {
+  flex: none;
+  animation: buddy-hop 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.25) backwards;
+}
+.buddy-worried .buddy-face {
+  animation: buddy-hop 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.25) backwards, buddy-wobble 0.5s 0.6s ease-in-out 2;
+  transform-origin: 50% 95%;
+}
+.buddy-bubble {
+  position: relative;
+  flex: 1;
+  margin-bottom: 18px;
+  padding: 11px 14px;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lift), 0 0 0 0.5px var(--line);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  animation: buddy-pop 0.3s 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.3) backwards;
+  transform-origin: 0 100%;
+}
+.buddy-bubble::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  bottom: 14px;
+  width: 12px;
+  height: 12px;
+  background: var(--surface);
+  border-radius: 0 0 0 4px;
+  transform: rotate(45deg);
+}
+.buddy-worried .buddy-bubble {
+  box-shadow: var(--shadow-lift), 0 0 0 1.5px color-mix(in srgb, var(--buddy-spark) 60%, transparent);
+}
+.buddy-spark {
+  animation: buddy-twinkle 1.2s 0.4s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes buddy-hop {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-8px);
+  }
+}
+@keyframes buddy-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@keyframes buddy-wobble {
+  25% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(6deg);
+  }
+}
+@keyframes buddy-twinkle {
+  50% {
+    opacity: 0.35;
+  }
+}
+.buddy-setting {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
