@@ -2,11 +2,12 @@ import { countryOf } from "./countries";
 import type { TastingRecord } from "./types";
 
 /**
- * 相棒（ちっちゃいコーヒー豆）が記録を保存したときに言うひとこと。
+ * 相棒（ちっちゃいコーヒー豆）が言うひとこと。記録を保存したとき・アプリを開いたときなど。
  * AI は使わず、記録の中身と今までの記録から決まった言葉を選ぶ
  */
 export type BuddyMood = "happy" | "normal" | "wow" | "worried" | "sad";
-export type BuddyLine = { text: string; mood: BuddyMood };
+/** action があれば吹き出しにリンクを出す（例：1年前の記録を見る） */
+export type BuddyLine = { text: string; mood: BuddyMood; action?: { label: string; href: string } };
 
 const KEY = "mame-memo:buddy";
 export const BUDDY_EVENT = "mame-memo:buddy";
@@ -34,7 +35,7 @@ export function announceBuddy(line: BuddyLine) {
 
 const pick = <T>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
 
-function localDate(d: Date) {
+export function localDate(d: Date) {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
@@ -86,7 +87,12 @@ function beanName(r: TastingRecord) {
  * 保存した記録へのひとこと。all はこの記録も含めたすべての記録
  * カフェインのとりすぎが心配な日は、ほかより先に心配する
  */
-export function buddyLine(r: TastingRecord, all: TastingRecord[], now = new Date()): BuddyLine {
+export function buddyLine(
+  r: TastingRecord,
+  all: TastingRecord[],
+  opts: { fromWish?: boolean } = {},
+  now = new Date(),
+): BuddyLine {
   const others = all.filter((x) => x.id !== r.id);
   const isToday = r.date === localDate(now);
   const sameDay = all.filter((x) => x.date === r.date).length;
@@ -113,11 +119,22 @@ export function buddyLine(r: TastingRecord, all: TastingRecord[], now = new Date
     return { mood: "wow", text: "はじめての記録だね！これからいっしょに飲んだコーヒーを覚えていくよ" };
 
   if (MILESTONES.includes(all.length))
-    return { mood: "wow", text: `${all.length}杯目の記録！ここまで続けてえらいなあ` };
+    return { mood: "wow", text: `${all.length}杯目の記録、おめでとう！ここまで続けてえらいなあ` };
 
   const country = countryOf(r);
-  if (country && !others.some((x) => countryOf(x) === country))
-    return { mood: "wow", text: `はじめての${country}！スタンプ押しといたよ` };
+  const newCountry = !!country && !others.some((x) => countryOf(x) === country);
+  if (opts.fromWish)
+    return {
+      mood: "wow",
+      text: newCountry
+        ? `ついに飲めたね！${country}のスタンプも押しといたよ`
+        : "ついに飲めたね！気になるリストから外しておいたよ",
+    };
+
+  if (newCountry) return { mood: "wow", text: `${country}、はじめまして！スタンプ押しといたよ` };
+
+  if (r.method && r.method !== "その他" && !others.some((x) => x.method === r.method))
+    return { mood: "wow", text: `はじめての${r.method}！新しい扉だね` };
 
   const name = beanName(r);
   const before = name ? others.filter((x) => beanName(x) === name) : [];
@@ -161,4 +178,61 @@ export function buddyLine(r: TastingRecord, all: TastingRecord[], now = new Date
 
   const lines = kindLines(r);
   return { mood: "happy", text: pick(lines.length > 0 && Math.random() < 0.7 ? lines : PLAIN) };
+}
+
+/** 開いたときのひとことを、どれをいつ出したか覚えておく */
+const SEEN_KEY = "mame-memo:buddy-seen";
+type Seen = { lastOpen?: string; yearAgo?: string; weekend?: string };
+
+function loadSeen(): Seen {
+  try {
+    return JSON.parse(localStorage.getItem(SEEN_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+const daysBetween = (a: string, b: string) =>
+  Math.round((new Date(`${b}T12:00:00`).getTime() - new Date(`${a}T12:00:00`).getTime()) / 86400000);
+
+/**
+ * アプリを開いたときのひとこと。出すぎないよう、どれも間をあけて1回だけ
+ * - 1年前の今日に記録があれば（1日1回）
+ * - 2週間以上あいて開いたら「おかえり」
+ * - 土日の朝（週に1回）
+ */
+export function openLine(records: TastingRecord[], now = new Date()): BuddyLine | null {
+  const today = localDate(now);
+  const seen = loadSeen();
+  const next: Seen = { ...seen, lastOpen: today };
+  let line: BuddyLine | null = null;
+
+  const ago = new Date(now);
+  ago.setFullYear(ago.getFullYear() - 1);
+  const yearAgo = records.filter((r) => r.date === localDate(ago));
+  const gap = seen.lastOpen ? daysBetween(seen.lastOpen, today) : 0;
+
+  if (yearAgo.length > 0 && seen.yearAgo !== today) {
+    const best = yearAgo.reduce((a, b) => (b.overall > a.overall ? b : a));
+    line = {
+      mood: "wow",
+      text: `1年前の今日は「${beanName(best) || "コーヒー"}」を飲んでたよ${yearAgo.length > 1 ? `（ほか${yearAgo.length - 1}杯）` : ""}`,
+      action: { label: "見る", href: `/record?id=${best.id}` },
+    };
+    next.yearAgo = today;
+  } else if (gap >= 14) {
+    line = { mood: "happy", text: `おかえり！${gap}日ぶりだね。また一緒に記録しよう` };
+  } else if (
+    (now.getDay() === 0 || now.getDay() === 6) &&
+    now.getHours() >= 7 &&
+    now.getHours() < 12 &&
+    (!seen.weekend || daysBetween(seen.weekend, today) >= 6)
+  ) {
+    line = { mood: "happy", text: "週末の朝だね。今日はどの豆にする？", action: { label: "調べる", href: "/scan" } };
+    next.weekend = today;
+  }
+  try {
+    localStorage.setItem(SEEN_KEY, JSON.stringify(next));
+  } catch {}
+  return line;
 }
