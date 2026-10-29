@@ -126,6 +126,7 @@ export default function MenuScan({
   savedPhoto,
   initialBeans = [],
   onScanned,
+  extra,
 }: {
   onPick: (bean: ScannedBean) => void;
   /** 記録に保存済みの写真。あればそれを読み取るボタンも出す */
@@ -134,6 +135,8 @@ export default function MenuScan({
   initialBeans?: ScannedBean[];
   /** 読み取れたら結果を親に渡す（続けて別の豆を記録するときに使う） */
   onScanned?: (beans: ScannedBean[]) => void;
+  /** 調べ方の下に出すもの（料理から選ぶへの入口など） */
+  extra?: React.ReactNode;
 }) {
   const [passcode, setPasscode] = useState("");
   const [savedPasscode, setSavedPasscode] = useState(false);
@@ -543,6 +546,8 @@ export default function MenuScan({
             </button>
           )
         ))}
+
+      {status !== "reading" && extra}
 
       {status !== "reading" && recent.length > 0 && (
         <div className="scroll-row" aria-label="前に調べた豆">
