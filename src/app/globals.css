@@ -2489,6 +2489,8 @@ body::before {
   display: block;
   width: 100%;
   height: auto;
+  /* 地図の枠は全体と同じ形のまま（寄っても高さが変わらない） */
+  aspect-ratio: 800 / 354;
   border-radius: 12px;
   background: color-mix(in srgb, var(--accent) 5%, var(--surface-2));
   -webkit-tap-highlight-color: transparent;
