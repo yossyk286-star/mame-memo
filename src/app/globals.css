@@ -210,6 +210,10 @@ textarea {
   font-size: 14px;
   color: var(--muted);
 }
+/* 戻るのある画面は見出しの下に線があるので、説明文がその線にくっつかないようにあける */
+.sub-header + .lead {
+  padding-top: 16px;
+}
 .content {
   padding: 0 16px 28px;
   display: flex;
