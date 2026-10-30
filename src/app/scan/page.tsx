@@ -48,7 +48,7 @@ export default function ScanPage() {
         }}
       />
 
-      <Hint id="scan-page" className="lead">
+      <Hint id="scan-page" className="lead scan-hint">
         撮った結果は今日のあいだ残るので、あとから「記録する」でも同じ豆から選べます。
         次に試したい豆は「☆」で<Link href="/wishlist">気になる豆</Link>に残せます。
       </Hint>

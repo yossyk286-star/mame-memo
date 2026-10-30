@@ -6,7 +6,7 @@ import { MultiChips, SingleChips } from "./ChipGroup";
 import GlossarySheet from "./GlossarySheet";
 import SavedCheck from "./SavedCheck";
 import { announceBuddy, buddyLine } from "@/lib/buddy";
-import { putRecord, listRecords } from "@/lib/db";
+import { deleteRecord, putRecord, listRecords } from "@/lib/db";
 import {
   FLAVORS,
   METHODS,
@@ -242,6 +242,12 @@ export default function RecordForm({
   onSaved?: (record: TastingRecord) => void;
 }) {
   const router = useRouter();
+
+  async function remove() {
+    if (!initial || !confirm("この記録を削除しますか？")) return;
+    await deleteRecord(initial.id);
+    router.replace("/");
+  }
   const [draft, setDraft] = useState<RecordDraft>(() =>
     initial
       ? { ...initial, photos: photosOf(initial), photo: null }
@@ -642,6 +648,13 @@ export default function RecordForm({
           <p className="error" role="alert">
             {error}
           </p>
+        )}
+
+        {/* 削除はめったに使わないので、詳細画面ではなく編集のいちばん下に離して置く */}
+        {initial && (
+          <button type="button" className="btn-secondary btn-danger" onClick={remove}>
+            この記録を削除
+          </button>
         )}
 
         {saved && <SavedCheck />}
