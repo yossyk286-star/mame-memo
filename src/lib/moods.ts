@@ -146,3 +146,20 @@ export function moodFromText(input: string): Mood | null {
     score: (b) => pick.reduce((s, m) => s + m.score(b), 0),
   };
 }
+
+/** ひらがな・カタカナ、全角・半角、大文字・小文字をそろえる */
+const norm = (s: string) =>
+  s
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\u3041-\u3096]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60))
+    .replace(/\s+/g, "");
+
+/**
+ * 気分ではない言葉（「ベリー」「エチオピア」など）が、名前・産地・説明に入っているか。
+ * 入っていない豆はおすすめの下に回す
+ */
+export function wordMatch(word: string): (b: ScannedBean) => boolean {
+  const k = norm(word);
+  return (b) => norm([text(b), b.roast, b.sweets].filter(Boolean).join(" ")).includes(k);
+}
