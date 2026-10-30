@@ -124,6 +124,39 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* --- 日本語の改行 ---
+ * 文章は、最後の行に1〜2文字だけ残らないように整える。
+ * 名前・見出し・ボタン・表のような短い文字は、単語の途中で切らずにスペースや「、」「・」で折り返す。
+ * それでも1行に入らない長い言葉だけは途中で切る。 */
+body {
+  text-wrap: pretty;
+}
+h1,
+h2,
+h3,
+button,
+.btn,
+.chip,
+th,
+td,
+dt,
+dd,
+.detail-hero-name,
+.compare-name,
+.highlight-main,
+.show-value,
+.buddy-text,
+.pair-head,
+.section-title {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
 a {
   color: var(--accent);
   text-decoration: none;
@@ -904,6 +937,9 @@ textarea.input {
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
+.stamp-name-long {
+  font-size: 11px;
+}
 .stamp-meta {
   font-size: 10px;
 }
@@ -1117,7 +1153,7 @@ button.stamp {
   table-layout: fixed;
 }
 .compare-table th {
-  width: 84px;
+  width: 90px;
   text-align: left;
   font-weight: 400;
   color: var(--muted);
@@ -2568,6 +2604,7 @@ body::before {
 .pair-none,
 .pair-from {
   margin: 0 4px;
+}
 
 /* --- 産地スタンプ帳：右下の丸い地図ボタンと、飲んだ国に色が付く世界地図 --- */
 .map-fab {
