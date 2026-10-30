@@ -476,10 +476,8 @@ export default function MenuScan({
         throw new Error("コーヒー豆のメニューが見つかりませんでした");
       // 次からは AI を呼ばずに出せるよう保存しておく
       saveLookups(result.beans, query);
-      // 名前で調べた豆は今の一覧の先頭に、メニューは今日の一覧の後ろに足す（何枚かに分かれたメニューを続けて撮れるように）
-      const next = query
-        ? [...result.beans, ...beans.filter((b) => !result.beans.some((r) => r.name === b.name))]
-        : [...beans, ...result.beans.filter((r) => !beans.some((b) => b.name === r.name))];
+      // 今読み取った豆を今日の一覧の上に足す（何枚かに分かれたメニューを続けて撮っても、新しい分がすぐ見えるように）
+      const next = [...result.beans, ...beans.filter((b) => !result.beans.some((r) => r.name === b.name))];
       setBeans(next);
       setPairing(null);
       saveLastScan(next, loadLastScan()?.recorded ?? []);
