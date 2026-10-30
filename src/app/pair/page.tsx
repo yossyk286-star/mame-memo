@@ -25,6 +25,7 @@ import { loadPasscode, normalizePasscode, savePasscode } from "@/lib/passcode";
 import { shrinkPhoto } from "@/lib/photo";
 import { loadPrefs } from "@/lib/prefs";
 import type { Bag, TastingRecord } from "@/lib/types";
+import Skeleton from "@/components/Skeleton";
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -258,7 +259,8 @@ export default function PairPage() {
             <input type="file" accept="image/*" onChange={onPhoto} disabled={reading} className="visually-hidden" />
           </label>
         </div>
-        {menu && (
+        {reading && <Skeleton label="メニューを読み取っています…" chips />}
+        {menu && !reading && (
           <section className="pair-mine" aria-live="polite">
             <div className="pair-menu-head">
               <h2 className="pair-head">メニューの料理に合うコーヒー</h2>
@@ -311,7 +313,8 @@ export default function PairPage() {
           </p>
         )}
 
-        {result && (
+        {busy && <Skeleton label={`「${dish.trim()}」に合うコーヒーを選んでいます…`} cards={2} chips />}
+        {result && !busy && (
           <>
             <section className="pair-result" aria-live="polite">
               <h2 className="pair-head">「{result.pairing.dish}」に合うコーヒー</h2>

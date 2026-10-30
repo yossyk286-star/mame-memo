@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import BeanSortBar from "@/components/BeanSortBar";
-import BuddyFace from "@/components/BuddyFace";
 import Hint from "@/components/Hint";
 import SwipeRecord from "@/components/SwipeRecord";
 import { listRecords, putRecord } from "@/lib/db";
@@ -11,6 +10,7 @@ import { areaOf, sortBy, type SortKey } from "@/lib/beanSort";
 import { loadLastScan } from "@/lib/lastScan";
 import { farmOf } from "@/lib/menuScan";
 import type { Roast, TastingRecord } from "@/lib/types";
+import EmptyState from "@/components/EmptyState";
 
 const WEEKDAYS = "日月火水木金土";
 
@@ -153,11 +153,15 @@ export default function RecordsPage() {
           </div>
         )}
         {records?.length === 0 && (
-          <div className="buddy-empty">
-            <BuddyFace mood="happy" size={72} />
-            <strong>最初の1杯、いっしょに記録しよう</strong>
-            <span>下の「調べる」でメニューを撮るか、カフェで飲んだら「記録する」から残してみてね。</span>
-          </div>
+          <EmptyState
+            title="最初の1杯、いっしょに記録しよう"
+            actions={[
+              { href: "/new", label: "1杯目を記録する" },
+              { href: "/scan", label: "メニューを撮って選ぶ" },
+            ]}
+          >
+            飲んだコーヒーを残していくと、好みや産地のスタンプがたまっていくよ。
+          </EmptyState>
         )}
         {records && records.length > 0 && filtering && days.length === 0 && (
           <p className="empty">当てはまる記録がありません。</p>

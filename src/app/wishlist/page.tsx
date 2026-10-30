@@ -6,6 +6,7 @@ import BeanSortBar from "@/components/BeanSortBar";
 import { areaOf, sortBy, type SortKey } from "@/lib/beanSort";
 import { deleteWish, listWishes, type WishBean } from "@/lib/db";
 import type { Roast } from "@/lib/types";
+import EmptyState from "@/components/EmptyState";
 
 /** メニューで「気になる」と印を付けた、次に試したい豆の一覧 */
 export default function WishlistPage() {
@@ -64,11 +65,12 @@ export default function WishlistPage() {
           </div>
         )}
         {wishes?.length === 0 && (
-          <p className="empty">
-            まだありません。
-            <br />
-            メニューを撮ったときに「☆ 気になる」を押すと、ここに残ります。
-          </p>
+          <EmptyState
+            title="気になる豆、まだないよ"
+            actions={[{ href: "/scan", label: "メニューを撮って探す" }]}
+          >
+            お店でメニューを撮って「☆ 気になる」を押すと、ここに残るよ。
+          </EmptyState>
         )}
         {wishes && wishes.length > 0 && shown.length === 0 && <p className="empty">当てはまる豆がありません。</p>}
         {shown.map((w) => (
