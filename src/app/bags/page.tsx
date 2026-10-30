@@ -176,7 +176,7 @@ function BagCard({
       )}
       <div className="row">
         {!b.finished && (
-          <Link href={`/new?bag=${b.id}`} className="btn-primary" style={{ flex: "1 0 100%", whiteSpace: "nowrap" }}>
+          <Link href={`/new?bag=${b.id}`} className="btn-secondary" style={{ flex: "1 0 100%", whiteSpace: "nowrap" }}>
             飲んだ・記録する
           </Link>
         )}
@@ -188,7 +188,7 @@ function BagCard({
             onClick={() => onChange({ ...b, low: !b.low })}
             style={{ flex: 1, whiteSpace: "nowrap" }}
           >
-            残りわずか
+            {b.low && "✓ "}残りわずか
           </button>
         )}
         <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => onChange({ ...b, finished: !b.finished })}>

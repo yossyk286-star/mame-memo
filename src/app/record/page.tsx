@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import RadarChart from "@/components/RadarChart";
 import { beanTitle, roastColor, stars, yen } from "@/components/RecordCard";
 import { TASTE_AXES } from "@/lib/axes";
 import { recordImage, shareImage } from "@/lib/shareImage";
 import { PhotoAddButton, PhotoRow } from "@/components/PhotoAdd";
-import { deleteRecord, putRecord } from "@/lib/db";
+import { putRecord } from "@/lib/db";
 import { photosOf, shrinkPhotos } from "@/lib/photo";
 import { hasRecipe, recipeText } from "@/lib/recipe";
 import { mapsUrl } from "@/lib/shops";
@@ -41,7 +40,6 @@ function DetailSection({ title, rows }: { title: string; rows: Row[] }) {
 }
 
 function DetailBody() {
-  const router = useRouter();
   const loaded = useRecordFromQuery();
   // 写真を足したらその場で表示を変える
   const [r, setR] = useState(loaded);
@@ -61,12 +59,6 @@ function DetailBody() {
     } catch {
       setPhotoError("写真を読み込めませんでした");
     }
-  }
-
-  async function remove() {
-    if (!r || !confirm("この記録を削除しますか？")) return;
-    await deleteRecord(r.id);
-    router.replace("/");
   }
 
   async function share() {
@@ -135,15 +127,22 @@ function DetailBody() {
           ‹ 戻る
         </Link>
         <h1>記録</h1>
+        {r && (
+          <Link href={`/edit?id=${r.id}`} className="back" style={{ gridColumn: 3, justifySelf: "end" }}>
+            編集
+          </Link>
+        )}
       </header>
       {r === null && <p className="empty">記録が見つかりませんでした。</p>}
       {r && (
         <main className="content" style={{ paddingTop: 16 }}>
-          {/* 写真があるときは右下に小さく重ね、ないときも幅いっぱいにしない */}
-          <div className="photo-wrap">
-            <PhotoRow photos={photosOf(r)} />
-            <PhotoAddButton chip label={photosOf(r).length > 0 ? "＋ 写真" : "＋ 写真を追加"} onFiles={addPhotos} />
-          </div>
+          {/* 写真があるときは上に出して右下に小さく足すボタンを重ねる。ないときは下のボタンの列から足す */}
+          {photosOf(r).length > 0 && (
+            <div className="photo-wrap">
+              <PhotoRow photos={photosOf(r)} />
+              <PhotoAddButton chip label="＋ 写真" onFiles={addPhotos} />
+            </div>
+          )}
           {photoError && (
             <p className="error" role="alert">
               {photoError}
@@ -247,14 +246,11 @@ function DetailBody() {
           <Link href={`/compare?a=${r.id}`} className="btn-secondary">
             ほかの記録とくらべる
           </Link>
-          <div className="row">
-            <Link href={`/edit?id=${r.id}`} className="btn-secondary" style={{ flex: 1 }}>
-              編集する
-            </Link>
-            <button type="button" className="btn-secondary btn-danger" onClick={remove}>
-              削除
-            </button>
-          </div>
+          {photosOf(r).length === 0 && (
+            <div className="row">
+              <PhotoAddButton label="＋ 写真を追加" onFiles={addPhotos} />
+            </div>
+          )}
         </main>
       )}
     </>
