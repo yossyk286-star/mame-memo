@@ -130,7 +130,12 @@ export async function exportJSON(): Promise<string> {
 
 /** 同じ id の記録は上書きする。読み込んだ件数を返す */
 export async function importJSON(text: string): Promise<number> {
-  const data = JSON.parse(text);
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = null;
+  }
   if (data?.app !== "mame-memo" || !Array.isArray(data.records)) {
     throw new Error("まめメモの書き出しファイルではありません");
   }
