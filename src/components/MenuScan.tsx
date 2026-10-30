@@ -5,7 +5,7 @@ import {
   beanToDraft,
   farmOf,
   type MenuScanResult,
-  type PairingResult,
+  type DishIdeas, type PairingResult,
   type ScannedBean,
 } from "@/lib/menuScan";
 import { AREAS, ROAST_FILTERS, areaOf } from "@/lib/beanSort";
@@ -168,6 +168,8 @@ export default function MenuScan({
   const [dishRanks, setDishRanks] = useState<Record<string, MenuRank[]>>({});
   const [dishRanking, setDishRanking] = useState<string | null>(null);
   const [dishRankError, setDishRankError] = useState<{ name: string; text: string } | null>(null);
+  // 料理メニューをまだ読み取っていないときに「合う料理を探す」で挙げてもらった料理
+  const [dishIdeas, setDishIdeas] = useState<Record<string, MenuRank[]>>({});
   // 買った豆を、家で何回かに分けて淹れる豆として登録する
   const [bagged, setBagged] = useState<string[]>([]);
   // AI を使わずに出したとき、どこから出したか（調べ直すボタン用）
@@ -316,6 +318,11 @@ export default function MenuScan({
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) setSavedPasscode(false);
       if (!res.ok) throw new Error(data.error ?? "相性を調べられませんでした");
+      if ("ideas" in data) {
+        const ideas = (data as DishIdeas).ideas.map((r) => ({ name: r.dish, score: Math.min(5, Math.max(1, r.score)), reason: r.reason }));
+        setDishIdeas((prev) => ({ ...prev, [b.name]: ideas }));
+        return;
+      }
       const ranks = (data as PairingResult).ranks
         .filter((r) => foodMenu[r.index])
         .map((r) => ({ name: foodMenu[r.index].dish, score: Math.min(5, Math.max(1, r.score)), reason: r.reason }))
@@ -927,8 +934,8 @@ export default function MenuScan({
                     {b.sweets}
                   </p>
                 )}
-                {foodMenu.length > 0 && (
-                  <div style={{ "--kind": roastColor(b.roast) } as React.CSSProperties}>
+                <div style={{ "--kind": roastColor(b.roast) } as React.CSSProperties}>
+                  {foodMenu.length > 0 ? (
                     <MenuPicks
                       label="さっきの料理メニューなら"
                       button="さっきの料理メニューから選ぶ"
@@ -937,8 +944,17 @@ export default function MenuScan({
                       error={dishRankError?.name === b.name ? dishRankError.text : ""}
                       onAsk={() => rankDishes(b)}
                     />
-                  </div>
-                )}
+                  ) : (
+                    <MenuPicks
+                      label="このコーヒーに合う料理"
+                      button="合う料理を探す"
+                      ranks={dishIdeas[b.name]}
+                      busy={dishRanking === b.name}
+                      error={dishRankError?.name === b.name ? dishRankError.text : ""}
+                      onAsk={() => rankDishes(b)}
+                    />
+                  )}
+                </div>
                 {b.methodNotes && b.methodNotes.length > 0 && (
                   <details className={styles.methods}>
                     <summary>飲み方で比べる</summary>
