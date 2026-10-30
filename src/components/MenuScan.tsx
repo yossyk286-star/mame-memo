@@ -421,6 +421,7 @@ export default function MenuScan({
     setError("");
     setUndo(null);
     setLocalHit({ name: b.name, how, query: q });
+    setOpenCard(b.name);
   }
 
   /** 文字で調べる。アプリに入っている産地・銘柄と、前に調べた豆は AI を呼ばずに出す（無料・オフラインでも出る） */
@@ -569,6 +570,11 @@ export default function MenuScan({
           </button>
         )}
       </div>
+      {status === "done" && (
+        <p className={styles.howTo}>
+          「撮る」「写真から」はメニューを読み取り、「文字で」は豆の名前やメニューの文を打って調べます。
+        </p>
+      )}
 
       {status !== "reading" &&
         (textOpen ? (
@@ -635,17 +641,6 @@ export default function MenuScan({
           </button>
         </div>
       )}
-      {localHit && (
-        <p className={styles.lead} style={{ margin: 0 }}>
-          「{localHit.name}」は{localHit.how}から出しました（AI は使っていません）。{" "}
-          {passcode && (
-            <button type="button" className="btn-ghost" style={{ height: 28, padding: "0 8px", fontSize: 12 }} onClick={() => lookupText(true, localHit.query)}>
-              AI で調べ直す
-            </button>
-          )}
-        </p>
-      )}
-
       {status === "reading" && (
         <Skeleton
           // メニューの文を貼ったときは長いので名前は出さない
@@ -932,6 +927,19 @@ export default function MenuScan({
                   <p className={styles.text}>
                     <strong>合うスイーツ：</strong>
                     {b.sweets}
+                  </p>
+                )}
+                {localHit?.name === b.name && (
+                  <p className={styles.localNote}>
+                    {localHit.how}から出しました（AI は使っていません）
+                    {passcode && (
+                      <>
+                        {" "}
+                        <button type="button" className={styles.relook} onClick={() => lookupText(true, localHit.query)}>
+                          AI で調べ直す
+                        </button>
+                      </>
+                    )}
                   </p>
                 )}
                 <div style={{ "--kind": roastColor(b.roast) } as React.CSSProperties}>
