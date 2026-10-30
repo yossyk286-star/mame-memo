@@ -34,6 +34,7 @@ import { roastColor } from "./RecordCard";
 import Hint from "./Hint";
 import MoodPicker from "./MoodPicker";
 import TasteBars from "./TasteBars";
+import Skeleton from "./Skeleton";
 
 
 
@@ -589,11 +590,19 @@ export default function MenuScan({
         </p>
       )}
 
-      {status === "reading" && searching && (
-        <p className={styles.lead} role="status">
-          {/* メニューの文を貼ったときは長いので名前は出さない */}
-          {searching.length > 20 ? "入れた文から調べています…" : `「${searching}」を調べています…`}
-        </p>
+      {status === "reading" && (
+        <Skeleton
+          // メニューの文を貼ったときは長いので名前は出さない
+          label={
+            !searching
+              ? "メニューを読み取っています…"
+              : searching.length > 20
+                ? "入れた文から調べています…"
+                : `「${searching}」を調べています…`
+          }
+          cards={searching && searching.length <= 20 ? 1 : 3}
+          lines={searching && searching.length <= 20 ? 3 : 2}
+        />
       )}
 
       {savedPhoto && status !== "reading" && (
@@ -746,6 +755,7 @@ export default function MenuScan({
       )}
         </div>
       )}
+      {pairingBusy && <Skeleton label="合う順を考えています…" cards={2} lines={1} />}
       {mood && !MOODS.some((m) => m.label === mood.label) && (
         <p className={styles.lead}>「{mood.label}」に合いそうな順に並べました（AI は使っていません）。</p>
       )}

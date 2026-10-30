@@ -10,6 +10,7 @@ import { PROCESSES, ROASTS } from "@/lib/glossary";
 import { today } from "@/lib/lastScan";
 import { bestRecipe, recipeText } from "@/lib/recipe";
 import type { Bag, TastingRecord } from "@/lib/types";
+import EmptyState from "@/components/EmptyState";
 
 function emptyBag(): Omit<Bag, "id" | "createdAt"> {
   return { origin: "", farm: "", roast: null, process: null, shop: "", note: "", price: null, boughtAt: today(), finished: false };
@@ -242,7 +243,11 @@ export default function BagsPage() {
       <p className="lead">買った豆を登録しておくと、淹れるたびにすぐ記録できて、淹れ方や日にちでの味の変化も追えます。</p>
       <main className="content">
         <AddBag onAdded={(b) => setBags((bs) => [b, ...(bs ?? [])])} />
-        {bags?.length === 0 && <p className="empty">まだ登録していません。</p>}
+        {bags?.length === 0 && (
+          <EmptyState title="家の豆、まだないよ">
+            買った豆を上の「＋ 買った豆を登録」から入れておくと、淹れるたびにすぐ記録できるよ。
+          </EmptyState>
+        )}
         {open.map((b) => (
           <BagCard key={b.id} bag={b} records={records} onChange={change} onDelete={remove} />
         ))}
