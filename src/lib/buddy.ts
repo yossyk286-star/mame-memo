@@ -1,5 +1,6 @@
 import { countryOf } from "./countries";
 import type { TastingRecord } from "./types";
+import { tr } from "./i18n";
 
 /**
  * 相棒（ちっちゃいコーヒー豆）が言うひとこと。記録を保存したとき・アプリを開いたときなど。
@@ -102,16 +103,16 @@ export function buddyLine(
     return {
       mood: "worried",
       text: pick([
-        `今日はもう${sameDay}杯目だよ…！カフェインとりすぎかも。お水にしよう？`,
-        `${sameDay}杯目…ぼく心配だよ。胃がびっくりしないように、何か食べてね`,
+        tr("今日はもう{0}杯目だよ…！カフェインとりすぎかも。お水にしよう？", sameDay),
+        tr("{0}杯目…ぼく心配だよ。胃がびっくりしないように、何か食べてね", sameDay),
       ]),
     };
   if (isToday && sameDay >= 4)
     return {
       mood: "worried",
       text: pick([
-        `${sameDay}杯目だね。ちょっと多めかも。お水もはさもう`,
-        `おいしいね。でも${sameDay}杯目だから、次はデカフェもいいかも`,
+        tr("{0}杯目だね。ちょっと多めかも。お水もはさもう", sameDay),
+        tr("おいしいね。でも{0}杯目だから、次はデカフェもいいかも", sameDay),
       ]),
     };
 
@@ -119,7 +120,7 @@ export function buddyLine(
     return { mood: "wow", text: "はじめての記録だね！これからいっしょに飲んだコーヒーを覚えていくよ" };
 
   if (MILESTONES.includes(all.length))
-    return { mood: "wow", text: `${all.length}杯目の記録、おめでとう！ここまで続けてえらいなあ` };
+    return { mood: "wow", text: tr("{0}杯目の記録、おめでとう！ここまで続けてえらいなあ", all.length) };
 
   const country = countryOf(r);
   const newCountry = !!country && !others.some((x) => countryOf(x) === country);
@@ -127,14 +128,14 @@ export function buddyLine(
     return {
       mood: "wow",
       text: newCountry
-        ? `ついに飲めたね！${country}のスタンプも押しといたよ`
+        ? tr("ついに飲めたね！{0}のスタンプも押しといたよ", country)
         : "ついに飲めたね！気になるリストから外しておいたよ",
     };
 
-  if (newCountry) return { mood: "wow", text: `${country}、はじめまして！スタンプ押しといたよ` };
+  if (newCountry) return { mood: "wow", text: tr("{0}、はじめまして！スタンプ押しといたよ", country) };
 
   if (r.method && r.method !== "その他" && !others.some((x) => x.method === r.method))
-    return { mood: "wow", text: `はじめての${r.method}！新しい扉だね` };
+    return { mood: "wow", text: tr("はじめての{0}！新しい扉だね", r.method) };
 
   const name = beanName(r);
   const before = name ? others.filter((x) => beanName(x) === name) : [];
@@ -142,10 +143,10 @@ export function buddyLine(
     const prev = before.reduce((a, b) => (a.date >= b.date ? a : b));
     const n = before.length + 1;
     if (r.overall > prev.overall)
-      return { mood: "happy", text: `${name}は${n}回目。前より好きになったみたいだね` };
+      return { mood: "happy", text: tr("{0}は{1}回目。前より好きになったみたいだね", name, n) };
     if (r.overall < prev.overall)
-      return { mood: "normal", text: `${name}は${n}回目。前のほうが好みだったかな？淹れ方のちがいかも` };
-    return { mood: "happy", text: `${name}は${n}回目だね。すっかりお気に入り？` };
+      return { mood: "normal", text: tr("{0}は{1}回目。前のほうが好みだったかな？淹れ方のちがいかも", name, n) };
+    return { mood: "happy", text: tr("{0}は{1}回目だね。すっかりお気に入り？", name, n) };
   }
 
   if (r.overall === 5)
@@ -174,7 +175,7 @@ export function buddyLine(
 
   const streak = streakDays(new Set(all.map((x) => x.date)), r.date);
   if (isToday && streak >= 3)
-    return { mood: "happy", text: `${streak}日続けて記録してるね！毎日の1杯、いいね` };
+    return { mood: "happy", text: tr("{0}日続けて記録してるね！毎日の1杯、いいね", streak) };
 
   const lines = kindLines(r);
   return { mood: "happy", text: pick(lines.length > 0 && Math.random() < 0.7 ? lines : PLAIN) };
@@ -216,12 +217,12 @@ export function openLine(records: TastingRecord[], now = new Date()): BuddyLine 
     const best = yearAgo.reduce((a, b) => (b.overall > a.overall ? b : a));
     line = {
       mood: "wow",
-      text: `1年前の今日は「${beanName(best) || "コーヒー"}」を飲んでたよ${yearAgo.length > 1 ? `（ほか${yearAgo.length - 1}杯）` : ""}`,
+      text: tr("1年前の今日は「{0}」を飲んでたよ{1}", beanName(best) || "コーヒー", yearAgo.length > 1 ? tr("（ほか{0}杯）", yearAgo.length - 1) : ""),
       action: { label: "見る", href: `/record?id=${best.id}` },
     };
     next.yearAgo = today;
   } else if (gap >= 14) {
-    line = { mood: "happy", text: `おかえり！${gap}日ぶりだね。また一緒に記録しよう` };
+    line = { mood: "happy", text: tr("おかえり！{0}日ぶりだね。また一緒に記録しよう", gap) };
   } else if (
     (now.getDay() === 0 || now.getDay() === 6) &&
     now.getHours() >= 7 &&

@@ -11,6 +11,7 @@ import { loadLastScan, markRecorded } from "@/lib/lastScan";
 import { beanToDraft, type ScannedBean } from "@/lib/menuScan";
 import { bestRecipe, recipeText } from "@/lib/recipe";
 import type { Bag, RecordDraft, TastingRecord } from "@/lib/types";
+import { tr } from "@/lib/i18n";
 
 /** 家の豆から記録する画面。豆の情報は登録したものを入れて、淹れ方と感想だけ書けばよいようにする */
 function BagRecord({ bag, count, best }: { bag: Bag; count: number; best?: TastingRecord }) {
@@ -18,14 +19,13 @@ function BagRecord({ bag, count, best }: { bag: Bag; count: number; best?: Tasti
   return (
     <>
       <section className="tips" style={{ margin: "16px 16px 0" }}>
-        <h2>家の豆：{beanTitle(bag)}</h2>
+        <h2>{tr("家の豆：{0}", beanTitle(bag))}</h2>
         <p className="term-desc" style={{ margin: 0 }}>
-          {count + 1}回目の記録です。淹れ方や豆の量を変えたら、レシピに残しておくと比べやすくなります。
+          {tr("{0}回目の記録です。淹れ方や豆の量を変えたら、レシピに残しておくと比べやすくなります。", count + 1)}
         </p>
         {best?.recipe && (
           <p className="term-desc" style={{ margin: 0 }}>
-            {best.bagId === bag.id ? "この豆で" : "これまでで"}いちばん良かった回（{stars(best.overall)}）のレシピを入れています：
-            {recipeText(best.recipe)}
+            {best.bagId === bag.id ? tr("この豆で") : tr("これまでで")}{tr("いちばん良かった回（{0}）のレシピを入れています：{1}", stars(best.overall), recipeText(best.recipe))}
           </p>
         )}
       </section>
@@ -113,9 +113,9 @@ function NewRecord() {
       <>
         <header className="sub-header">
           <Link href="/bags" className="back">
-            ‹ 戻る
+            {tr("‹ 戻る")}
           </Link>
-          <h1>家の豆を記録</h1>
+          <h1>{tr("家の豆を記録")}</h1>
         </header>
         {bag && <BagRecord bag={bag.bag} count={bag.count} best={bag.best} />}
       </>
@@ -126,9 +126,9 @@ function NewRecord() {
     <>
       <header className="sub-header">
         <Link href="/" className="back">
-          ‹ 戻る
+          {tr("‹ 戻る")}
         </Link>
-        <h1>新しい記録</h1>
+        <h1>{tr("新しい記録")}</h1>
       </header>
 
       {saveCount > 0 && !picked && (
@@ -137,25 +137,25 @@ function NewRecord() {
           style={{ margin: "16px 16px 0" }}
           role="status"
         >
-          <h2>保存しました</h2>
+          <h2>{tr("保存しました")}</h2>
           <p className="term-desc">
             {remaining.length > 0
-              ? "ほかにも飲んだ豆があれば、下から選んで続けて記録できます。"
-              : "続けて別の記録も作れます。"}
+              ? tr("ほかにも飲んだ豆があれば、下から選んで続けて記録できます。")
+              : tr("続けて別の記録も作れます。")}
           </p>
           <Link
             href="/"
             className="btn-secondary"
             style={{ display: "block", textAlign: "center" }}
           >
-            記録の一覧へ
+            {tr("記録の一覧へ")}
           </Link>
         </section>
       )}
 
       {!picked && saveCount === 0 && openBags > 0 && (
         <Link href="/bags" className="btn-secondary" style={{ margin: "16px 16px 0" }}>
-          家の豆から記録する（{openBags}袋）
+          {tr("家の豆から記録する（{0}袋）", openBags)}
         </Link>
       )}
 
@@ -184,7 +184,7 @@ function NewRecord() {
             style={{ width: "100%" }}
             onClick={() => setManual(true)}
           >
-            メニューにない豆を記録する
+            {tr("メニューにない豆を記録する")}
           </button>
         </div>
       ) : (

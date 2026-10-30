@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { photosOf, usePhotoURLs } from "@/lib/photo";
 import type { Roast, TastingRecord } from "@/lib/types";
+import { getLang, tr } from "@/lib/i18n";
 
 export function stars(n: number) {
   return "★".repeat(n) + "☆".repeat(5 - n);
@@ -10,19 +11,20 @@ export function stars(n: number) {
 
 /** 一覧や詳細の見出し。「エチオピア イルガチェフェ グティティ」のように産地と農園・品種をつなげる */
 export function beanTitle(r: Pick<TastingRecord, "origin" | "farm">) {
-  return [r.origin, r.farm].filter(Boolean).join(" ") || "（豆の名前なし）";
+  return [r.origin && tr(r.origin), r.farm].filter(Boolean).join(" ") || tr("（豆の名前なし）");
 }
 
 export function yen(n: number) {
+  if (getLang() === "en") return `¥${Math.round(n).toLocaleString("en-US")}`;
   return `${Math.round(n).toLocaleString("ja-JP")}円`;
 }
 
 /** 焙煎度ごとの色（globals.css の --k-… ）と、写真がないときに出す1文字 */
-const ROAST_LOOK: Record<Roast, { color: string; mark: string }> = {
-  浅煎り: { color: "var(--k-light)", mark: "浅" },
-  中煎り: { color: "var(--k-medium)", mark: "中" },
-  深煎り: { color: "var(--k-dark)", mark: "深" },
-  不明: { color: "var(--k-unknown)", mark: "豆" },
+const ROAST_LOOK: Record<Roast, { color: string; mark: string; en: string }> = {
+  浅煎り: { color: "var(--k-light)", mark: "浅", en: "L" },
+  中煎り: { color: "var(--k-medium)", mark: "中", en: "M" },
+  深煎り: { color: "var(--k-dark)", mark: "深", en: "D" },
+  不明: { color: "var(--k-unknown)", mark: "豆", en: "?" },
 };
 
 export function roastColor(roast: Roast | null) {
@@ -45,7 +47,7 @@ function Thumb({ record: r }: { record: TastingRecord }) {
   }
   return (
     <span className="thumb thumb-mark" style={{ background: roastColor(r.roast) }} aria-hidden="true">
-      {ROAST_LOOK[r.roast ?? "不明"].mark}
+      {ROAST_LOOK[r.roast ?? "不明"][getLang() === "en" ? "en" : "mark"]}
     </span>
   );
 }
@@ -53,8 +55,8 @@ function Thumb({ record: r }: { record: TastingRecord }) {
 /** 記録の一覧の1行。2行に詰めて、画面にたくさん並ぶようにする。showDate=false は日付で区切った一覧用 */
 export default function RecordCard({ record: r, showDate = true }: { record: TastingRecord; showDate?: boolean }) {
   const sub = [
-    ...[r.roast, r.process, r.method].filter((t) => t && t !== "不明"),
-    r.shop,
+    ...[r.roast, r.process, r.method].filter((t) => t && t !== "不明").map((t) => tr(t!)),
+    r.shop && tr(r.shop),
     r.price && yen(r.price),
     showDate && shortDate(r.date),
   ].filter(Boolean);
@@ -64,11 +66,11 @@ export default function RecordCard({ record: r, showDate = true }: { record: Tas
       <div className="record-row-body">
         <div className="record-row-top">
           <h2>{beanTitle(r)}</h2>
-          <span className="stars" aria-label={`5段階中${r.overall}`}>
+          <span className="stars" aria-label={tr("5段階中{0}", r.overall)}>
             {stars(r.overall)}
           </span>
         </div>
-        <p className="muted">{sub.join("・")}</p>
+        <p className="muted">{sub.join(tr("・"))}</p>
       </div>
     </Link>
   );

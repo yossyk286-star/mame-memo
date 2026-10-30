@@ -3,6 +3,7 @@
 import { roastColor } from "@/components/RecordCard";
 import { AREAS, ROAST_FILTERS, SORT_LABELS, type SortKey } from "@/lib/beanSort";
 import type { Roast } from "@/lib/types";
+import { tr, trv } from "@/lib/i18n";
 
 /** 焙煎度・産地の地域の絞り込みと、酸味・苦味などの並び替え。焙煎度と地域は出てくるものだけ並べる */
 export default function BeanSortBar({
@@ -36,8 +37,8 @@ export default function BeanSortBar({
   return (
     <>
       {(roastsUsed.length > 1 || areasUsed.length > 1 || extra) && (
-        <div className="scroll-row" role="group" aria-label="焙煎度と産地で絞り込み">
-          {extra}
+        <div className="scroll-row" role="group" aria-label={tr("焙煎度と産地で絞り込み")}>
+          {trv(extra)}
           {(roastsUsed.length > 1 ? roastsUsed : []).map((r) => (
             <button
               key={r}
@@ -47,7 +48,7 @@ export default function BeanSortBar({
               aria-pressed={roast === r}
               onClick={() => onRoast(roast === r ? null : r)}
             >
-              {r}
+              {trv(r)}
             </button>
           ))}
           {(areasUsed.length > 1 ? areasUsed : []).map((a) => (
@@ -58,15 +59,15 @@ export default function BeanSortBar({
               aria-pressed={area === a}
               onClick={() => onArea(area === a ? null : a)}
             >
-              {a}
+              {trv(a)}
             </button>
           ))}
         </div>
       )}
-      <div className="scroll-row" role="group" aria-label="並び替え">
+      <div className="scroll-row" role="group" aria-label={tr("並び替え")}>
         {(["default", ...sorts] as SortKey[]).map((s) => (
           <button key={s} type="button" className="chip" aria-pressed={sort === s} onClick={() => onSort(s)}>
-            {s === "default" ? defaultLabel : SORT_LABELS[s]}
+            {s === "default" ? tr(defaultLabel) : tr(SORT_LABELS[s])}
           </button>
         ))}
       </div>

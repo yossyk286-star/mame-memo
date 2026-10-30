@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { MultiChips } from "@/components/ChipGroup";
 import { FLAVORS, METHODS, PROCESSES, ROASTS } from "@/lib/glossary";
 import { EMPTY_PREFS, loadPrefs, savePrefs, type MyPrefs } from "@/lib/prefs";
+import { tr, trv } from "@/lib/i18n";
 
 const ROAST_OPTIONS = ROASTS.filter((r) => r !== "不明");
 const PROCESS_OPTIONS = PROCESSES.filter((p) => p !== "不明" && p !== "その他");
@@ -26,8 +27,8 @@ function LeanRow({
   onChange: (v: number | null) => void;
 }) {
   return (
-    <div className="rating-row" role="group" aria-label={`${label}（1=${low}、5=${high}）`}>
-      <span className="label">{label}</span>
+    <div className="rating-row" role="group" aria-label={tr("{0}（1={1}、5={2}）", label, low, high)}>
+      <span className="label">{trv(label)}</span>
       <div className="rating-scale">
         <div className="rating-btns">
           {[1, 2, 3, 4, 5].map((n) => (
@@ -38,13 +39,13 @@ function LeanRow({
               aria-pressed={value === n}
               onClick={() => onChange(value === n ? null : n)}
             >
-              {n}
+              {trv(n)}
             </button>
           ))}
         </div>
         <div className="rating-ends" aria-hidden="true">
-          <span>{low}</span>
-          <span>{high}</span>
+          <span>{trv(low)}</span>
+          <span>{trv(high)}</span>
         </div>
       </div>
     </div>
@@ -79,12 +80,12 @@ function FlavorPicker({
       <MultiChips options={options} value={value} onChange={onChange} />
       <div className="row" style={{ flexWrap: "nowrap" }}>
         <label htmlFor={id} className="visually-hidden">
-          ほかを追加
+          {tr("ほかを追加")}
         </label>
         <input
           id={id}
           className="input"
-          placeholder={placeholder}
+          placeholder={trv(placeholder)}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -95,7 +96,7 @@ function FlavorPicker({
           }}
         />
         <button type="button" className="btn-secondary" onClick={add}>
-          追加
+          {tr("追加")}
         </button>
       </div>
     </>
@@ -122,23 +123,23 @@ export default function PrefsPage() {
     <>
       <header className="sub-header">
         <Link href="/taste" className="back">
-          ‹ 戻る
+          {tr("‹ 戻る")}
         </Link>
-        <h1>わたしの好み</h1>
+        <h1>{tr("わたしの好み")}</h1>
       </header>
 
       <p className="lead">
-        当てはまるものを押してください。メニューを撮ったときの「あなたへのおすすめ」や「次の一杯」に使います。押すとすぐ保存されます。
+        {tr("当てはまるものを押してください。メニューを撮ったときの「あなたへのおすすめ」や「次の一杯」に使います。押すとすぐ保存されます。")}
       </p>
 
       {loaded && (
         <main className="form">
           <fieldset className="field">
-            <legend className="label">好きな焙煎度</legend>
+            <legend className="label">{tr("好きな焙煎度")}</legend>
             <MultiChips options={ROAST_OPTIONS} value={prefs.roasts} onChange={(v) => update("roasts", v)} />
           </fieldset>
           <fieldset className="field">
-            <legend className="label">苦手な焙煎度</legend>
+            <legend className="label">{tr("苦手な焙煎度")}</legend>
             <MultiChips
               options={ROAST_OPTIONS.filter((r) => !prefs.roasts.includes(r))}
               value={prefs.avoidRoasts}
@@ -146,52 +147,52 @@ export default function PrefsPage() {
             />
           </fieldset>
           <fieldset className="field">
-            <legend className="label">好きな精製方法</legend>
+            <legend className="label">{tr("好きな精製方法")}</legend>
             <MultiChips options={PROCESS_OPTIONS} value={prefs.processes} onChange={(v) => update("processes", v)} />
           </fieldset>
           <fieldset className="field">
-            <legend className="label">好きな淹れ方</legend>
+            <legend className="label">{tr("好きな淹れ方")}</legend>
             <MultiChips options={METHOD_OPTIONS} value={prefs.methods} onChange={(v) => update("methods", v)} />
           </fieldset>
           <fieldset className="field">
-            <legend className="label">好きな飲み方</legend>
+            <legend className="label">{tr("好きな飲み方")}</legend>
             <MultiChips options={WAY_OPTIONS} value={prefs.ways} onChange={(v) => update("ways", v)} />
           </fieldset>
           <fieldset className="field">
-            <legend className="label">好きな産地（国）</legend>
+            <legend className="label">{tr("好きな産地（国）")}</legend>
             <FlavorPicker
               id="p-origin"
               base={[]}
-              placeholder="例：エチオピア、ケニア"
+              placeholder={tr("例：エチオピア、ケニア")}
               value={prefs.origins}
               onChange={(v) => update("origins", v)}
             />
           </fieldset>
           <fieldset className="field">
-            <legend className="label">好きな味の寄り方（こだわらなければ選ばない）</legend>
+            <legend className="label">{tr("好きな味の寄り方（こだわらなければ選ばない）")}</legend>
             <div className="ratings">
-              <LeanRow label="酸味" low="穏やか" high="強い" value={prefs.acidity} onChange={(v) => update("acidity", v)} />
-              <LeanRow label="苦味" low="弱い" high="強い" value={prefs.bitterness} onChange={(v) => update("bitterness", v)} />
-              <LeanRow label="コク" low="軽い" high="重い" value={prefs.body} onChange={(v) => update("body", v)} />
+              <LeanRow label={tr("酸味")} low={tr("穏やか")} high={tr("強い")} value={prefs.acidity} onChange={(v) => update("acidity", v)} />
+              <LeanRow label={tr("苦味")} low={tr("弱い")} high={tr("強い")} value={prefs.bitterness} onChange={(v) => update("bitterness", v)} />
+              <LeanRow label={tr("コク")} low={tr("軽い")} high={tr("重い")} value={prefs.body} onChange={(v) => update("body", v)} />
             </div>
           </fieldset>
           <fieldset className="field">
-            <legend className="label">好きな味</legend>
+            <legend className="label">{tr("好きな味")}</legend>
             <FlavorPicker id="p-like" value={prefs.likes} onChange={(v) => update("likes", v)} />
           </fieldset>
           <fieldset className="field">
-            <legend className="label">苦手な味</legend>
+            <legend className="label">{tr("苦手な味")}</legend>
             <FlavorPicker id="p-dislike" value={prefs.dislikes} onChange={(v) => update("dislikes", v)} />
           </fieldset>
           <div className="field">
             <label className="label" htmlFor="p-budget">
-              1杯の予算（円）
+              {tr("1杯の予算（円）")}
             </label>
             <input
               id="p-budget"
               className="input"
               inputMode="numeric"
-              placeholder="例：700"
+              placeholder={tr("例：700")}
               value={prefs.budget ?? ""}
               onChange={(e) => {
                 const digits = e.target.value.normalize("NFKC").replace(/\D/g, "");

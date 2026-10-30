@@ -1,6 +1,7 @@
 import type { ScannedBean } from "./menuScan";
 import { nameKey } from "./savedLookups";
 import type { Method, Process, Roast } from "./types";
+import { tr } from "./i18n";
 
 /**
  * よく見かける産地・銘柄と、カフェのよくあるドリンク。
@@ -68,7 +69,7 @@ function toBean(b: KnownBean): ScannedBean {
     roast: b.roast ?? null,
     process: b.process ?? null,
     menuNote: "",
-    explanation: `${b.explanation}（一般的な傾向です。お店の説明があればそちらを優先してください）`,
+    explanation: tr("{0}（一般的な傾向です。お店の説明があればそちらを優先してください）", b.explanation),
     recommendedMethod: b.method,
     recommendation: b.recommendation,
     sweets: b.sweets,

@@ -4,6 +4,7 @@ import { useState } from "react";
 import RecordCard, { roastColor } from "./RecordCard";
 import { ROAST_FILTERS } from "@/lib/beanSort";
 import type { Roast, TastingRecord } from "@/lib/types";
+import { tr, trv } from "@/lib/i18n";
 
 const LEVELS = [1, 2, 3, 4, 5] as const;
 
@@ -34,9 +35,9 @@ export default function TasteMap({ records }: { records: TastingRecord[] }) {
   if (all.length === 0) {
     return (
       <section className="card">
-        <h2 style={{ fontSize: 14 }}>味マップ</h2>
+        <h2 style={{ fontSize: 14 }}>{tr("味マップ")}</h2>
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-          記録で「酸味」と「苦味」を付けると、どんな味の豆が好きかを地図で見られます。
+          {tr("記録で「酸味」と「苦味」を付けると、どんな味の豆が好きかを地図で見られます。")}
         </p>
       </section>
     );
@@ -58,9 +59,9 @@ export default function TasteMap({ records }: { records: TastingRecord[] }) {
 
   return (
     <section className="card" style={{ gap: 10 }}>
-      <h2 style={{ fontSize: 14 }}>味マップ</h2>
+      <h2 style={{ fontSize: 14 }}>{tr("味マップ")}</h2>
       {roasts.length > 1 && (
-        <div className="scroll-row" role="group" aria-label="味マップを焙煎度で絞り込み">
+        <div className="scroll-row" role="group" aria-label={tr("味マップを焙煎度で絞り込み")}>
           <button
             type="button"
             className="chip"
@@ -70,7 +71,7 @@ export default function TasteMap({ records }: { records: TastingRecord[] }) {
               setSelected(null);
             }}
           >
-            すべて
+            {tr("すべて")}
           </button>
           {roasts.map((x) => (
             <button
@@ -84,23 +85,23 @@ export default function TasteMap({ records }: { records: TastingRecord[] }) {
                 setSelected(null);
               }}
             >
-              {x}
+              {trv(x)}
             </button>
           ))}
         </div>
       )}
       {center && (
         <p style={{ margin: 0, fontSize: 14 }}>
-          {roast ? `${roast}で` : ""}高く評価した豆は<strong>{ACID_WORDS[center.acid]}・{BITTER_WORDS[center.bitter]}</strong>のあたりに集まっています。
+          {roast ? tr("{0}で", roast) : ""}{tr("高く評価した豆は")}<strong>{tr("{0}・{1}", ACID_WORDS[center.acid], BITTER_WORDS[center.bitter])}</strong>{tr("のあたりに集まっています。")}
         </p>
       )}
       <div className="taste-map">
         <div className="taste-map-y" aria-hidden="true">
-          <span>苦い</span>
-          <span>苦味</span>
-          <span>弱い</span>
+          <span>{tr("苦い")}</span>
+          <span>{tr("苦味")}</span>
+          <span>{tr("弱い")}</span>
         </div>
-        <div className="taste-map-grid" role="group" aria-label="酸味と苦味の地図">
+        <div className="taste-map-grid" role="group" aria-label={tr("酸味と苦味の地図")}>
           {[...LEVELS].reverse().flatMap((bitter) =>
             LEVELS.map((acid) => {
               const key = `${acid}-${bitter}`;
@@ -113,7 +114,7 @@ export default function TasteMap({ records }: { records: TastingRecord[] }) {
                   className="taste-map-cell"
                   disabled={rs.length === 0}
                   aria-pressed={selected === key}
-                  aria-label={`酸味${acid}・苦味${bitter}：${rs.length}杯${rs.length ? `、平均★${avg.toFixed(1)}` : ""}`}
+                  aria-label={tr("酸味{0}・苦味{1}：{2}杯{3}", acid, bitter, rs.length, rs.length ? tr("、平均★{0}", avg.toFixed(1)) : "")}
                   style={rs.length ? { background: cellColor(avg), color: avg >= 3 ? "var(--on-accent)" : undefined } : undefined}
                   onClick={() => setSelected(selected === key ? null : key)}
                 >
@@ -124,13 +125,13 @@ export default function TasteMap({ records }: { records: TastingRecord[] }) {
           )}
         </div>
         <div className="taste-map-x" aria-hidden="true">
-          <span>穏やか</span>
-          <span>酸味</span>
-          <span>強い</span>
+          <span>{tr("穏やか")}</span>
+          <span>{tr("酸味")}</span>
+          <span>{tr("強い")}</span>
         </div>
       </div>
       <p className="muted" style={{ margin: 0, fontSize: 12 }}>
-        数字は杯数、色が濃いほど総合の評価が高めです。マスを押すとその豆が出ます。
+        {tr("数字は杯数、色が濃いほど総合の評価が高めです。マスを押すとその豆が出ます。")}
       </p>
       {picked.map((r) => (
         <RecordCard key={r.id} record={r} />

@@ -1,6 +1,7 @@
 import { METHODS, PROCESSES, ROASTS, TERMS } from "./glossary";
 import type { MyPrefs } from "./prefs";
 import type { TastingRecord } from "./types";
+import { tr } from "./i18n";
 
 export type NextIdea = { title: string; reason: string; description?: string };
 
@@ -32,8 +33,8 @@ export function nextIdeas(records: TastingRecord[], prefs: MyPrefs, limit = 4): 
     const tried = new Set(records.filter((r) => r.roast === roast).map((r) => r.process));
     for (const process of PROCESSES.filter((p) => known(p) && !tried.has(p)).slice(0, 2)) {
       ideas.push({
-        title: `${roast}の${process}`,
-        reason: roasts.has(roast) ? `${roast}の評価が高めで、${process}はまだ記録がありません` : `好きな${roast}で、まだ記録がありません`,
+        title: tr("{0}の{1}", roast, process),
+        reason: roasts.has(roast) ? tr("{0}の評価が高めで、{1}はまだ記録がありません", roast, process) : tr("好きな{0}で、まだ記録がありません", roast),
         description: describe(process),
       });
     }
@@ -54,8 +55,8 @@ export function nextIdeas(records: TastingRecord[], prefs: MyPrefs, limit = 4): 
     const method = METHODS.find((m) => m !== "その他" && !top.methods.has(m));
     if (method) {
       ideas.unshift({
-        title: `${top.label}を${method}で`,
-        reason: `${top.label}が★${average(top.scores).toFixed(1)}と好評。淹れ方を変えると味の違いがわかります`,
+        title: tr("{0}を{1}で", top.label, method),
+        reason: tr("{0}が★{1}と好評。淹れ方を変えると味の違いがわかります", top.label, average(top.scores).toFixed(1)),
         description: describe(method),
       });
     }
@@ -64,7 +65,7 @@ export function nextIdeas(records: TastingRecord[], prefs: MyPrefs, limit = 4): 
   // 3. まだ飲んでいない焙煎度（苦手と登録したものは出さない）
   const untried = ROASTS.filter((r) => known(r) && !roasts.has(r) && !prefs.avoidRoasts.includes(r));
   if (untried.length > 0 && records.length > 0) {
-    ideas.push({ title: untried[0], reason: `${untried[0]}はまだ記録がありません`, description: describe(untried[0]) });
+    ideas.push({ title: untried[0], reason: tr("{0}はまだ記録がありません", untried[0]), description: describe(untried[0]) });
   }
 
   return ideas.slice(0, limit);

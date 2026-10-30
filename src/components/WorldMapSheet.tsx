@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { beanTitle, stars } from "@/components/RecordCard";
 import WorldMap from "@/components/WorldMap";
 import { REGIONS, type Stamp } from "@/lib/countries";
+import { tr, trv } from "@/lib/i18n";
 
 const COUNTRIES = REGIONS.flatMap((r) => r.countries.map((c) => c.name));
 
@@ -32,12 +33,12 @@ export default function WorldMapSheet({ stamps, onClose }: { stamps: Map<string,
       >
         <div className="sheet-head">
           <h2 id="jmap-title">
-            世界地図{" "}
+            {tr("世界地図")}{" "}
             <span className="jmap-count">
-              {done} / {COUNTRIES.length}
+              {trv(done)} / {trv(COUNTRIES.length)}
             </span>
           </h2>
-          <button className="icon-btn" aria-label="閉じる" onClick={onClose} autoFocus>
+          <button className="icon-btn" aria-label={tr("閉じる")} onClick={onClose} autoFocus>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
@@ -54,26 +55,26 @@ export default function WorldMapSheet({ stamps, onClose }: { stamps: Map<string,
 
         <div className="jmap-info" aria-live="polite">
           {!picked ? (
-            <span className="muted">国や点を押すと、そこの豆が見られます</span>
+            <span className="muted">{tr("国や点を押すと、そこの豆が見られます")}</span>
           ) : !stamp || !best ? (
             <span>
-              <strong>{picked}</strong>
-              <span className="muted">　まだ。次に試してみる？</span>
+              <strong>{trv(picked)}</strong>
+              <span className="muted">{"　"}{tr("まだ。次に試してみる？")}</span>
             </span>
           ) : (
             <Link href={`/record?id=${best.id}`} className="jmap-best">
               <span>
-                <strong>{picked}</strong>
+                <strong>{trv(picked)}</strong>
                 <span className="muted">
-                  　{stamp.count}杯・最高{stars(stamp.best)}
+                  　{"　"}{tr("{0}杯・最高{1}", stamp.count, stars(stamp.best))}
                 </span>
               </span>
-              <span className="jmap-best-name">いちばん：{beanTitle(best)} ›</span>
+              <span className="jmap-best-name">{tr("いちばん：{0} ›", beanTitle(best))}</span>
             </Link>
           )}
         </div>
 
-        <p className="jmap-credit">地図：Natural Earth</p>
+        <p className="jmap-credit">{tr("地図：Natural Earth")}</p>
       </section>
     </div>
   );
