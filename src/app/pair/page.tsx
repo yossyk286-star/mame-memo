@@ -7,10 +7,11 @@ import { announceBuddy } from "@/lib/buddy";
 import { beanTitle, roastColor } from "@/components/RecordCard";
 import { listBags, listRecords } from "@/lib/db";
 import { loadLastScan, today } from "@/lib/lastScan";
-import type { ScannedBean } from "@/lib/menuScan";
+import type { PairingResult, ScannedBean } from "@/lib/menuScan";
 import {
   BUILT_IN_DISHES,
-  beansForPicks,
+  loadMenuRanks,
+  saveMenuRanks,
   builtInPairing,
   findSavedPairing,
   groupMenu,
@@ -20,8 +21,8 @@ import {
   recentPairings,
   saveLastPair,
   savePairing,
-  type BeanMatch,
   type FoodMenu,
+  type MenuRank,
   type FoodPairing,
   type MineMatch,
 } from "@/lib/foodPairing";
@@ -62,32 +63,49 @@ type Result = {
   bags: MineMatch<Bag>[];
 };
 
-/** 同じお店で今日読み取ったコーヒーのメニューのうち、合うもの。rows なら見出しの下の一覧として出す */
-function OnBeanMenu({ matches, rows }: { matches: BeanMatch[]; rows?: boolean }) {
-  if (matches.length === 0) {
-    return <p className="muted pair-none">さっき読み取ったメニューには、合う焙煎度の豆が見つかりませんでした。</p>;
+/** 料理の中に出す、今日読み取ったコーヒーのメニューから選ぶボタンと、押したあとの合う順（上位3杯） */
+function BeanMenuPicks({
+  ranks,
+  busy,
+  error,
+  onAsk,
+}: {
+  ranks?: MenuRank[];
+  busy: boolean;
+  error: string;
+  onAsk: () => void;
+}) {
+  if (!ranks) {
+    return (
+      <div className="pair-on-menu">
+        <button type="button" className="btn-secondary pair-on-menu-btn" onClick={onAsk} disabled={busy}>
+          {busy ? "選んでいます…" : "さっきのメニューから選ぶ"}
+        </button>
+        {error && <p className="error">{error}</p>}
+      </div>
+    );
   }
-  const list = (
-    <div className={rows ? "list-group" : "pair-on-menu-list"}>
-      {matches.map(({ bean: b, why }) => (
-        <Link key={b.name} href="/scan" className="pair-row">
-          <span className="kind-dot" style={{ background: roastColor(b.roast) }} aria-hidden="true" />
-          <span className="pair-row-body">
-            <strong>{b.name}</strong>
-            <span className="muted">{why}</span>
-          </span>
-          <span className="pair-chevron" aria-hidden="true">
-            ›
-          </span>
-        </Link>
-      ))}
-    </div>
-  );
-  if (rows) return list;
+  const top = ranks.filter((r) => r.score >= 3).slice(0, 3);
   return (
     <div className="pair-on-menu">
       <p className="pair-dish-for">さっきのコーヒーのメニューなら</p>
-      {list}
+      {top.length === 0 ? (
+        <p className="muted">メニューの中には、とくに合うものが見つかりませんでした。</p>
+      ) : (
+        <ol className="pair-on-menu-list">
+          {top.map((r) => (
+            <li key={r.name} className="pair-on-menu-item">
+              <span className="pair-on-menu-name">
+                <strong>{r.name}</strong>
+                <span className="pair-on-menu-score" aria-label={`相性${r.score}`}>
+                  {"●".repeat(r.score) + "○".repeat(5 - r.score)}
+                </span>
+              </span>
+              <span className="muted">{r.reason}</span>
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
@@ -110,6 +128,10 @@ export default function PairPage() {
   const [restored, setRestored] = useState(false);
   // 同じお店で今日読み取ったコーヒーのメニュー。料理に合うものをそこから選ぶ
   const [beanMenu, setBeanMenu] = useState<ScannedBean[]>([]);
+  // コーヒーのメニューの中から料理に合う順を聞いた結果（料理名ごと）と、聞いている料理
+  const [menuRanks, setMenuRanks] = useState<Record<string, MenuRank[]>>({});
+  const [ranking, setRanking] = useState<string | null>(null);
+  const [rankError, setRankError] = useState<{ dish: string; text: string } | null>(null);
   // 読み取りが終わったら結果まで動かして、終わったことがわかるようにする
   const [justRead, setJustRead] = useState(false);
   const menuRef = useRef<HTMLElement>(null);
@@ -124,7 +146,9 @@ export default function PairPage() {
       setMenu(last.menu);
       setMenuDate(last.date);
     }
-    setBeanMenu(loadLastScan()?.beans ?? []);
+    const beans = loadLastScan()?.beans ?? [];
+    setBeanMenu(beans);
+    setMenuRanks(loadMenuRanks(beans));
     Promise.all([listRecords(), listBags()]).then(([r, b]) => {
       setRecords(r);
       setBags(b);
@@ -193,6 +217,32 @@ export default function PairPage() {
       setError(err instanceof Error ? err.message : "読み取れませんでした");
     } finally {
       setReading(false);
+    }
+  }
+
+  /** 今日読み取ったコーヒーのメニューを、この料理に合う順に AI に並べてもらう */
+  async function rankBeanMenu(d: string) {
+    if (ranking) return;
+    if (!passcode.trim()) return setRankError({ dish: d, text: "先に合言葉を入れてください" });
+    if (!navigator.onLine) return setRankError({ dish: d, text: "オフラインのため調べられません" });
+    setRankError(null);
+    setRanking(d);
+    try {
+      const data = (await post({
+        sweet: d,
+        beans: beanMenu.map(({ name, roast, process }) => ({ name, roast, process })),
+      })) as PairingResult;
+      const ranks = data.ranks
+        .filter((r) => beanMenu[r.index])
+        .map((r) => ({ name: beanMenu[r.index].name, score: Math.min(5, Math.max(1, r.score)), reason: r.reason }))
+        .sort((a, b) => b.score - a.score);
+      const next = { ...menuRanks, [d]: ranks };
+      setMenuRanks(next);
+      saveMenuRanks(beanMenu, next);
+    } catch (e) {
+      setRankError({ dish: d, text: e instanceof Error ? e.message : "調べられませんでした" });
+    } finally {
+      setRanking(null);
     }
   }
 
@@ -349,7 +399,14 @@ export default function PairPage() {
                       </div>
                       <p className="pair-group-reason">{pick.reason}</p>
                       {pick.examples && <p className="muted">例：{pick.examples}</p>}
-                      {beanMenu.length > 0 && <OnBeanMenu matches={beansForPicks(beanMenu, [pick], 2)} />}
+                      {beanMenu.length > 0 && (
+                        <BeanMenuPicks
+                          ranks={menuRanks[d]}
+                          busy={ranking === d}
+                          error={rankError?.dish === d ? rankError.text : ""}
+                          onAsk={() => rankBeanMenu(d)}
+                        />
+                      )}
                       <button type="button" className="text-btn pair-dish-more" onClick={() => choose(d)}>
                         ほかの候補と、記録・家の豆から探す ›
                       </button>
@@ -404,10 +461,14 @@ export default function PairPage() {
               </ol>
             </section>
 
-            {beanMenu.length > 0 && (
-              <section className="pair-mine">
-                <h2 className="pair-head">さっき読み取ったコーヒーのメニューなら</h2>
-                <OnBeanMenu matches={beansForPicks(beanMenu, result.pairing.picks)} rows />
+            {beanMenu.length > 0 && !menu?.some((m) => m.dish === result.query) && (
+              <section className="card pair-menu-card">
+                <BeanMenuPicks
+                  ranks={menuRanks[result.query]}
+                  busy={ranking === result.query}
+                  error={rankError?.dish === result.query ? rankError.text : ""}
+                  onAsk={() => rankBeanMenu(result.query)}
+                />
               </section>
             )}
 
