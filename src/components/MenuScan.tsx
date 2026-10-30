@@ -214,6 +214,7 @@ export default function MenuScan({
     }
   }
   function hide(names: string[], label: string) {
+    if (!confirm(`${label}を一覧から消しますか？`)) return;
     setUndo({ label, beans });
     setLocalHit(null);
     replaceBeans(beans.filter((b) => !names.includes(b.name)));
