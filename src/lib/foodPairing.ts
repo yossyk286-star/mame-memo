@@ -4,6 +4,7 @@ import { saveLastScan, today } from "./lastScan";
 import type { ScannedBean } from "./menuScan";
 import { nameKey } from "./savedLookups";
 import type { Bag, Roast, TastingRecord } from "./types";
+import { getLang, tr } from "./i18n";
 
 const PICK_ROASTS = ["浅煎り", "中煎り", "深煎り"] as const;
 
@@ -203,7 +204,18 @@ export const BUILT_IN_DISHES = BUILT_IN.map((b) => b.pairing.dish);
 
 export function builtInPairing(dish: string): FoodPairing | null {
   const q = dish.trim();
-  return BUILT_IN.find((b) => b.pairing.dish === q || b.words.test(q))?.pairing ?? null;
+  return BUILT_IN.find((b) => b.pairing.dish === q || b.words.test(q) || englishHit(b.pairing.dish, q))?.pairing ?? null;
+}
+
+/** 英語で入れた食べ物（chocolate、cheesecake など）も、内蔵の食べ物の英語名と照らし合わせる */
+function englishHit(dish: string, q: string) {
+  if (getLang() !== "en" || q.length < 3) return false;
+  const query = q.toLowerCase();
+  return tr(dish)
+    .toLowerCase()
+    .split(/ & |, | \(|\)/)
+    .filter((w) => w.length >= 3)
+    .some((w) => query.includes(w) || w.includes(query));
 }
 
 // AI に聞いた結果は端末に残し、同じ料理なら AI を呼ばずに出す
@@ -253,9 +265,9 @@ export type MineMatch<T> = { item: T; why: string; score: number };
 function matchPick(b: { roast: Roast | null; origin: string; farm: string }, picks: FoodPick[]) {
   const area = areaOf(b);
   const both = picks.find((p) => b.roast === p.roast && !!p.area && area === p.area);
-  if (both) return { score: 3, why: `同じ${both.roast}・${area}` };
+  if (both) return { score: 3, why: tr("同じ{0}・{1}", both.roast, area) };
   const roast = picks.find((p) => b.roast === p.roast);
-  if (roast) return { score: 2, why: `同じ${roast.roast}` };
+  if (roast) return { score: 2, why: tr("同じ{0}", roast.roast) };
   return null;
 }
 
@@ -263,9 +275,9 @@ function matchPick(b: { roast: Roast | null; origin: string; farm: string }, pic
 function ateWith(r: TastingRecord, dish: string, query: string) {
   const keys = [dish, query].map(nameKey).filter(Boolean);
   const sweets = nameKey(r.sweets ?? "");
-  if (sweets && keys.some((k) => sweets.includes(k) || k.includes(sweets))) return `合うスイーツに「${r.sweets!.split(/[。、.]/)[0]}」`;
+  if (sweets && keys.some((k) => sweets.includes(k) || k.includes(sweets))) return tr("合うスイーツに「{0}」", r.sweets!.split(/[。、.]/)[0]);
   const memo = nameKey(r.memo);
-  if (memo && keys.some((k) => k.length >= 2 && memo.includes(k))) return `メモに「${query.trim()}」`;
+  if (memo && keys.some((k) => k.length >= 2 && memo.includes(k))) return tr("メモに「{0}」", query.trim());
   return null;
 }
 
@@ -280,7 +292,7 @@ export function matchRecords(records: TastingRecord[], pairing: FoodPairing, que
     // 焙煎度が同じだけのものは、評価が高いときだけ出す
     if (!ate && m!.score < 3 && r.overall < 4) continue;
     const score = (ate ? 4 : 0) + (m?.score ?? 0) + (r.overall - 3) * 0.6;
-    const why = `${ate ?? m!.why}で★${r.overall}`;
+    const why = tr("{0}で★{1}", ate ?? m!.why, r.overall);
     const key = nameKey(`${r.origin}${r.farm}`) || r.id;
     if ((best.get(key)?.score ?? -1) < score) best.set(key, { item: r, why, score });
   }

@@ -1,4 +1,5 @@
 import type { TastingRecord } from "./types";
+import { tr } from "./i18n";
 
 type Country = { name: string; aliases: string[] };
 
@@ -106,6 +107,6 @@ export function diaryNote(r: TastingRecord): { text: string; quote: boolean } | 
   const line = r.memo.split("\n").map((s) => s.trim()).find(Boolean);
   if (line) return { text: line.length > 40 ? `${line.slice(0, 40)}…` : line, quote: true };
   if (r.flavors.length > 0) return { text: r.flavors.slice(0, 3).join("・"), quote: false };
-  if (r.sweets?.trim()) return { text: `${r.sweets.trim()}と一緒に`, quote: false };
+  if (r.sweets?.trim()) return { text: tr("{0}と一緒に", r.sweets.trim()), quote: false };
   return null;
 }

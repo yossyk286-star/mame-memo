@@ -10,6 +10,7 @@ import ShopBar from "@/components/ShopBar";
 import { loadTodayMenu, resetShop } from "@/lib/foodPairing";
 import { LAST_SCAN_EVENT, loadLastScan } from "@/lib/lastScan";
 import type { ScannedBean } from "@/lib/menuScan";
+import { tr } from "@/lib/i18n";
 
 /** お店でメニューを撮って、注文を決めるために確認するだけの画面。記録はあとからでもできる */
 export default function ScanPage() {
@@ -31,9 +32,9 @@ export default function ScanPage() {
   return (
     <>
       <header className="page-header">
-        <h1>メニューを見る</h1>
+        <h1>{tr("メニューを見る")}</h1>
         <Link href="/show" className="header-pill">
-          店員さんに見せる
+          {tr("店員さんに見せる")}
         </Link>
       </header>
 
@@ -49,8 +50,7 @@ export default function ScanPage() {
       />
 
       <Hint id="scan-page" className="lead scan-hint">
-        撮った結果は今日のあいだ残るので、あとから「記録する」でも同じ豆から選べます。
-        次に試したい豆は「☆」で<Link href="/wishlist">気になる豆</Link>に残せます。
+        {tr("撮った結果は今日のあいだ残るので、あとから「記録する」でも同じ豆から選べます。 次に試したい豆は「☆」で")}<Link href="/wishlist">{tr("気になる豆")}</Link>{tr("に残せます。")}
       </Hint>
 
       {beans && (

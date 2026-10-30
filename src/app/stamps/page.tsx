@@ -8,6 +8,7 @@ import { collectStamps, diaryNote, REGIONS, travelDiary, type DiaryEntry, type S
 import { listRecords } from "@/lib/db";
 import type { TastingRecord } from "@/lib/types";
 import EmptyState from "@/components/EmptyState";
+import { getLang, tr, trJoin, trv } from "@/lib/i18n";
 
 // 地図の形は大きいので、ボタンを押したときに読み込む
 const WorldMapSheet = dynamic(() => import("@/components/WorldMapSheet"), { ssr: false });
@@ -23,7 +24,7 @@ const STAMP_BREAKS: Record<string, string> = {
 
 function StampName({ name }: { name: string }) {
   return (
-    <span className={name.length >= 5 ? "stamp-name stamp-name-long" : "stamp-name"}>{STAMP_BREAKS[name] ?? name}</span>
+    <span className={(getLang() === "en" ? tr(name).length >= 7 : name.length >= 5) ? "stamp-name stamp-name-long" : "stamp-name"}>{getLang() === "en" ? tr(name) : (STAMP_BREAKS[name] ?? name)}</span>
   );
 }
 
@@ -44,7 +45,7 @@ function StampCell({
   const delay = usePressDelay(pop);
   if (!stamp) {
     return (
-      <div className="stamp" aria-label={`${name} まだ`}>
+      <div className="stamp" aria-label={tr("{0} まだ", name)}>
         <StampName name={name} />
       </div>
     );
@@ -61,7 +62,7 @@ function StampCell({
     >
       <StampName name={name} />
       <span className="stamp-meta">
-        {stamp.count}杯・最高★{stamp.best}
+        {tr("{0}杯・最高★{1}", stamp.count, stamp.best)}
       </span>
     </button>
   );
@@ -100,15 +101,15 @@ function StampDetail({ name, stamp }: { name: string; stamp: Stamp }) {
   const rows = [...stamp.records].sort((a, b) => b.overall - a.overall || b.date.localeCompare(a.date));
   return (
     <div className="stamp-detail">
-      <h3>{name}で飲んだ豆</h3>
+      <h3>{tr("{0}で飲んだ豆", name)}</h3>
       {rows.map((r) => (
         <Link key={r.id} href={`/record?id=${r.id}`} className="stamp-row">
-          <span className="stamp-row-name">{r.farm || r.origin}</span>
+          <span className="stamp-row-name">{r.farm || tr(r.origin)}</span>
           <span className="stars">{stars(r.overall)}</span>
           <span className="muted stamp-row-sub">
-            {r.shop}・{r.date.slice(5).replace("-", "/")}
-            {r.roast && r.roast !== "不明" ? `・${r.roast}` : ""}
-            {r.process && r.process !== "不明" ? `・${r.process}` : ""}
+            {tr("{0}・{1}", r.shop, r.date.slice(5).replace("-", "/"))}
+            {r.roast && r.roast !== "不明" ? tr("・{0}", r.roast) : ""}
+            {r.process && r.process !== "不明" ? tr("・{0}", r.process) : ""}
           </span>
         </Link>
       ))}
@@ -123,7 +124,10 @@ function DiaryDay({ entry, nth, pop }: { entry: DiaryEntry; nth: number; pop?: b
   const note = diaryNote(r);
   const [, m, d] = r.date.split("-").map(Number);
   // リスト外の産地は産地欄のままなので、ハンコに入る長さに切る
-  const label = entry.place.length > 8 ? `${entry.place.slice(0, 7)}…` : entry.place;
+  // 英語は単語の切れ目で折り返すので、そのまま出す
+  const en = getLang() === "en";
+  const place = tr(entry.place);
+  const label = en ? place : place.length > 8 ? `${place.slice(0, 7)}…` : place;
   return (
     <li className="diary-day">
       <span
@@ -133,7 +137,7 @@ function DiaryDay({ entry, nth, pop }: { entry: DiaryEntry; nth: number; pop?: b
         data-long={label.length > 3 || undefined}
         aria-hidden
       >
-        {label.length < 5 ? (
+        {en || label.length < 5 ? (
           label
         ) : (
           // 長い名前は半分ずつ2行にする（「エチオピ／ア」のように1文字だけ落ちないように）
@@ -146,16 +150,14 @@ function DiaryDay({ entry, nth, pop }: { entry: DiaryEntry; nth: number; pop?: b
       </span>
       <Link href={`/record?id=${r.id}`} className="diary-body">
         <span className="diary-date">
-          {m}月{d}日<span className="muted">・{nth}カ国目</span>
+          {tr("{0}月{1}日", m, d)}<span className="muted">{tr("・{0}カ国目", nth)}</span>
         </span>
         <span className="diary-title">
-          {entry.place}で {r.farm || r.origin}
+          {tr("{0}で", entry.place)}{" "}{r.farm || tr(r.origin)}
         </span>
-        {note && <span className={note.quote ? "diary-note quote" : "diary-note"}>{note.text}</span>}
+        {note && <span className={note.quote ? "diary-note quote" : "diary-note"}>{trv(note.text)}</span>}
         <span className="muted diary-sub">
-          {[r.shop, r.roast && r.roast !== "不明" ? r.roast : null, entry.count > 1 ? `この国で${entry.count}杯` : null]
-            .filter(Boolean)
-            .join("・")}
+          {trJoin([r.shop, r.roast && r.roast !== "不明" ? r.roast : null, entry.count > 1 ? tr("この国で{0}杯", entry.count) : null])}
         </span>
       </Link>
     </li>
@@ -166,8 +168,8 @@ function DiaryDay({ entry, nth, pop }: { entry: DiaryEntry; nth: number; pop?: b
 function Diary({ entries, total, popOf }: { entries: DiaryEntry[]; total: number; popOf: (name: string) => boolean }) {
   if (entries.length === 0) {
     return (
-      <EmptyState title="旅はこれから" actions={[{ href: "/new", label: "記録する" }]}>
-        産地の入った記録をつけると、ここに旅の記録が並ぶよ。最初の一歩はどの国から？
+      <EmptyState title={tr("旅はこれから")} actions={[{ href: "/new", label: tr("記録する") }]}>
+        {tr("産地の入った記録をつけると、ここに旅の記録が並ぶよ。最初の一歩はどの国から？")}
       </EmptyState>
     );
   }
@@ -179,30 +181,30 @@ function Diary({ entries, total, popOf }: { entries: DiaryEntry[]; total: number
     <>
       <section className="card diary-summary">
         <div>
-          <span className="muted">旅のはじまり</span>
+          <span className="muted">{tr("旅のはじまり")}</span>
           <strong>{first.split("-").map(Number).join(".")}</strong>
-          <span className="muted">{entries[0].place}から</span>
+          <span className="muted">{tr("{0}から", entries[0].place)}</span>
         </div>
         <div>
-          <span className="muted">世界一周</span>
+          <span className="muted">{tr("世界一周")}</span>
           <strong>
-            {listed}
-            <small> / {total}</small>
+            {trv(listed)}
+            <small> / {trv(total)}</small>
           </strong>
-          <span className="muted">カ国</span>
+          <span className="muted">{tr("カ国")}</span>
         </div>
         <div>
-          <span className="muted">めぐった地域</span>
+          <span className="muted">{tr("めぐった地域")}</span>
           <strong>
-            {regions}
-            <small> / {REGIONS.length}</small>
+            {trv(regions)}
+            <small> / {trv(REGIONS.length)}</small>
           </strong>
-          <span className="muted">地域</span>
+          <span className="muted">{tr("地域")}</span>
         </div>
       </section>
       {years.map((y) => (
         <section key={y} className="card" style={{ gap: 4 }}>
-          <h2 style={{ fontSize: 15 }}>{y}年</h2>
+          <h2 style={{ fontSize: 15 }}>{tr("{0}年", y)}</h2>
           <ol className="diary">
             {entries.map((e, i) =>
               e.first.date.startsWith(y) ? <DiaryDay key={e.place} entry={e} nth={i + 1} pop={popOf(e.place)} /> : null,
@@ -211,7 +213,7 @@ function Diary({ entries, total, popOf }: { entries: DiaryEntry[]; total: number
         </section>
       ))}
       <p className="lead" style={{ textAlign: "center" }}>
-        つづく…
+        {tr("つづく…")}
       </p>
     </>
   );
@@ -275,30 +277,30 @@ export default function StampsPage() {
     <>
       <header className="sub-header">
         <Link href="/taste" className="back">
-          ‹ 戻る
+          {tr("‹ 戻る")}
         </Link>
-        <h1>産地スタンプ帳</h1>
+        <h1>{tr("産地スタンプ帳")}</h1>
       </header>
 
       <p className="lead">
-        {total}カ国中 <strong>{stamps.size}カ国</strong> 制覇。
+        {tr("{0}カ国中", total)}{" "}<strong>{tr("{0}カ国", stamps.size)}</strong>{" "}{tr("制覇。")}
         {view === "スタンプ帳"
-          ? "色の付いた国を押すと、飲んだ地域や農園が見られます。"
-          : "初めて飲んだ日の順に、旅のように並べました。"}
+          ? tr("色の付いた国を押すと、飲んだ地域や農園が見られます。")
+          : tr("初めて飲んだ日の順に、旅のように並べました。")}
       </p>
 
-      <div className="mode-switch stamps-switch" role="group" aria-label="見かた">
+      <div className="mode-switch stamps-switch" role="group" aria-label={tr("見かた")}>
         {(["スタンプ帳", "旅日記"] as const).map((v) => (
           <button key={v} type="button" aria-pressed={view === v} onClick={() => pick(v)}>
-            {v}
+            {trv(v)}
           </button>
         ))}
       </div>
 
       {fresh.length > 0 && (
         <p className="stamp-news" role="status">
-          新しいスタンプ：{fresh.slice(0, 5).join("・")}
-          {fresh.length > 5 ? ` ほか${fresh.length - 5}か所` : ""}
+          {tr("新しいスタンプ：{0}", trJoin(fresh.slice(0, 5)))}
+          {fresh.length > 5 ? tr(" ほか{0}か所", fresh.length - 5) : ""}
         </p>
       )}
 
@@ -310,9 +312,9 @@ export default function StampsPage() {
           return (
             <section key={r.region} className="card" style={{ gap: 12 }}>
               <div className="card-top">
-                <h2 style={{ fontSize: 15 }}>{r.region}</h2>
+                <h2 style={{ fontSize: 15 }}>{trv(r.region)}</h2>
                 <span className="muted">
-                  {done} / {r.countries.length}
+                  {trv(done)} / {trv(r.countries.length)}
                 </span>
               </div>
               <div className="stamp-grid">
@@ -335,7 +337,7 @@ export default function StampsPage() {
         })}
         {view === "スタンプ帳" && others.size > 0 && (
           <section className="card" style={{ gap: 12 }}>
-            <h2 style={{ fontSize: 15 }}>そのほかの産地</h2>
+            <h2 style={{ fontSize: 15 }}>{tr("そのほかの産地")}</h2>
             <div className="stamp-grid">
               {[...others].map(([name, s]) => (
                 <StampCell
@@ -354,12 +356,12 @@ export default function StampsPage() {
       </main>
 
       {records && (
-        <button type="button" className="map-fab" aria-label="世界地図で見る" onClick={() => setMapOpen(true)}>
+        <button type="button" className="map-fab" aria-label={tr("世界地図で見る")} onClick={() => setMapOpen(true)}>
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
             <path d="M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z" />
             <path d="M9 4v13.5M15 6.5V20" />
           </svg>
-          <span>地図</span>
+          <span>{tr("地図")}</span>
         </button>
       )}
       {mapOpen && <WorldMapSheet stamps={stamps} onClose={() => setMapOpen(false)} />}

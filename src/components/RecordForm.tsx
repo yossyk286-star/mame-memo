@@ -19,6 +19,7 @@ import { photosOf, shrinkPhotos } from "@/lib/photo";
 import { emptyRecipe, GRINDS, hasRecipe } from "@/lib/recipe";
 import { PhotoAddButton, PhotoRow } from "./PhotoAdd";
 import type { Recipe, RecordDraft, Score, TastingRecord } from "@/lib/types";
+import { tr, trv } from "@/lib/i18n";
 
 const SCORES: Score[] = [1, 2, 3, 4, 5];
 
@@ -85,7 +86,7 @@ function HelpButton({
     <button
       type="button"
       className="help"
-      aria-label={`${label}とは`}
+      aria-label={tr("{0}とは", label)}
       onClick={onClick}
     >
       ?
@@ -108,8 +109,8 @@ function RatingRow({
   onChange: (v: Score | null) => void;
 }) {
   return (
-    <div className="rating-row" role="group" aria-label={`${label}（1=${low}、5=${high}）`}>
-      <span className="label">{label}</span>
+    <div className="rating-row" role="group" aria-label={tr("{0}（1={1}、5={2}）", label, low, high)}>
+      <span className="label">{trv(label)}</span>
       <div className="rating-scale">
         <div className="rating-btns">
           {SCORES.map((n) => (
@@ -118,16 +119,16 @@ function RatingRow({
               key={n}
               className="chip"
               aria-pressed={value === n}
-              aria-label={`${label} ${n}`}
+              aria-label={`${tr(label)} ${n}`}
               onClick={() => onChange(value === n ? null : n)}
             >
-              {n}
+              {trv(n)}
             </button>
           ))}
         </div>
         <div className="rating-ends" aria-hidden="true">
-          <span>{low}</span>
-          <span>{high}</span>
+          <span>{trv(low)}</span>
+          <span>{trv(high)}</span>
         </div>
       </div>
     </div>
@@ -151,13 +152,13 @@ function NumberField({
   return (
     <div className="field" style={{ flex: 1, minWidth: 0 }}>
       <label className="label" htmlFor={id}>
-        {label}
+        {trv(label)}
       </label>
       <input
         id={id}
         className="input"
         inputMode="numeric"
-        placeholder={placeholder}
+        placeholder={trv(placeholder)}
         value={value ?? ""}
         onChange={(e) => {
           const digits = e.target.value.normalize("NFKC").replace(/\D/g, "");
@@ -174,19 +175,19 @@ function RecipeFields({ value, onChange }: { value: Recipe; onChange: (r: Recipe
   return (
     <div className="recipe-fields">
       <div className="row" style={{ flexWrap: "nowrap" }}>
-        <NumberField id="f-dose" label="豆（g）" placeholder="15" value={value.dose} onChange={(v) => set("dose", v)} />
-        <NumberField id="f-water" label="お湯（ml）" placeholder="240" value={value.water} onChange={(v) => set("water", v)} />
-        <NumberField id="f-tempc" label="湯温（℃）" placeholder="92" value={value.tempC} onChange={(v) => set("tempC", v)} />
+        <NumberField id="f-dose" label={tr("豆（g）")} placeholder="15" value={value.dose} onChange={(v) => set("dose", v)} />
+        <NumberField id="f-water" label={tr("お湯（ml）")} placeholder="240" value={value.water} onChange={(v) => set("water", v)} />
+        <NumberField id="f-tempc" label={tr("湯温（℃）")} placeholder="92" value={value.tempC} onChange={(v) => set("tempC", v)} />
       </div>
       <fieldset className="field">
-        <legend className="label">挽き目</legend>
+        <legend className="label">{tr("挽き目")}</legend>
         <SingleChips options={GRINDS} value={value.grind} onChange={(v) => set("grind", v)} />
       </fieldset>
       <div className="field">
         <label className="label" htmlFor="f-time">
-          抽出時間
+          {tr("抽出時間")}
         </label>
-        <input id="f-time" className="input" placeholder="例：2:30" value={value.time} onChange={(e) => set("time", e.target.value)} />
+        <input id="f-time" className="input" placeholder={tr("例：2:30")} value={value.time} onChange={(e) => set("time", e.target.value)} />
       </div>
     </div>
   );
@@ -203,7 +204,7 @@ function StarRating({
   return (
     <div className="field">
       <span className="label" id="f-overall">
-        総合 <span className="req">必須</span>
+        {tr("総合")}{" "}<span className="req">{tr("必須")}</span>
       </span>
       <div className="star-rating" role="radiogroup" aria-labelledby="f-overall">
         {SCORES.map((n) => (
@@ -244,7 +245,7 @@ export default function RecordForm({
   const router = useRouter();
 
   async function remove() {
-    if (!initial || !confirm("この記録を削除しますか？")) return;
+    if (!initial || !confirm(tr("この記録を削除しますか？"))) return;
     await deleteRecord(initial.id);
     router.replace("/");
   }
@@ -339,24 +340,24 @@ export default function RecordForm({
     <>
       <div className="field">
         <label className="label" htmlFor="f-origin">
-          産地（国）
+          {tr("産地（国）")}
         </label>
         <input
           id="f-origin"
           className="input"
-          placeholder="例：ケニア"
+          placeholder={tr("例：ケニア")}
           value={draft.origin}
           onChange={(e) => set("origin", e.target.value)}
         />
       </div>
       <div className="field">
         <label className="label" htmlFor="f-farm">
-          農園・品種名
+          {tr("農園・品種名")}
         </label>
         <input
           id="f-farm"
           className="input"
-          placeholder="例：〇〇農園 / SL28"
+          placeholder={tr("例：〇〇農園 / SL28")}
           value={draft.farm}
           onChange={(e) => set("farm", e.target.value)}
         />
@@ -370,7 +371,7 @@ export default function RecordForm({
 
       <fieldset className="field">
         <legend className="label">
-          焙煎度 <HelpButton label="焙煎度" onClick={() => setSheet("焙煎")} />
+          {tr("焙煎度")}{" "}<HelpButton label={tr("焙煎度")} onClick={() => setSheet("焙煎")} />
         </legend>
         <SingleChips
           options={ROASTS}
@@ -380,8 +381,8 @@ export default function RecordForm({
       </fieldset>
       <fieldset className="field">
         <legend className="label">
-          精製方法{" "}
-          <HelpButton label="精製方法" onClick={() => setSheet("精製")} />
+          {tr("精製方法")}{" "}
+          <HelpButton label={tr("精製方法")} onClick={() => setSheet("精製")} />
         </legend>
         <SingleChips
           options={PROCESSES}
@@ -391,24 +392,24 @@ export default function RecordForm({
       </fieldset>
       <div className="field">
         <label className="label" htmlFor="f-menu">
-          お店の説明
+          {tr("お店の説明")}
         </label>
         <input
           id="f-menu"
           className="input"
-          placeholder="例：黄桃・アプリコット・ビターチョコ"
+          placeholder={tr("例：黄桃・アプリコット・ビターチョコ")}
           value={draft.menuNote}
           onChange={(e) => set("menuNote", e.target.value)}
         />
       </div>
       <div className="field">
         <label className="label" htmlFor="f-sweets">
-          合うスイーツ
+          {tr("合うスイーツ")}
         </label>
         <input
           id="f-sweets"
           className="input"
-          placeholder="例：チーズケーキ"
+          placeholder={tr("例：チーズケーキ")}
           value={draft.sweets ?? ""}
           onChange={(e) => set("sweets", e.target.value)}
         />
@@ -421,8 +422,8 @@ export default function RecordForm({
       {overallField}
       <fieldset className="field">
         <legend className="label">
-          抽出方法{" "}
-          <HelpButton label="抽出方法" onClick={() => setSheet("抽出")} />
+          {tr("抽出方法")}{" "}
+          <HelpButton label={tr("抽出方法")} onClick={() => setSheet("抽出")} />
         </legend>
         <SingleChips
           options={METHODS}
@@ -432,12 +433,12 @@ export default function RecordForm({
       </fieldset>
       {/* 家で淹れたときだけ使うので、店で飲んだ記録ではたたんでおく */}
       <details className="bean-details" open={draft.shop.trim() === "家" || hasRecipe(draft.recipe)}>
-        <summary>家で淹れたレシピ（豆の量・お湯・挽き目）</summary>
+        <summary>{tr("家で淹れたレシピ（豆の量・お湯・挽き目）")}</summary>
         <RecipeFields value={draft.recipe ?? emptyRecipe()} onChange={(r) => set("recipe", r)} />
       </details>
       <div className="row" style={{ gap: 24 }}>
         <fieldset className="field">
-          <legend className="label">温度</legend>
+          <legend className="label">{tr("温度")}</legend>
           <SingleChips
             options={["ホット", "アイス"] as const}
             value={draft.temp}
@@ -445,7 +446,7 @@ export default function RecordForm({
           />
         </fieldset>
         <fieldset className="field">
-          <legend className="label">飲み方</legend>
+          <legend className="label">{tr("飲み方")}</legend>
           <SingleChips
             options={["ブラック", "ミルク"] as const}
             value={draft.style}
@@ -456,9 +457,9 @@ export default function RecordForm({
 
       <fieldset className="field">
         <legend className="label">
-          感じた味{" "}
+          {tr("感じた味")}{" "}
           <HelpButton
-            label="フレーバーの表現"
+            label={tr("フレーバーの表現")}
             onClick={() => setSheet("フレーバー")}
           />
         </legend>
@@ -469,12 +470,12 @@ export default function RecordForm({
         />
         <div className="row" style={{ flexWrap: "nowrap" }}>
           <label htmlFor="f-flavor" className="visually-hidden">
-            ほかの味を追加
+            {tr("ほかの味を追加")}
           </label>
           <input
             id="f-flavor"
             className="input"
-            placeholder="ほかの味を追加"
+            placeholder={tr("ほかの味を追加")}
             value={newFlavor}
             onChange={(e) => setNewFlavor(e.target.value)}
             onKeyDown={(e) => {
@@ -485,7 +486,7 @@ export default function RecordForm({
             }}
           />
           <button type="button" className="btn-secondary" onClick={addFlavor}>
-            追加
+            {tr("追加")}
           </button>
         </div>
       </fieldset>
@@ -504,13 +505,13 @@ export default function RecordForm({
       </div>
       <div className="field">
         <label className="label" htmlFor="f-price">
-          値段（1杯・円）
+          {tr("値段（1杯・円）")}
         </label>
         <input
           id="f-price"
           className="input"
           inputMode="numeric"
-          placeholder="例：650"
+          placeholder={tr("例：650")}
           value={draft.price ?? ""}
           onChange={(e) => {
             // 全角数字やカンマ入りでも数字だけ取り出す
@@ -533,7 +534,7 @@ export default function RecordForm({
       >
         <div className="field">
           <label className="label" htmlFor="f-date">
-            日付 <span className="req">必須</span>
+            {tr("日付")}{" "}<span className="req">{tr("必須")}</span>
           </label>
           <input
             id="f-date"
@@ -546,14 +547,14 @@ export default function RecordForm({
         </div>
         <div className="field">
           <label className="label" htmlFor="f-shop">
-            どこで飲んだ <span className="req">必須</span>
+            {tr("どこで飲んだ")}{" "}<span className="req">{tr("必須")}</span>
           </label>
           <div className="row" style={{ flexWrap: "nowrap" }}>
             <input
               id="f-shop"
               className="input"
               list="shop-names"
-              placeholder="店名（例：〇〇珈琲）"
+              placeholder={tr("店名（例：〇〇珈琲）")}
               value={draft.shop}
               onChange={(e) => set("shop", e.target.value)}
             />
@@ -565,7 +566,7 @@ export default function RecordForm({
               aria-pressed={draft.shop.trim() === "家"}
               onClick={() => set("shop", draft.shop.trim() === "家" ? "" : "家")}
             >
-              家で
+              {tr("家で")}
             </button>
           </div>
           <datalist id="shop-names">
@@ -574,7 +575,7 @@ export default function RecordForm({
             ))}
           </datalist>
         </div>
-        <div className="mode-switch" role="group" aria-label="入力の量">
+        <div className="mode-switch" role="group" aria-label={tr("入力の量")}>
           {(["かんたん", "くわしく"] as const).map((m) => (
             <button
               key={m}
@@ -582,14 +583,14 @@ export default function RecordForm({
               aria-pressed={mode === m}
               onClick={() => setMode(m)}
             >
-              {m}
+              {trv(m)}
             </button>
           ))}
         </div>
         {mode === "かんたん" ? (
           <>
             <p className="muted" style={{ margin: 0, fontSize: 12 }}>
-              豆の名前と★だけで保存できます。味や淹れ方はあとから編集で足せます。
+              {tr("豆の名前と★だけで保存できます。味や淹れ方はあとから編集で足せます。")}
             </p>
             {!beanFilled && nameFields}
             {overallField}
@@ -599,7 +600,7 @@ export default function RecordForm({
             {tasteFields}
             {/* 読み取り済みの豆の情報は、直したいときだけ開く */}
             <details className="bean-details">
-              <summary>豆の情報（読み取り済み・タップで直せます）</summary>
+              <summary>{tr("豆の情報（読み取り済み・タップで直せます）")}</summary>
               {beanFields}
             </details>
           </>
@@ -611,12 +612,12 @@ export default function RecordForm({
         )}
         <div className="field">
           <label className="label" htmlFor="f-memo">
-            メモ
+            {tr("メモ")}
           </label>
           <textarea
             id="f-memo"
             className="input"
-            placeholder="気づいたこと、次に試したいこと"
+            placeholder={tr("気づいたこと、次に試したいこと")}
             value={draft.memo}
             onChange={(e) => set("memo", e.target.value)}
           />
@@ -636,8 +637,8 @@ export default function RecordForm({
             <PhotoAddButton
               label={
                 draft.photos.length > 0
-                  ? "＋ 写真をもっと追加"
-                  : "＋ 記録に写真を残す"
+                  ? tr("＋ 写真をもっと追加")
+                  : tr("＋ 記録に写真を残す")
               }
               onFiles={onPhotos}
             />
@@ -646,21 +647,21 @@ export default function RecordForm({
 
         {error && (
           <p className="error" role="alert">
-            {error}
+            {trv(error)}
           </p>
         )}
 
         {/* 削除はめったに使わないので、詳細画面ではなく編集のいちばん下に離して置く */}
         {initial && (
           <button type="button" className="btn-secondary btn-danger" onClick={remove}>
-            この記録を削除
+            {tr("この記録を削除")}
           </button>
         )}
 
         {saved && <SavedCheck />}
         <div className="save-bar">
           <button type="submit" className="btn-primary" disabled={saving}>
-            {saving ? "保存中…" : "保存する"}
+            {saving ? tr("保存中…") : tr("保存する")}
           </button>
         </div>
       </form>

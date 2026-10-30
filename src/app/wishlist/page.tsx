@@ -7,6 +7,7 @@ import { areaOf, sortBy, type SortKey } from "@/lib/beanSort";
 import { deleteWish, listWishes, type WishBean } from "@/lib/db";
 import type { Roast } from "@/lib/types";
 import EmptyState from "@/components/EmptyState";
+import { tr, trv } from "@/lib/i18n";
 
 /** メニューで「気になる」と印を付けた、次に試したい豆の一覧 */
 export default function WishlistPage() {
@@ -21,7 +22,7 @@ export default function WishlistPage() {
 
   async function remove(id: string) {
     const name = wishes?.find((w) => w.id === id)?.name;
-    if (!confirm(`${name ? `「${name}」を` : ""}気になるリストから外しますか？`)) return;
+    if (!confirm(tr("{0}気になるリストから外しますか？", name ? tr("「{0}」を", name) : ""))) return;
     await deleteWish(id);
     setWishes((ws) => ws?.filter((w) => w.id !== id) ?? null);
   }
@@ -46,7 +47,7 @@ export default function WishlistPage() {
   return (
     <>
       <header className="page-header">
-        <h1>気になる豆</h1>
+        <h1>{tr("気になる豆")}</h1>
       </header>
 
       <main className="content" style={{ paddingTop: 16 }}>
@@ -62,46 +63,46 @@ export default function WishlistPage() {
               sort={sort}
               onSort={setSort}
               sorts={["acid", "bitter", "sweet", "body", "light", "dark"]}
-              defaultLabel="新しい順"
+              defaultLabel={tr("新しい順")}
             />
           </div>
         )}
         {wishes?.length === 0 && (
           <EmptyState
-            title="気になる豆、まだないよ"
-            actions={[{ href: "/scan", label: "メニューを撮って探す" }]}
+            title={tr("気になる豆、まだないよ")}
+            actions={[{ href: "/scan", label: tr("メニューを撮って探す") }]}
           >
-            お店でメニューを撮って「☆ 気になる」を押すと、ここに残るよ。
+            {tr("お店でメニューを撮って「☆ 気になる」を押すと、ここに残るよ。")}
           </EmptyState>
         )}
-        {wishes && wishes.length > 0 && shown.length === 0 && <p className="empty">当てはまる豆がありません。</p>}
+        {wishes && wishes.length > 0 && shown.length === 0 && <p className="empty">{tr("当てはまる豆がありません。")}</p>}
         {shown.map((w) => (
           <article key={w.id} className="card">
             <div className="card-top">
-              <h2>{w.name}</h2>
+              <h2>{trv(w.name)}</h2>
               <span className="muted">{new Date(w.savedAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" })}</span>
             </div>
             <div className="tags">
               {[w.origin, w.roast, w.process].filter(Boolean).map((t) => (
                 <span key={t} className="tag">
-                  {t}
+                  {trv(t)}
                 </span>
               ))}
             </div>
-            {w.menuNote && <p className="muted">メニューの説明：{w.menuNote}</p>}
-            <p className="term-desc">{w.explanation}</p>
+            {w.menuNote && <p className="muted">{tr("メニューの説明：{0}", w.menuNote)}</p>}
+            <p className="term-desc">{trv(w.explanation)}</p>
             {w.sweets && (
               <p className="term-desc">
-                <strong>合うスイーツ：</strong>
-                {w.sweets}
+                <strong>{tr("合うスイーツ：")}</strong>
+                {trv(w.sweets)}
               </p>
             )}
             <div className="row">
               <Link href={`/new?wish=${w.id}`} className="btn-primary" style={{ flex: 1 }}>
-                ＋ 記録に追加
+                {tr("＋ 記録に追加")}
               </Link>
               <button type="button" className="btn-secondary btn-danger" onClick={() => remove(w.id)}>
-                外す
+                {tr("外す")}
               </button>
             </div>
           </article>
