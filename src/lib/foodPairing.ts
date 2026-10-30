@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { areaOf, AREAS } from "./beanSort";
-import { today } from "./lastScan";
+import { saveLastScan, today } from "./lastScan";
 import type { ScannedBean } from "./menuScan";
 import { nameKey } from "./savedLookups";
 import type { Bag, Roast, TastingRecord } from "./types";
@@ -371,4 +371,14 @@ export function saveDishRanks(menu: FoodMenu["dishes"], byBean: Record<string, M
   try {
     localStorage.setItem(DISH_RANK_KEY, JSON.stringify({ date: today(), dishes: dishesKey(menu), byBean }));
   } catch {}
+}
+
+/** 2軒目に行ったときなど、今日のお店のメニュー（コーヒー・料理）と、そこから選んだ結果を消す。見ていた料理は残す */
+export function resetShop() {
+  try {
+    localStorage.removeItem(MENU_RANK_KEY);
+    localStorage.removeItem(DISH_RANK_KEY);
+  } catch {}
+  saveLastPair({ menu: null, query: loadLastPair()?.query ?? "" });
+  saveLastScan([]);
 }

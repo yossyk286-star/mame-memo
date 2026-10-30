@@ -33,7 +33,7 @@ import styles from "./MenuScan.module.css";
 import AskAI from "./AskAI";
 import { roastColor } from "./RecordCard";
 import Hint from "./Hint";
-import MenuPicks from "./MenuPicks";
+import MenuPicks, { scoreWord } from "./MenuPicks";
 import MoodPicker from "./MoodPicker";
 import TasteBars from "./TasteBars";
 import Skeleton from "./Skeleton";
@@ -900,7 +900,7 @@ export default function MenuScan({
                   <p className={styles.match}>
                     <strong>
                       {pairing?.mood ? "気分に合う度" : `${pairing?.sweet}との相性`}{" "}
-                      {"●".repeat(match.score) + "○".repeat(5 - match.score)}
+                      {scoreWord(match.score)} {"●".repeat(match.score) + "○".repeat(5 - match.score)}
                     </strong>
                     {match.reason}
                   </p>

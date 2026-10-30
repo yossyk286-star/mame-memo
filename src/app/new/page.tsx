@@ -52,6 +52,8 @@ function NewRecord() {
   // メニュー確認の画面で「＋ 記録に追加」を押すと ?bean=豆の名前 で来る
   const params = useSearchParams();
   const beanParam = params.get("bean");
+  // 料理から選ぶで「＋記録」を押したときは、合わせた料理も ?food=料理名 で来る
+  const foodParam = params.get("food");
   // 気になる豆の一覧から「＋ 記録に追加」で来たときは ?wish=id
   const wishParam = params.get("wish");
   // 家の豆から「飲んだ・記録する」で来たときは ?bag=id
@@ -189,7 +191,11 @@ function NewRecord() {
         /* 豆を選んだり保存したりしたらフォームを作り直して読み取り結果を入れる */
         <RecordForm
           key={`${saveCount}:${picked?.name ?? "blank"}`}
-          prefill={{ ...carry, ...(picked ? beanToDraft(picked) : {}) }}
+          prefill={{
+            ...carry,
+            ...(picked ? beanToDraft(picked) : {}),
+            ...(picked && foodParam && picked.name === beanParam ? { sweets: foodParam } : {}),
+          }}
           beanFilled={!!picked}
           fromWish={!!wishId}
           onSaved={(r) => {
