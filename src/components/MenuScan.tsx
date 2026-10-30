@@ -18,6 +18,7 @@ import {
   putWish,
   type WishBean,
 } from "@/lib/db";
+import { dishesForBean, loadTodayMenu, type FoodMenu } from "@/lib/foodPairing";
 import { findKnownBean } from "@/lib/knownBeans";
 import { loadLastScan, saveLastScan, today } from "@/lib/lastScan";
 import { findSaved, forgetSaved, recentSaved, saveLookups } from "@/lib/savedLookups";
@@ -160,6 +161,8 @@ export default function MenuScan({
     byName: Map<string, { score: number; reason: string }>;
   } | null>(null);
   const [pairingBusy, setPairingBusy] = useState(false);
+  // 同じお店で今日読み取った料理メニュー。豆ごとに合う料理を出し、料理で並べるときの候補にする
+  const [foodMenu, setFoodMenu] = useState<FoodMenu["dishes"]>([]);
   // 買った豆を、家で何回かに分けて淹れる豆として登録する
   const [bagged, setBagged] = useState<string[]>([]);
   // AI を使わずに出したとき、どこから出したか（調べ直すボタン用）
@@ -176,6 +179,7 @@ export default function MenuScan({
     listWishes().then(setWishes);
     setPrefs(loadPrefs());
     setRecent(recentSaved(8));
+    setFoodMenu(loadTodayMenu());
   }, []);
 
   // 調べた結果を一覧から外す（今日の一覧からだけ。前に調べた情報は残るので、また調べても AI は使わない）
@@ -753,6 +757,25 @@ export default function MenuScan({
           </button>
         </form>
       )}
+      {beans.length > 1 && foodMenu.length > 0 && (
+        <div className="scroll-row" aria-label="さっき読み取った料理">
+          {foodMenu.map(({ dish: d }) => (
+            <button
+              key={d}
+              type="button"
+              className="chip"
+              aria-pressed={!pairing?.mood && pairing?.sweet === d}
+              disabled={pairingBusy}
+              onClick={() => {
+                setSweet(d);
+                pairWith(d);
+              }}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+      )}
         </div>
       )}
       {pairingBusy && <Skeleton label="合う順を考えています…" cards={2} lines={1} />}
@@ -857,6 +880,12 @@ export default function MenuScan({
                   <p className={styles.text}>
                     <strong>合うスイーツ：</strong>
                     {b.sweets}
+                  </p>
+                )}
+                {foodMenu.length > 0 && (
+                  <p className={styles.text}>
+                    <strong>さっきの料理メニューなら：</strong>
+                    {dishesForBean(foodMenu, b).slice(0, 3).join("、") || "合うと出た料理はありません"}
                   </p>
                 )}
                 {b.methodNotes && b.methodNotes.length > 0 && (
