@@ -3,8 +3,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { timingSafeEqual } from "node:crypto";
 import { BEAN_REFERENCE } from "@/lib/knownBeans";
 import { CHOOSING_TIPS, TERMS } from "@/lib/glossary";
-import { FoodMenuSchema, FoodPairingSchema } from "@/lib/foodPairing";
-import { MenuScanResultSchema, PairingResultSchema, DishIdeasSchema, TermLookupSchema } from "@/lib/menuScan";
+import { FoodMenuSchema, FoodPairingSchema, MenuScanResultSchema, PairingResultSchema, DishIdeasSchema, TermLookupSchema } from "@/lib/schemas";
 
 // 料金を抑えるため一番安いモデルを使う。変えたいときは環境変数 MENU_MODEL で上書き
 const MODEL = process.env.MENU_MODEL || "claude-haiku-5-5";
@@ -69,6 +68,12 @@ function passcodeOK(given: unknown) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+// 合言葉を当てずっぽうで試され続けないよう、同じ接続元からの間違いは15分で10回までにする
+// shortcut: Vercel でサーバーが複数動くと数はサーバーごと。それでも破られるなら Vercel KV などで数える
+const FAIL_WINDOW = 15 * 60_000;
+const MAX_FAILS = 10;
+const fails = new Map<string, { n: number; since: number }>();
+
 function error(status: number, message: string) {
   return Response.json({ error: message }, { status });
 }
@@ -82,7 +87,17 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
-  if (!passcodeOK(body?.passcode)) return error(401, "合言葉が違います");
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  const now = Date.now();
+  const fail = fails.get(ip);
+  const recent = fail && now - fail.since < FAIL_WINDOW ? fail : null;
+  if (recent && recent.n >= MAX_FAILS) return error(429, "合言葉を何度も間違えたので、15分ほど待ってからお試しください");
+  if (!passcodeOK(body?.passcode)) {
+    if (fails.size > 1000) fails.clear();
+    fails.set(ip, recent ? { n: recent.n + 1, since: recent.since } : { n: 1, since: now });
+    return error(401, "合言葉が違います");
+  }
+  fails.delete(ip);
 
   const client = new Anthropic();
   // 英語で使っているときは、AI にも英語で答えさせる
@@ -200,11 +215,13 @@ export async function POST(req: Request) {
   if (typeof body?.sweet === "string" || typeof body?.mood === "string") {
     const isMood = typeof body?.mood === "string";
     const sweet = String(isMood ? body.mood : body.sweet).trim();
-    const beans = Array.isArray(body.beans) ? body.beans.slice(0, MAX_PAIRING_BEANS) : [];
+    const beans: Record<string, unknown>[] = Array.isArray(body.beans)
+      ? body.beans.filter((b: unknown) => b && typeof b === "object").slice(0, MAX_PAIRING_BEANS)
+      : [];
     if (!sweet || sweet.length > MAX_WORD) return error(400, isMood ? "気分を入れてください" : "スイーツの名前を入れてください");
     if (beans.length === 0) return error(400, "豆がありません");
     const list = beans
-      .map((b: Record<string, unknown>, i: number) =>
+      .map((b, i) =>
         `${i}. ${[b.name, b.roast, b.process].filter((x) => typeof x === "string" && x).join(" / ")}`.slice(0, 120),
       )
       .join("\n");
