@@ -11,6 +11,21 @@ import type { TastingRecord } from "@/lib/types";
 // 地図の形は大きいので、ボタンを押したときに読み込む
 const WorldMapSheet = dynamic(() => import("@/components/WorldMapSheet"), { ssr: false });
 
+/** 丸いスタンプに1行で入らない長い名前は、言葉の切れ目（\u200b）でだけ折り返す */
+const STAMP_BREAKS: Record<string, string> = {
+  "ホンジュラス": "ホンジュ\u200bラス",
+  "エルサルバドル": "エル\u200bサルバドル",
+  "インドネシア": "インド\u200bネシア",
+  "東ティモール": "東\u200bティモール",
+  "パプアニューギニア": "パプア\u200bニュー\u200bギニア",
+};
+
+function StampName({ name }: { name: string }) {
+  return (
+    <span className={name.length >= 5 ? "stamp-name stamp-name-long" : "stamp-name"}>{STAMP_BREAKS[name] ?? name}</span>
+  );
+}
+
 function StampCell({
   name,
   stamp,
@@ -29,7 +44,7 @@ function StampCell({
   if (!stamp) {
     return (
       <div className="stamp" aria-label={`${name} まだ`}>
-        <span className="stamp-name">{name}</span>
+        <StampName name={name} />
       </div>
     );
   }
@@ -43,7 +58,7 @@ function StampCell({
       aria-expanded={open}
       onClick={onToggle}
     >
-      <span className="stamp-name">{name}</span>
+      <StampName name={name} />
       <span className="stamp-meta">
         {stamp.count}杯・最高★{stamp.best}
       </span>
