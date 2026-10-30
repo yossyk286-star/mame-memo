@@ -533,6 +533,7 @@ export default function RecordForm({
             id="f-date"
             className="input"
             type="date"
+            max={today()}
             value={draft.date}
             onChange={(e) => set("date", e.target.value)}
             required
