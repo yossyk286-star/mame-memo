@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { areaOf, AREAS } from "./beanSort";
+import { today } from "./lastScan";
+import type { ScannedBean } from "./menuScan";
 import { nameKey } from "./savedLookups";
 import type { Bag, Roast, TastingRecord } from "./types";
 
@@ -301,7 +303,7 @@ export function matchBags(bags: Bag[], pairing: FoodPairing, limit = 2) {
 const LAST_KEY = "mame-memo:pair-last";
 
 /** 最後に読み取ったメニューと選んだ料理。ほかの画面に行って戻っても続きから見られるように残す */
-export type LastPair = { menu: FoodMenu["dishes"] | null; query: string };
+export type LastPair = { menu: FoodMenu["dishes"] | null; query: string; /** メニューを読み取った日 */ date?: string };
 
 export function loadLastPair(): LastPair | null {
   try {
@@ -317,4 +319,33 @@ export function saveLastPair(v: LastPair) {
     if (!v.menu && !v.query) localStorage.removeItem(LAST_KEY);
     else localStorage.setItem(LAST_KEY, JSON.stringify(v));
   } catch {}
+}
+
+/** 今日読み取った料理メニュー。同じお店でコーヒーを選ぶときに、撮り直さずに使う */
+export function loadTodayMenu(): FoodMenu["dishes"] {
+  const last = loadLastPair();
+  return last?.date === today() ? (last.menu ?? []) : [];
+}
+
+export type BeanMatch = { bean: ScannedBean; why: string; score: number };
+
+/** 今日読み取ったコーヒーのメニューから、この料理に合うおすすめと同じ焙煎度・地域のもの（AI は使わない） */
+export function beansForPicks(beans: ScannedBean[], picks: FoodPick[], limit = 3): BeanMatch[] {
+  return beans
+    .map((b) => {
+      const m = matchPick(b, picks);
+      return m && { bean: b, why: m.why, score: m.score };
+    })
+    .filter((m): m is BeanMatch => !!m)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+/** 今日読み取った料理メニューから、この豆が「いちばん合う」と出た料理。焙煎度と地域が同じものを先に */
+export function dishesForBean(menu: FoodMenu["dishes"], bean: Pick<ScannedBean, "roast" | "origin" | "farm">): string[] {
+  return menu
+    .map(({ dish, pick }) => ({ dish, m: matchPick(bean, [pick]) }))
+    .filter((x) => x.m)
+    .sort((a, b) => b.m!.score - a.m!.score)
+    .map((x) => x.dish);
 }
