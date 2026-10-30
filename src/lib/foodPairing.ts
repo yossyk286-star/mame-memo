@@ -327,14 +327,6 @@ export function loadTodayMenu(): FoodMenu["dishes"] {
   return last?.date === today() ? (last.menu ?? []) : [];
 }
 
-/** 今日読み取った料理メニューから、この豆が「いちばん合う」と出た料理。焙煎度と地域が同じものを先に */
-export function dishesForBean(menu: FoodMenu["dishes"], bean: Pick<ScannedBean, "roast" | "origin" | "farm">): string[] {
-  return menu
-    .map(({ dish, pick }) => ({ dish, m: matchPick(bean, [pick]) }))
-    .filter((x) => x.m)
-    .sort((a, b) => b.m!.score - a.m!.score)
-    .map((x) => x.dish);
-}
 
 const MENU_RANK_KEY = "mame-memo:pair-menu-ranks";
 
@@ -357,5 +349,26 @@ export function loadMenuRanks(beans: ScannedBean[]): Record<string, MenuRank[]> 
 export function saveMenuRanks(beans: ScannedBean[], byDish: Record<string, MenuRank[]>) {
   try {
     localStorage.setItem(MENU_RANK_KEY, JSON.stringify({ date: today(), beans: beansKey(beans), byDish }));
+  } catch {}
+}
+
+const DISH_RANK_KEY = "mame-memo:scan-dish-ranks";
+type DishRankStore = { date: string; dishes: string; byBean: Record<string, MenuRank[]> };
+
+const dishesKey = (menu: FoodMenu["dishes"]) => menu.map((m) => m.dish).join("|");
+
+/** 逆向き：豆ごとに、今日読み取った料理メニューの合う順（同じメニューなら AI を呼び直さない） */
+export function loadDishRanks(menu: FoodMenu["dishes"]): Record<string, MenuRank[]> {
+  try {
+    const v = JSON.parse(localStorage.getItem(DISH_RANK_KEY) ?? "null") as DishRankStore | null;
+    return v && v.date === today() && v.dishes === dishesKey(menu) ? v.byBean : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveDishRanks(menu: FoodMenu["dishes"], byBean: Record<string, MenuRank[]>) {
+  try {
+    localStorage.setItem(DISH_RANK_KEY, JSON.stringify({ date: today(), dishes: dishesKey(menu), byBean }));
   } catch {}
 }
