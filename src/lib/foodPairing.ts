@@ -327,20 +327,6 @@ export function loadTodayMenu(): FoodMenu["dishes"] {
   return last?.date === today() ? (last.menu ?? []) : [];
 }
 
-export type BeanMatch = { bean: ScannedBean; why: string; score: number };
-
-/** 今日読み取ったコーヒーのメニューから、この料理に合うおすすめと同じ焙煎度・地域のもの（AI は使わない） */
-export function beansForPicks(beans: ScannedBean[], picks: FoodPick[], limit = 3): BeanMatch[] {
-  return beans
-    .map((b) => {
-      const m = matchPick(b, picks);
-      return m && { bean: b, why: m.why, score: m.score };
-    })
-    .filter((m): m is BeanMatch => !!m)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
-}
-
 /** 今日読み取った料理メニューから、この豆が「いちばん合う」と出た料理。焙煎度と地域が同じものを先に */
 export function dishesForBean(menu: FoodMenu["dishes"], bean: Pick<ScannedBean, "roast" | "origin" | "farm">): string[] {
   return menu
@@ -348,4 +334,28 @@ export function dishesForBean(menu: FoodMenu["dishes"], bean: Pick<ScannedBean, 
     .filter((x) => x.m)
     .sort((a, b) => b.m!.score - a.m!.score)
     .map((x) => x.dish);
+}
+
+const MENU_RANK_KEY = "mame-memo:pair-menu-ranks";
+
+/** 今日のコーヒーのメニューの中で、この料理に合う順（AI が付けた相性） */
+export type MenuRank = { name: string; score: number; reason: string };
+type MenuRankStore = { date: string; beans: string; byDish: Record<string, MenuRank[]> };
+
+const beansKey = (beans: ScannedBean[]) => beans.map((b) => b.name).join("|");
+
+/** 前に聞いた分は残しておき、同じメニュー・同じ料理なら AI を呼び直さない */
+export function loadMenuRanks(beans: ScannedBean[]): Record<string, MenuRank[]> {
+  try {
+    const v = JSON.parse(localStorage.getItem(MENU_RANK_KEY) ?? "null") as MenuRankStore | null;
+    return v && v.date === today() && v.beans === beansKey(beans) ? v.byDish : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveMenuRanks(beans: ScannedBean[], byDish: Record<string, MenuRank[]>) {
+  try {
+    localStorage.setItem(MENU_RANK_KEY, JSON.stringify({ date: today(), beans: beansKey(beans), byDish }));
+  } catch {}
 }
