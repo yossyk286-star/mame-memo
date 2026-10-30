@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   beanToDraft,
   farmOf,
@@ -22,7 +22,7 @@ import { loadDishRanks, loadTodayMenu, saveDishRanks, type FoodMenu, type MenuRa
 import { findKnownBean } from "@/lib/knownBeans";
 import { loadLastScan, saveLastScan, today } from "@/lib/lastScan";
 import { findSaved, saveLookups } from "@/lib/savedLookups";
-import { MOODS, moodFromText, type Mood } from "@/lib/moods";
+import { MOODS, moodFromText, wordMatch } from "@/lib/moods";
 import { loadPasscode, PASSCODE_KEY } from "@/lib/passcode";
 import { shrinkPhoto } from "@/lib/photo";
 import { EMPTY_PREFS, loadPrefs } from "@/lib/prefs";
@@ -130,6 +130,15 @@ function findKey(text: string) {
     .toLowerCase()
     .replace(/[\u3041-\u3096]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60))
     .replace(/\s+/g, "");
+}
+
+/** 選んだ気分 1つを、味で並べる気分と、入っていてほしい言葉に分ける。どちらでもなければ両方 null */
+function partOf(word: string, beans: ScannedBean[]) {
+  const mood = moodFromText(word);
+  const must = wordMatch(word);
+  // 一覧の気分そのものでなく、説明にその言葉が出てくるときは、入っているものを上にまとめる（「ベリー」など）
+  const literal = !MOODS.some((m) => m.label === word) && beans.some(must);
+  return { label: word, mood, must: literal ? must : null };
 }
 
 function findText(d: ScannedBean) {
@@ -260,8 +269,8 @@ export default function MenuScan({
     announceBuddy({ mood: "happy", text: `「${beans[best].name}」、きっと好きなやつだよ` });
   }, [best, beans]);
 
-  // 気分を選んだら、その順に並べる（番号はおすすめの計算と同じ、元の並びのまま持つ）
-  const [mood, setMood] = useState<Mood | null>(null);
+  // 気分を選んだら、その順に並べる（番号はおすすめの計算と同じ、元の並びのまま持つ）。いくつでも選べる
+  const [moodWords, setMoodWords] = useState<string[]>([]);
   const [roast, setRoast] = useState<Roast | null>(null);
   const [area, setArea] = useState<string | null>(null);
   const [sortOpen, setSortOpen] = useState(false);
@@ -275,7 +284,15 @@ export default function MenuScan({
   // 調べ直してその焙煎度・地域がなくなったときは絞り込みを外す
   const activeRoast = roast && roastsHere.length > 1 && roastsHere.includes(roast) ? roast : null;
   const activeArea = area && areasHere.length > 1 && areasHere.includes(area) ? area : null;
-  const order = useMemo(() => {
+  // 選んだ気分を、味で並べるもの（甘めなど）と、入っていてほしい言葉（ベリーなど）に分ける。
+  // どちらでもない言葉があれば AI に聞く
+  const moodParts = useMemo(
+    () => moodWords.map((w) => partOf(w, beans)),
+    [moodWords, beans],
+  );
+  const moodLocal = moodParts.length > 0 && moodParts.every((p) => p.mood || p.must);
+  const mustWords = moodParts.filter((p) => p.must).map((p) => `「${p.label}」`).join("");
+  const { order, hits } = useMemo(() => {
     const key = findKey(find);
     const idx = beans
       .map((_, i) => i)
@@ -283,14 +300,27 @@ export default function MenuScan({
       .filter((i) => !key || findKey(findText(beans[i])).includes(key));
     if (pairing) {
       const s = (i: number) => pairing.byName.get(beans[i].name)?.score ?? 0;
-      return idx.sort((a, b) => s(b) - s(a));
+      return { order: idx.sort((a, b) => s(b) - s(a)), hits: null };
     }
-    return mood ? idx.sort((a, b) => mood.score(beans[b]) - mood.score(beans[a])) : idx;
-  }, [beans, mood, pairing, activeRoast, activeArea, find]);
+    if (!moodLocal) return { order: idx, hits: null };
+    // 気分ごとに点の幅が違うので、0〜1 にそろえてから足す
+    const total = new Map(idx.map((i) => [i, 0]));
+    for (const m of moodParts.flatMap((p) => (p.mood ? [p.mood] : []))) {
+      const s = idx.map((i) => m.score(beans[i]));
+      const lo = Math.min(...s);
+      const span = Math.max(...s) - lo || 1;
+      idx.forEach((i, n) => total.set(i, total.get(i)! + (s[n] - lo) / span));
+    }
+    // 「ベリー」など言葉で入れたものは、全部入っている豆を上にまとめる
+    const musts = moodParts.flatMap((p) => (p.must ? [p.must] : []));
+    const ok = (i: number) => musts.every((f) => f(beans[i]));
+    const sorted = idx.sort((a, b) => Number(ok(b)) - Number(ok(a)) || total.get(b)! - total.get(a)!);
+    return { order: sorted, hits: musts.length > 0 ? sorted.filter(ok).length : null };
+  }, [beans, moodParts, moodLocal, pairing, activeRoast, activeArea, find]);
   const sortSummary = [
     activeRoast,
     activeArea,
-    mood && `気分：${mood.label}`,
+    moodWords.length > 0 && !pairing && `気分：${moodWords.join("・")}`,
     pairing && (pairing.mood ? `気分：${pairing.sweet}` : `スイーツ：${pairing.sweet}`),
   ]
     .filter(Boolean)
@@ -383,7 +413,7 @@ export default function MenuScan({
           });
       }
       setPairing({ sweet: s, mood: asMood, byName });
-      setMood(null);
+      if (!asMood) setMoodWords([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "相性を調べられませんでした");
     } finally {
@@ -774,18 +804,14 @@ export default function MenuScan({
         <MoodPicker
           labels={MOODS.map((m) => m.label)}
           suggest={(q) => MOODS.filter((m) => m.label.includes(q) || m.words.test(q)).map((m) => m.label)}
-          value={mood?.label ?? (pairing?.mood ? pairing.sweet : null)}
+          values={moodWords}
           busy={pairingBusy}
-          onPick={(label) => {
-            setMood(MOODS.find((m) => m.label === label) ?? null);
-            setPairing((p) => (label || p?.mood ? null : p));
-          }}
-          onText={(t) => {
-            const m = moodFromText(t);
-            if (m) {
-              setMood(m);
-              setPairing(null);
-            } else pairWith(t, true);
+          onChange={(words) => {
+            setMoodWords(words);
+            setPairing((p) => (words.length > 0 || p?.mood ? null : p));
+            // わからない言葉が入っているときは、選んだ気分をまとめて AI に聞く
+            if (words.some((w) => !partOf(w, beans).mood && !partOf(w, beans).must))
+              pairWith(words.join("・"), true);
           }}
         />
       )}
@@ -842,8 +868,16 @@ export default function MenuScan({
         </div>
       )}
       {pairingBusy && <Skeleton label="合う順を考えています…" cards={2} lines={1} />}
-      {mood && !MOODS.some((m) => m.label === mood.label) && (
-        <p className={styles.lead}>「{mood.label}」に合いそうな順に並べました（AI は使っていません）。</p>
+      {moodLocal && !pairingBusy && (moodWords.length > 1 || moodWords.some((w) => !MOODS.some((m) => m.label === w))) && (
+        <p className={styles.lead}>
+          {moodWords.map((w) => `「${w}」`).join("")}に合いそうな順に並べました
+          {hits === null
+            ? ""
+            : hits === 0
+              ? `。${mustWords}が入っているものは見つかりませんでした`
+              : `。${mustWords}が入っているのは${hits}つです`}
+          （AI は使っていません）。
+        </p>
       )}
 
       {pairing && (
@@ -867,7 +901,7 @@ export default function MenuScan({
         </div>
       )}
 
-      {order.map((i) => {
+      {order.map((i, n) => {
         const b = beans[i];
         const badges = badgesOf(b);
         const match = pairing?.byName.get(b.name);
@@ -875,8 +909,11 @@ export default function MenuScan({
         const wished = !!wishOf(b);
         const words = tasteWords(b);
         return (
+          <Fragment key={i}>
+          {n > 0 && n === hits && (
+            <p className={styles.lead}>ここから下は{mustWords}が入っていないもの</p>
+          )}
           <article
-            key={i}
             className={`${styles.bean} ${i === best ? styles.best : ""}`}
           >
             {/* 右上の角に置き、度数や「＋記録」から離して押し間違いを防ぐ */}
@@ -1039,6 +1076,7 @@ export default function MenuScan({
               )}
             </div>
           </article>
+          </Fragment>
         );
       })}
       {beans.length > 1 && (
