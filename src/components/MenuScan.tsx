@@ -21,7 +21,7 @@ import {
 import { loadDishRanks, loadTodayMenu, saveDishRanks, type FoodMenu, type MenuRank } from "@/lib/foodPairing";
 import { findKnownBean } from "@/lib/knownBeans";
 import { loadLastScan, saveLastScan, today } from "@/lib/lastScan";
-import { findSaved, forgetSaved, recentSaved, saveLookups } from "@/lib/savedLookups";
+import { findSaved, saveLookups } from "@/lib/savedLookups";
 import { MOODS, moodFromText, type Mood } from "@/lib/moods";
 import { loadPasscode, PASSCODE_KEY } from "@/lib/passcode";
 import { shrinkPhoto } from "@/lib/photo";
@@ -123,6 +123,19 @@ export function PickedBean({
   );
 }
 
+/** 一覧の絞り込み用。全角半角・大文字小文字・ひらがなカタカナの違いを無視する */
+function findKey(text: string) {
+  return text
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\u3041-\u3096]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60))
+    .replace(/\s+/g, "");
+}
+
+function findText(d: ScannedBean) {
+  return [d.name, d.origin, d.roast, d.process, d.menuNote].filter(Boolean).join(" ");
+}
+
 /** メニューを撮影して豆の情報を読み取り、選んだ豆を記録フォームに渡す */
 export default function MenuScan({
   onPick,
@@ -174,7 +187,6 @@ export default function MenuScan({
   const [bagged, setBagged] = useState<string[]>([]);
   // AI を使わずに出したとき、どこから出したか（調べ直すボタン用）
   const [localHit, setLocalHit] = useState<{ name: string; how: string; query: string } | null>(null);
-  const [recent, setRecent] = useState<ScannedBean[]>([]);
 
   // localStorage はブラウザでしか読めないので、表示後に読み込む
   useEffect(() => {
@@ -185,7 +197,6 @@ export default function MenuScan({
     listRecords().then(setRecords);
     listWishes().then(setWishes);
     setPrefs(loadPrefs());
-    setRecent(recentSaved(8));
     const menu = loadTodayMenu();
     setFoodMenu(menu);
     setDishRanks(loadDishRanks(menu));
@@ -206,15 +217,6 @@ export default function MenuScan({
     setUndo({ label, beans });
     setLocalHit(null);
     replaceBeans(beans.filter((b) => !names.includes(b.name)));
-  }
-
-  // 「前に調べた豆」の候補を消すモード
-  const [editRecent, setEditRecent] = useState(false);
-  function forget(name: string) {
-    forgetSaved(name);
-    const next = recentSaved(8);
-    setRecent(next);
-    if (next.length === 0) setEditRecent(false);
   }
 
   const wishOf = (b: ScannedBean) =>
@@ -252,6 +254,8 @@ export default function MenuScan({
   const [roast, setRoast] = useState<Roast | null>(null);
   const [area, setArea] = useState<string | null>(null);
   const [sortOpen, setSortOpen] = useState(false);
+  // 一覧が多くなったときに名前や産地で絞る
+  const [find, setFind] = useState("");
   // タップで開いているカード（1杯だけのときは最初から開く）
   const [openCard, setOpenCard] = useState<string | null>(null);
   // スイーツとの相性を出したときは、その順を優先する
@@ -261,15 +265,17 @@ export default function MenuScan({
   const activeRoast = roast && roastsHere.length > 1 && roastsHere.includes(roast) ? roast : null;
   const activeArea = area && areasHere.length > 1 && areasHere.includes(area) ? area : null;
   const order = useMemo(() => {
+    const key = findKey(find);
     const idx = beans
       .map((_, i) => i)
-      .filter((i) => (!activeRoast || beans[i].roast === activeRoast) && (!activeArea || areaOf(beans[i]) === activeArea));
+      .filter((i) => (!activeRoast || beans[i].roast === activeRoast) && (!activeArea || areaOf(beans[i]) === activeArea))
+      .filter((i) => !key || findKey(findText(beans[i])).includes(key));
     if (pairing) {
       const s = (i: number) => pairing.byName.get(beans[i].name)?.score ?? 0;
       return idx.sort((a, b) => s(b) - s(a));
     }
     return mood ? idx.sort((a, b) => mood.score(beans[b]) - mood.score(beans[a])) : idx;
-  }, [beans, mood, pairing, activeRoast, activeArea]);
+  }, [beans, mood, pairing, activeRoast, activeArea, find]);
   const sortSummary = [
     activeRoast,
     activeArea,
@@ -470,7 +476,6 @@ export default function MenuScan({
         throw new Error("コーヒー豆のメニューが見つかりませんでした");
       // 次からは AI を呼ばずに出せるよう保存しておく
       saveLookups(result.beans, query);
-      setRecent(recentSaved(8));
       // 名前で調べた豆は今の一覧の先頭に、メニューは今日の一覧の後ろに足す（何枚かに分かれたメニューを続けて撮れるように）
       const next = query
         ? [...result.beans, ...beans.filter((b) => !result.beans.some((r) => r.name === b.name))]
@@ -571,9 +576,12 @@ export default function MenuScan({
         )}
       </div>
       {status === "done" && (
-        <p className={styles.howTo}>
-          「撮る」「写真から」はメニューを読み取り、「文字で」は豆の名前やメニューの文を打って調べます。
-        </p>
+        <dl className={styles.howTo}>
+          <dt>撮る・写真から</dt>
+          <dd>メニューを読み取る</dd>
+          <dt>文字で</dt>
+          <dd>豆の名前やメニューの文で調べる</dd>
+        </dl>
       )}
 
       {status !== "reading" &&
@@ -612,35 +620,6 @@ export default function MenuScan({
 
       {status !== "reading" && extra}
 
-      {status !== "reading" && recent.length > 0 && (
-        <div className="scroll-row" aria-label="前に調べた豆">
-          {recent.map((b) =>
-            editRecent ? (
-              <button
-                key={b.name}
-                type="button"
-                className={`chip ${styles.forget}`}
-                aria-label={`${b.name}を前に調べた豆から消す`}
-                onClick={() => forget(b.name)}
-              >
-                {b.name} ✕
-              </button>
-            ) : (
-              <button key={b.name} type="button" className="chip" onClick={() => lookupText(false, b.name)}>
-                {b.name}
-              </button>
-            ),
-          )}
-          <button
-            type="button"
-            className={`chip ${styles.editChip}`}
-            aria-pressed={editRecent}
-            onClick={() => setEditRecent(!editRecent)}
-          >
-            {editRecent ? "完了" : "✎ 消す"}
-          </button>
-        </div>
-      )}
       {status === "reading" && (
         <Skeleton
           // メニューの文を貼ったときは長いので名前は出さない
@@ -714,16 +693,20 @@ export default function MenuScan({
           >
             ⇅ 並び替え
           </button>
-          {sortSummary && <span className={styles.sortNow}>{sortSummary}</span>}
-          <button
-            type="button"
-            className="btn-ghost"
-            style={{ height: 36, padding: "0 12px", flexShrink: 0, marginLeft: "auto" }}
-            onClick={() => hide(beans.map((b) => b.name), `${beans.length}種類すべて`)}
-          >
-            すべて消す
-          </button>
+          <input
+            className={`input ${styles.find}`}
+            type="search"
+            enterKeyHint="search"
+            aria-label="一覧を名前や産地で絞り込む"
+            placeholder="名前・産地で探す"
+            value={find}
+            onChange={(e) => setFind(e.target.value)}
+          />
         </div>
+      )}
+      {beans.length > 1 && sortSummary && <p className={styles.sortNow}>{sortSummary}</p>}
+      {beans.length > 1 && find.trim() && order.length === 0 && (
+        <p className={styles.lead}>「{find.trim()}」に当てはまる豆はありません。</p>
       )}
       {beans.length > 1 && sortOpen && (
         <div className={styles.sortPanel}>
@@ -1025,6 +1008,11 @@ export default function MenuScan({
           </article>
         );
       })}
+      {beans.length > 1 && (
+        <button type="button" className={`btn-ghost ${styles.clearAll}`} onClick={() => hide(beans.map((b) => b.name), `${beans.length}種類すべて`)}>
+          一覧をすべて消す
+        </button>
+      )}
     </section>
   );
 }
