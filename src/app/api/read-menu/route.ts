@@ -136,6 +136,36 @@ export async function POST(req: Request) {
   }
 
   // 食べているスイーツか今日の気分と、読み取り済みの豆の相性（文字だけなので安い）
+  // 逆向き：1杯の豆に、読み取った料理メニューのどれが合うか
+  if (body?.bean && typeof body.bean === "object" && Array.isArray(body?.dishes)) {
+    const b = body.bean as Record<string, unknown>;
+    const name = [b.name, b.roast, b.process].filter((x) => typeof x === "string" && x).join(" / ").slice(0, 120);
+    const dishes = (body.dishes as unknown[])
+      .filter((x): x is string => typeof x === "string" && !!x.trim())
+      .slice(0, MAX_PAIRING_BEANS)
+      .map((x) => x.trim().slice(0, MAX_WORD));
+    if (!name) return error(400, "豆がありません");
+    if (dishes.length === 0) return error(400, "料理がありません");
+    try {
+      const response = await client.messages.parse({
+        model: MODEL,
+        max_tokens: 4000,
+        system: "あなたはコーヒーとスイーツ・料理の組み合わせにくわしい、やさしい案内役です。初心者にもわかる日本語で答えてください。",
+        output_config: { effort: "low", format: zodOutputFormat(PairingResultSchema) },
+        messages: [
+          {
+            role: "user",
+            content: `いま「${name}」のコーヒーを飲んでいます。次の料理・スイーツそれぞれについて、このコーヒーとの相性を付けてください（index は料理の番号）。全部に付け、違いがわかるよう相対的に付けてください。\n\n${dishes.map((x, i) => `${i}. ${x}`).join("\n")}`,
+          },
+        ],
+      });
+      if (!response.parsed_output) return error(422, "うまく判断できませんでした");
+      return Response.json(response.parsed_output);
+    } catch (e) {
+      return apiError(e);
+    }
+  }
+
   if (typeof body?.sweet === "string" || typeof body?.mood === "string") {
     const isMood = typeof body?.mood === "string";
     const sweet = String(isMood ? body.mood : body.sweet).trim();

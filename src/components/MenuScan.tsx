@@ -18,7 +18,7 @@ import {
   putWish,
   type WishBean,
 } from "@/lib/db";
-import { dishesForBean, loadTodayMenu, type FoodMenu } from "@/lib/foodPairing";
+import { loadDishRanks, loadTodayMenu, saveDishRanks, type FoodMenu, type MenuRank } from "@/lib/foodPairing";
 import { findKnownBean } from "@/lib/knownBeans";
 import { loadLastScan, saveLastScan, today } from "@/lib/lastScan";
 import { findSaved, forgetSaved, recentSaved, saveLookups } from "@/lib/savedLookups";
@@ -33,6 +33,7 @@ import styles from "./MenuScan.module.css";
 import AskAI from "./AskAI";
 import { roastColor } from "./RecordCard";
 import Hint from "./Hint";
+import MenuPicks from "./MenuPicks";
 import MoodPicker from "./MoodPicker";
 import TasteBars from "./TasteBars";
 import Skeleton from "./Skeleton";
@@ -163,6 +164,10 @@ export default function MenuScan({
   const [pairingBusy, setPairingBusy] = useState(false);
   // 同じお店で今日読み取った料理メニュー。豆ごとに合う料理を出し、料理で並べるときの候補にする
   const [foodMenu, setFoodMenu] = useState<FoodMenu["dishes"]>([]);
+  // 豆ごとに、料理メニューの中から合う順を聞いた結果と、聞いている豆
+  const [dishRanks, setDishRanks] = useState<Record<string, MenuRank[]>>({});
+  const [dishRanking, setDishRanking] = useState<string | null>(null);
+  const [dishRankError, setDishRankError] = useState<{ name: string; text: string } | null>(null);
   // 買った豆を、家で何回かに分けて淹れる豆として登録する
   const [bagged, setBagged] = useState<string[]>([]);
   // AI を使わずに出したとき、どこから出したか（調べ直すボタン用）
@@ -179,7 +184,9 @@ export default function MenuScan({
     listWishes().then(setWishes);
     setPrefs(loadPrefs());
     setRecent(recentSaved(8));
-    setFoodMenu(loadTodayMenu());
+    const menu = loadTodayMenu();
+    setFoodMenu(menu);
+    setDishRanks(loadDishRanks(menu));
   }, []);
 
   // 調べた結果を一覧から外す（今日の一覧からだけ。前に調べた情報は残るので、また調べても AI は使わない）
@@ -289,6 +296,40 @@ export default function MenuScan({
   }
 
   /** いま頼む・食べているスイーツか、文字で入れた気分に合う順に並べる */
+  /** 今日読み取った料理メニューを、この豆に合う順に AI に並べてもらう */
+  async function rankDishes(b: ScannedBean) {
+    if (dishRanking) return;
+    if (!passcode) return setDishRankError({ name: b.name, text: "先に合言葉を入れてください" });
+    if (!navigator.onLine) return setDishRankError({ name: b.name, text: "オフラインのため調べられません" });
+    setDishRankError(null);
+    setDishRanking(b.name);
+    try {
+      const res = await fetch("/api/read-menu", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bean: { name: b.name, roast: b.roast, process: b.process },
+          dishes: foodMenu.map((m) => m.dish),
+          passcode: passcode.trim().normalize("NFKC"),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) setSavedPasscode(false);
+      if (!res.ok) throw new Error(data.error ?? "相性を調べられませんでした");
+      const ranks = (data as PairingResult).ranks
+        .filter((r) => foodMenu[r.index])
+        .map((r) => ({ name: foodMenu[r.index].dish, score: Math.min(5, Math.max(1, r.score)), reason: r.reason }))
+        .sort((x, y) => y.score - x.score);
+      const next = { ...dishRanks, [b.name]: ranks };
+      setDishRanks(next);
+      saveDishRanks(foodMenu, next);
+    } catch (err) {
+      setDishRankError({ name: b.name, text: err instanceof Error ? err.message : "相性を調べられませんでした" });
+    } finally {
+      setDishRanking(null);
+    }
+  }
+
   async function pairWith(s = sweet.trim(), asMood = false) {
     if (!s) return;
     if (!passcode) return setError("先に合言葉を入れてください");
@@ -422,10 +463,14 @@ export default function MenuScan({
       // 次からは AI を呼ばずに出せるよう保存しておく
       saveLookups(result.beans, query);
       setRecent(recentSaved(8));
-      setBeans(result.beans);
+      // 名前で調べた豆は今の一覧の先頭に、メニューは今日の一覧の後ろに足す（何枚かに分かれたメニューを続けて撮れるように）
+      const next = query
+        ? [...result.beans, ...beans.filter((b) => !result.beans.some((r) => r.name === b.name))]
+        : [...beans, ...result.beans.filter((r) => !beans.some((b) => b.name === r.name))];
+      setBeans(next);
       setPairing(null);
-      saveLastScan(result.beans);
-      onScanned?.(result.beans);
+      saveLastScan(next, loadLastScan()?.recorded ?? []);
+      onScanned?.(next);
       setStatus("done");
       setUndo(null);
       setTextOpen(false);
@@ -883,10 +928,16 @@ export default function MenuScan({
                   </p>
                 )}
                 {foodMenu.length > 0 && (
-                  <p className={styles.text}>
-                    <strong>さっきの料理メニューなら：</strong>
-                    {dishesForBean(foodMenu, b).slice(0, 3).join("、") || "合うと出た料理はありません"}
-                  </p>
+                  <div style={{ "--kind": roastColor(b.roast) } as React.CSSProperties}>
+                    <MenuPicks
+                      label="さっきの料理メニューなら"
+                      button="さっきの料理メニューから選ぶ"
+                      ranks={dishRanks[b.name]}
+                      busy={dishRanking === b.name}
+                      error={dishRankError?.name === b.name ? dishRankError.text : ""}
+                      onAsk={() => rankDishes(b)}
+                    />
+                  </div>
                 )}
                 {b.methodNotes && b.methodNotes.length > 0 && (
                   <details className={styles.methods}>

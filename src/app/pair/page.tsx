@@ -30,6 +30,7 @@ import { loadPasscode, normalizePasscode, savePasscode } from "@/lib/passcode";
 import { shrinkPhoto } from "@/lib/photo";
 import { loadPrefs } from "@/lib/prefs";
 import type { Bag, TastingRecord } from "@/lib/types";
+import MenuPicks from "@/components/MenuPicks";
 import Skeleton from "@/components/Skeleton";
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -63,53 +64,6 @@ type Result = {
   bags: MineMatch<Bag>[];
 };
 
-/** 料理の中に出す、今日読み取ったコーヒーのメニューから選ぶボタンと、押したあとの合う順（上位3杯） */
-function BeanMenuPicks({
-  ranks,
-  busy,
-  error,
-  onAsk,
-}: {
-  ranks?: MenuRank[];
-  busy: boolean;
-  error: string;
-  onAsk: () => void;
-}) {
-  if (!ranks) {
-    return (
-      <div className="pair-on-menu">
-        <button type="button" className="btn-secondary pair-on-menu-btn" onClick={onAsk} disabled={busy}>
-          {busy ? "選んでいます…" : "さっきのメニューから選ぶ"}
-        </button>
-        {error && <p className="error">{error}</p>}
-      </div>
-    );
-  }
-  const top = ranks.filter((r) => r.score >= 3).slice(0, 3);
-  return (
-    <div className="pair-on-menu">
-      <p className="pair-dish-for">さっきのコーヒーのメニューなら</p>
-      {top.length === 0 ? (
-        <p className="muted">メニューの中には、とくに合うものが見つかりませんでした。</p>
-      ) : (
-        <ol className="pair-on-menu-list">
-          {top.map((r) => (
-            <li key={r.name} className="pair-on-menu-item">
-              <span className="pair-on-menu-name">
-                <strong>{r.name}</strong>
-                <span className="pair-on-menu-score" aria-label={`相性${r.score}`}>
-                  {"●".repeat(r.score) + "○".repeat(5 - r.score)}
-                </span>
-              </span>
-              <span className="muted">{r.reason}</span>
-            </li>
-          ))}
-        </ol>
-      )}
-    </div>
-  );
-}
-
 /** 料理や食べ物を入れると、合うコーヒーと、自分の記録・家の豆から合いそうなものを出す */
 export default function PairPage() {
   const [dish, setDish] = useState("");
@@ -124,6 +78,8 @@ export default function PairPage() {
   // メニューの写真から読み取った料理と、それぞれにいちばん合うもの
   const [menu, setMenu] = useState<FoodMenu["dishes"] | null>(null);
   const [reading, setReading] = useState(false);
+  // 2枚目以降を足したときに増えた品数（1枚目なら null）
+  const [addedCount, setAddedCount] = useState<number | null>(null);
   const [menuDate, setMenuDate] = useState<string | undefined>();
   const [restored, setRestored] = useState(false);
   // 同じお店で今日読み取ったコーヒーのメニュー。料理に合うものをそこから選ぶ
@@ -209,7 +165,11 @@ export default function PairPage() {
       // 料金は画像の大きさで決まるので、長辺1000pxまで縮めてから送る
       const image = await blobToBase64(await shrinkPhoto(file, 1000));
       const data = (await post({ foodImage: image })) as FoodMenu;
-      setMenu(data.dishes);
+      // 同じ日に続けて撮ったメニュー（表と裏、ケーキとフードなど）は入れ替えずに足す
+      const before = menu && menuDate === today() ? menu : [];
+      const added = data.dishes.filter((d) => !before.some((m) => m.dish === d.dish));
+      setMenu([...before, ...added]);
+      setAddedCount(before.length > 0 ? added.length : null);
       setMenuDate(today());
       setResult(null);
       setJustRead(true);
@@ -376,7 +336,9 @@ export default function PairPage() {
             <p className={justRead ? "pair-done pair-done-new" : "pair-done"}>
               <span className="pair-done-check" aria-hidden="true">✓</span>
               <span>
-                <strong>{menu.length}品読み取りました</strong>
+                <strong>
+                  {menu.length}品読み取りました{addedCount != null && `（今回 +${addedCount}品）`}
+                </strong>
                 <span className="muted">料理を押すと、合うコーヒーが出ます</span>
               </span>
             </p>
@@ -400,7 +362,9 @@ export default function PairPage() {
                       <p className="pair-group-reason">{pick.reason}</p>
                       {pick.examples && <p className="muted">例：{pick.examples}</p>}
                       {beanMenu.length > 0 && (
-                        <BeanMenuPicks
+                        <MenuPicks
+                          label="さっきのコーヒーのメニューなら"
+                          button="さっきのメニューから選ぶ"
                           ranks={menuRanks[d]}
                           busy={ranking === d}
                           error={rankError?.dish === d ? rankError.text : ""}
@@ -463,7 +427,9 @@ export default function PairPage() {
 
             {beanMenu.length > 0 && !menu?.some((m) => m.dish === result.query) && (
               <section className="card pair-menu-card">
-                <BeanMenuPicks
+                <MenuPicks
+                  label="さっきのコーヒーのメニューなら"
+                  button="さっきのメニューから選ぶ"
                   ranks={menuRanks[result.query]}
                   busy={ranking === result.query}
                   error={rankError?.dish === result.query ? rankError.text : ""}
