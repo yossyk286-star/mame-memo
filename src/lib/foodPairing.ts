@@ -22,6 +22,19 @@ export const FoodPairingSchema = z.object({
   picks: z.array(FoodPickSchema).describe("合うコーヒーを合う順に3つ。焙煎度か飲み方が重ならないようにする"),
 });
 
+/** 料理のメニューや料理の写真から、載っている料理ごとにいちばん合うコーヒー */
+export const FoodMenuSchema = z.object({
+  dishes: z
+    .array(
+      z.object({
+        dish: z.string().describe("料理名（メニューに書いてあるとおり、長ければ短くととのえる）"),
+        pick: FoodPickSchema.describe("この料理にいちばん合うコーヒー"),
+      }),
+    )
+    .describe("写っている料理。多くても12品。飲み物は含めない。料理が写っていなければ空配列"),
+});
+
+export type FoodMenu = z.infer<typeof FoodMenuSchema>;
 export type FoodPick = z.infer<typeof FoodPickSchema>;
 export type FoodPairing = Omit<z.infer<typeof FoodPairingSchema>, "found">;
 
