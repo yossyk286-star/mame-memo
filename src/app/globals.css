@@ -6,13 +6,16 @@
 :root {
   --accent-l: #7a3e22;
   --accent-d: #d9a27e;
+  /* くらべるの2つ目の色。テーマ色と見分けやすい反対寄りの色（寒色のテーマ色には橙、暖色・灰色には青） */
+  --compare-l: #2f6fd0;
+  --compare-d: #6aa8ff;
 }
-[data-accent="indigo"] { --accent-l: #3d4fa8; --accent-d: #8c9cf0; }
-[data-accent="blue"] { --accent-l: #0a6cdc; --accent-d: #4a9eff; }
-[data-accent="wine"] { --accent-l: #a3264c; --accent-d: #f0708f; }
-[data-accent="amber"] { --accent-l: #b8650c; --accent-d: #f5a742; }
-[data-accent="green"] { --accent-l: #2f7d55; --accent-d: #5cc98e; }
-[data-accent="graphite"] { --accent-l: #3a3d46; --accent-d: #c9ccd6; }
+[data-accent="indigo"] { --accent-l: #3d4fa8; --accent-d: #8c9cf0; --compare-l: #e0663a; --compare-d: #ff9f6b; }
+[data-accent="blue"] { --accent-l: #0a6cdc; --accent-d: #4a9eff; --compare-l: #e0663a; --compare-d: #ff9f6b; }
+[data-accent="wine"] { --accent-l: #a3264c; --accent-d: #f0708f; --compare-l: #2f6fd0; --compare-d: #6aa8ff; }
+[data-accent="amber"] { --accent-l: #b8650c; --accent-d: #f5a742; --compare-l: #2f6fd0; --compare-d: #6aa8ff; }
+[data-accent="green"] { --accent-l: #2f7d55; --accent-d: #5cc98e; --compare-l: #2f6fd0; --compare-d: #6aa8ff; }
+[data-accent="graphite"] { --accent-l: #3a3d46; --accent-d: #c9ccd6; --compare-l: #2f6fd0; --compare-d: #6aa8ff; }
 
 :root {
   --bg: #f2f2f7;
@@ -35,7 +38,7 @@
   --accent-soft: color-mix(in srgb, var(--accent) 11%, var(--surface));
   --on-accent: #ffffff;
   --danger: #d1342a;
-  --compare: #2f7a8a;
+  --compare: var(--compare-l);
   /* 焙煎度ごとの色 */
   --k-light: #c58a3a;
   --k-medium: #8a5530;
@@ -75,7 +78,7 @@
     --accent-soft: color-mix(in srgb, var(--accent) 18%, var(--surface));
     --on-accent: #0b0b10;
     --danger: #ff6961;
-    --compare: #6cc3d3;
+    --compare: var(--compare-d);
     --k-light: #dba862;
     --k-medium: #b07a52;
     --k-dark: #8a5a42;
@@ -104,7 +107,7 @@
   --accent-soft: color-mix(in srgb, var(--accent) 18%, var(--surface));
   --on-accent: #0b0b10;
   --danger: #ff6961;
-  --compare: #6cc3d3;
+  --compare: var(--compare-d);
   --k-light: #dba862;
   --k-medium: #b07a52;
   --k-dark: #8a5a42;
@@ -1433,6 +1436,32 @@ button.stamp {
 }
 .taste-map-cell:disabled {
   cursor: default;
+}
+/* 総合の平均 ★1〜5 をテーマ色の濃さ5段階で。濃い2段は数字を白（ダークでは黒）にして読めるように */
+.taste-map-cell[data-step="1"] { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+.taste-map-cell[data-step="2"] { background: color-mix(in srgb, var(--accent) 40%, var(--surface)); }
+.taste-map-cell[data-step="3"] { background: color-mix(in srgb, var(--accent) 58%, var(--surface)); }
+.taste-map-cell[data-step="4"] { background: color-mix(in srgb, var(--accent) 78%, var(--surface)); color: var(--on-accent); }
+.taste-map-cell[data-step="5"] { background: var(--accent); color: var(--on-accent); }
+.taste-map-scale {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 32px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.taste-map-scale span:first-child {
+  margin-right: auto;
+}
+.taste-map-scale span + span {
+  margin: 0 3px;
+}
+.taste-map-scale .taste-map-cell {
+  width: 18px;
+  aspect-ratio: auto;
+  height: 12px;
+  border-radius: 4px;
 }
 .taste-map-cell[aria-pressed="true"] {
   outline: 2px solid var(--text);
@@ -2797,8 +2826,11 @@ body::before {
   fill: var(--accent);
   cursor: pointer;
 }
+/* 押したけれどまだの国は、飲んだ国（テーマ色）と取り違えないよう薄い灰色＋ふち */
 .wmap-land[data-picked] {
-  fill: var(--muted);
+  fill: color-mix(in srgb, var(--muted) 55%, var(--surface));
+  stroke: var(--text);
+  stroke-width: 1;
 }
 .wmap-land.on[data-picked] {
   fill: var(--accent-dark);
@@ -2811,6 +2843,31 @@ body::before {
 .wmap-dot.on {
   fill: var(--accent);
   stroke: var(--surface);
+}
+/* 地図の凡例（飲んだ／まだ）。色だけに頼らないよう、ことばを添える */
+.map-legend {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: -2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.map-legend .wmap-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1.5px solid var(--muted);
+}
+.map-legend .wmap-dot.on {
+  background: var(--accent);
+  border-color: var(--accent);
 }
 .wmap-areas {
   flex-wrap: nowrap;
