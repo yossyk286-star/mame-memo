@@ -1927,5 +1927,9 @@
 "デカフェ": "Decaf",
 "カフェインを抜いた豆": "Decaffeinated beans",
 "カフェインをほとんど抜いたコーヒー。夜や妊娠中でも飲みやすい。": "Coffee with almost all the caffeine removed. Easy at night or during pregnancy.",
-"{0}（一般的な傾向です。お店の説明があればそちらを優先してください）": "{0} (general tendencies; trust the shop's description if there is one)"
+"{0}（一般的な傾向です。お店の説明があればそちらを優先してください）": "{0} (general tendencies; trust the shop's description if there is one)",
+"総合の平均": "Avg. rating",
+"飲んだ": "Tried",
+"まだ": "Not yet",
+"数字は杯数です。マスを押すとその豆が出ます。": "Numbers are cup counts. Tap a square to see those coffees."
 }
