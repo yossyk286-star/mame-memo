@@ -24,7 +24,7 @@ import { loadLastScan, saveLastScan, today } from "@/lib/lastScan";
 import { findSaved, saveLookups } from "@/lib/savedLookups";
 import { MOODS, moodFromText, wordMatch } from "@/lib/moods";
 import { loadPasscode, PASSCODE_KEY } from "@/lib/passcode";
-import { shrinkPhoto } from "@/lib/photo";
+import { shrinkForReading } from "@/lib/photo";
 import { EMPTY_PREFS, loadPrefs } from "@/lib/prefs";
 import { announceBuddy } from "@/lib/buddy";
 import { bestPick, MIN_RECORDS, scoreBeans } from "@/lib/recommend";
@@ -467,9 +467,9 @@ export default function MenuScan({
   const [text, setText] = useState("");
 
   async function scan(photo: Blob) {
-    // 料金は画像の大きさで決まるので、長辺1000pxまで縮めてから送る
+    // 小さい字も読めるよう、長辺1600pxまでにして送る（Haiku なので料金はほぼ変わらない）
     return await request(async () => ({
-      image: await blobToBase64(await shrinkPhoto(photo, 1000)),
+      image: await blobToBase64(await shrinkForReading(photo)),
     }));
   }
 

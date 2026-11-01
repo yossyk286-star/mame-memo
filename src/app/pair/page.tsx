@@ -29,7 +29,7 @@ import {
   type MineMatch,
 } from "@/lib/foodPairing";
 import { loadPasscode, normalizePasscode, savePasscode } from "@/lib/passcode";
-import { shrinkPhoto } from "@/lib/photo";
+import { shrinkForReading } from "@/lib/photo";
 import { loadPrefs } from "@/lib/prefs";
 import type { Bag, TastingRecord } from "@/lib/types";
 import MenuPicks from "@/components/MenuPicks";
@@ -191,8 +191,8 @@ export default function PairPage() {
     for (const [i, file] of files.entries()) {
       if (files.length > 1) setProgress({ at: i + 1, of: files.length });
       try {
-        // 料金は画像の大きさで決まるので、長辺1000pxまで縮めてから送る
-        const image = await blobToBase64(await shrinkPhoto(file, 1000));
+        // 小さい字も読めるよう、長辺1600pxまでにして送る（Haiku なので料金はほぼ変わらない）
+        const image = await blobToBase64(await shrinkForReading(file));
         const data = (await post({ foodImage: image })) as FoodMenu;
         const added = data.dishes.filter((d) => !all.some((m) => m.dish === d.dish));
         all = [...added, ...all];
