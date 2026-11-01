@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { stars } from "@/components/RecordCard";
+import { Stars } from "@/components/RecordCard";
 import { collectStamps, diaryNote, REGIONS, travelDiary, type DiaryEntry, type Stamp } from "@/lib/countries";
 import { listRecords } from "@/lib/db";
 import type { TastingRecord } from "@/lib/types";
@@ -105,7 +105,7 @@ function StampDetail({ name, stamp }: { name: string; stamp: Stamp }) {
       {rows.map((r) => (
         <Link key={r.id} href={`/record?id=${r.id}`} className="stamp-row">
           <span className="stamp-row-name">{r.farm || tr(r.origin)}</span>
-          <span className="stars">{stars(r.overall)}</span>
+          <Stars n={r.overall} />
           <span className="muted stamp-row-sub">
             {tr("{0}・{1}", r.shop, r.date.slice(5).replace("-", "/"))}
             {r.roast && r.roast !== "不明" ? tr("・{0}", r.roast) : ""}

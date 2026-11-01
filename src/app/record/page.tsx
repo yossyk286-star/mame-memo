@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import RadarChart from "@/components/RadarChart";
-import { beanTitle, roastColor, stars, yen } from "@/components/RecordCard";
+import { beanTitle, roastColor, Stars, yen } from "@/components/RecordCard";
 import { TASTE_AXES } from "@/lib/axes";
 import { recordImage, shareImage } from "@/lib/shareImage";
 import { PhotoAddButton, PhotoRow } from "@/components/PhotoAdd";
@@ -171,9 +171,7 @@ function DetailBody() {
               <div className="detail-score" aria-label={tr("総合 5段階中{0}", r.overall)}>
                 <span className="detail-score-label">{tr("総合")}</span>
                 <span className="detail-score-num">{trv(r.overall)}</span>
-                <span className="stars" aria-hidden="true">
-                  {stars(r.overall)}
-                </span>
+                <Stars n={r.overall} label="" />
               </div>
             </div>
             <div className="detail-when">

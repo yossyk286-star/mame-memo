@@ -27,6 +27,8 @@ export interface QA {
 
 /** 1〜5 の評価。未入力は null */
 export type Score = 1 | 2 | 3 | 4 | 5;
+/** 総合評価。0.5 きざみ（0.5〜5）。0.5 きざみにする前の記録は 1〜5 の整数 */
+export type Overall = 0.5 | 1 | 1.5 | 2 | 2.5 | 3 | 3.5 | 4 | 4.5 | 5;
 
 export interface TastingRecord {
   id: string;
@@ -49,7 +51,7 @@ export interface TastingRecord {
   /** コク（口当たりの重さ）・香りの華やかさ。後から増やした項目なので古い記録にはない */
   body?: Score | null;
   aroma?: Score | null;
-  overall: Score;
+  overall: Overall;
   /** 1杯の値段（円）。値段の欄ができる前の記録にはない */
   price?: number | null;
   /** 家の豆（買った豆）から記録したときの、その豆の id */
@@ -68,7 +70,7 @@ export interface TastingRecord {
 }
 
 export type RecordDraft = Omit<TastingRecord, "id" | "createdAt" | "updatedAt" | "overall"> & {
-  overall: Score | null;
+  overall: Overall | null;
 };
 
 /** 家で淹れるために買った豆。何回かに分けて記録できる */
