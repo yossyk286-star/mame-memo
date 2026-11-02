@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SingleChips } from "@/components/ChipGroup";
-import { beanTitle, roastColor, stars, yen } from "@/components/RecordCard";
+import { beanTitle, roastColor, Stars, stars, yen } from "@/components/RecordCard";
 import { announceBuddy } from "@/lib/buddy";
 import { deleteBag, listBags, listRecords, putBag } from "@/lib/db";
 import { PROCESSES, ROASTS } from "@/lib/glossary";
@@ -152,7 +152,7 @@ function BagCard({
       <p style={{ margin: 0, fontSize: 14 }}>
         {mine.length > 0 ? (
           <>
-            {tr("{0}回記録・平均", mine.length)}{" "}<span className="stars">{stars(Math.round(avg))}</span>
+            {tr("{0}回記録・平均", mine.length)}{" "}<Stars n={Math.round(avg * 2) / 2} />
           </>
         ) : (
           <span className="muted">{tr("まだ記録していません")}</span>
@@ -170,7 +170,7 @@ function BagCard({
           <summary>{tr("記録を見る")}</summary>
           {mine.map((r) => (
             <Link key={r.id} href={`/record?id=${r.id}`}>
-              {r.date.slice(5).replace("-", "/")} {stars(r.overall)} {r.method ?? ""} {r.recipe ? recipeText(r.recipe) : r.memo.slice(0, 20)}
+              {r.date.slice(5).replace("-", "/")} <Stars n={r.overall} /> {r.method ?? ""} {r.recipe ? recipeText(r.recipe) : r.memo.slice(0, 20)}
             </Link>
           ))}
         </details>
