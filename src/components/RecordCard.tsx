@@ -66,7 +66,7 @@ function Thumb({ record: r }: { record: TastingRecord }) {
     return <img src={url} alt="" className="thumb" style={{ borderColor: roastColor(r.roast) }} />;
   }
   return (
-    <span className="thumb thumb-mark" style={{ background: roastColor(r.roast) }} aria-hidden="true">
+    <span className="thumb thumb-mark" style={{ "--kc": roastColor(r.roast) } as React.CSSProperties} aria-hidden="true">
       {ROAST_LOOK[r.roast ?? "不明"][getLang() === "en" ? "en" : "mark"]}
     </span>
   );
