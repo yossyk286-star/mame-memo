@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import { markSheetOrigin } from "@/lib/sheetDepth";
 import { FLAVORS, METHODS, PROCESSES, ROASTS, termsOf, type GlossaryCategory } from "@/lib/glossary";
 import { getLang, tr, trv } from "@/lib/i18n";
 
@@ -23,6 +25,7 @@ export default function GlossarySheet({
   onClose: () => void;
 }) {
   useEffect(() => {
+    markSheetOrigin();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -43,7 +46,8 @@ export default function GlossarySheet({
     </div>
   );
 
-  return (
+  // 後ろの画面（.app）を奥へ下げるので、シートはその外（body の直下）に置く
+  return createPortal(
     <div className="sheet-backdrop" onClick={onClose}>
       <section
         className="sheet"
@@ -73,6 +77,7 @@ export default function GlossarySheet({
           {tr("辞典でほかの用語も見る ›")}
         </Link>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

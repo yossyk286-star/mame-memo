@@ -1,5 +1,7 @@
 "use client";
 
+import BackChevron from "@/components/BackChevron";
+import { toast } from "@/lib/toast";
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import RadarChart from "@/components/RadarChart";
@@ -90,7 +92,7 @@ function DetailBody() {
       footer: trJoin([r.shop, r.date.replaceAll("-", "/")]),
       photo: photosOf(r)[0] ?? null,
     });
-    await shareImage(blob, beanTitle(r)).catch(() => alert(tr("共有できませんでした")));
+    await shareImage(blob, beanTitle(r)).catch(() => toast("共有できませんでした", { tone: "warn" }));
   }
 
   async function addQA(qa: QA) {
@@ -158,7 +160,7 @@ function DetailBody() {
     <>
       <header className="sub-header" data-top={atTop ? "" : undefined} style={r ? ({ "--kind": roastColor(r.roast) } as React.CSSProperties) : undefined}>
         <Link href="/" className="back" onClick={back}>
-          {tr("‹ 戻る")}
+          <BackChevron />
         </Link>
         <h1>{tr("記録")}</h1>
         {r && (
