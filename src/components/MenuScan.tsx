@@ -29,7 +29,7 @@ import { shrinkForReading } from "@/lib/photo";
 import { addPending, fetchOnline, loadPending, OfflineError, setPending as savePending } from "@/lib/pending";
 import PendingPhotos from "./PendingPhotos";
 import { EMPTY_PREFS, loadPrefs } from "@/lib/prefs";
-import { announceBuddy } from "@/lib/buddy";
+import { announceBuddy, pick } from "@/lib/buddy";
 import { bestPick, MIN_RECORDS, scoreBeans } from "@/lib/recommend";
 import type { Roast, TastingRecord } from "@/lib/types";
 import styles from "./MenuScan.module.css";
@@ -271,7 +271,7 @@ export default function MenuScan({
     const key = beans.map((b) => b.name).join("|");
     if (announcedScans.has(key)) return;
     announcedScans.add(key);
-    announceBuddy({ mood: "happy", text: tr("「{0}」、きっと好きなやつだよ", beans[best].name) });
+    announceBuddy({ mood: "happy", text: pick([tr("「{0}」、きっと好きなやつだよ", beans[best].name), tr("「{0}」が好みに合いそう！", beans[best].name), tr("ぼくのおすすめは「{0}」かな", beans[best].name)]) });
   }, [best, beans]);
 
   // 気分を選んだら、その順に並べる（番号はおすすめの計算と同じ、元の並びのまま持つ）。いくつでも選べる

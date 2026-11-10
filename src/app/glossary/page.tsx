@@ -10,7 +10,7 @@ import {
 } from "@/lib/glossary";
 import { DRINKS } from "@/lib/knownBeans";
 import type { TermLookup } from "@/lib/menuScan";
-import { announceBuddy } from "@/lib/buddy";
+import { announceBuddy, pick } from "@/lib/buddy";
 import { loadMyTerms, saveMyTerms, type MyTerm } from "@/lib/myTerms";
 import { loadPasscode, normalizePasscode, savePasscode } from "@/lib/passcode";
 import Skeleton from "@/components/Skeleton";
@@ -129,7 +129,7 @@ export default function GlossaryPage() {
     setMyTerms(next);
     saveMyTerms(next);
     setJustAdded(t.term);
-    announceBuddy({ mood: "wow", text: tr("「{0}」を覚えたね。ひとつ詳しくなった！", t.term) });
+    announceBuddy({ mood: "wow", text: pick([tr("「{0}」を覚えたね。ひとつ詳しくなった！", t.term), tr("「{0}」をメモしたよ。お店で見かけたら思い出してね", t.term), tr("「{0}」、覚えた！コーヒーの話がもっと楽しくなるね", t.term)]) });
     setQuery(t.term);
     setFilter("すべて");
   }
