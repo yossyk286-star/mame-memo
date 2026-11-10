@@ -2098,5 +2098,8 @@
 "土日に記録する": "Log on a weekend",
 "+{0}{1}": "+{0}",
 "精製3種": "3 processes",
-"3種類の精製方法の豆を記録する": "Log 3 processing methods"
+"3種類の精製方法の豆を記録する": "Log 3 processing methods",
+"称号の段": "Title levels",
+"{0}{1}〜": "{0}+",
+"新しい称号": "New title"
 }
