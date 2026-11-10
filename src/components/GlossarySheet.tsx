@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { termsOf, type GlossaryCategory } from "@/lib/glossary";
+import { FLAVORS, METHODS, PROCESSES, ROASTS, termsOf, type GlossaryCategory } from "@/lib/glossary";
 import { getLang, tr, trv } from "@/lib/i18n";
 
 const TITLES: Record<GlossaryCategory, string> = {
@@ -10,6 +10,8 @@ const TITLES: Record<GlossaryCategory, string> = {
   抽出: "抽出方法とは",
   焙煎: "焙煎度とは",
   フレーバー: "フレーバーの表現",
+  "豆・産地": "豆と産地",
+  味わい: "味わいの表現",
 };
 
 /** 入力フォームの「?」から開く、その場で読める用語説明 */
@@ -25,6 +27,21 @@ export default function GlossarySheet({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // 記録画面で選べる言葉を先に。そのほかの言葉は畳んでおく（長くなりすぎないように）
+  const choices: string[] = ({ 精製: PROCESSES, 抽出: METHODS, 焙煎: ROASTS, フレーバー: FLAVORS } as Record<string, string[]>)[category] ?? [];
+  const all = termsOf(category);
+  const main = all.filter((t) => choices.includes(t.term));
+  const rest = all.filter((t) => !choices.includes(t.term));
+  const row = (t: (typeof all)[number]) => (
+    <div className="term" key={t.term}>
+      <span className="term-name">
+        {trv(t.term)}
+        {getLang() === "ja" && t.reading && tr("（{0}）", t.reading)}
+      </span>
+      <p className="term-desc">{trv(t.description)}</p>
+    </div>
+  );
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -43,15 +60,15 @@ export default function GlossarySheet({
             </svg>
           </button>
         </div>
-        {termsOf(category).map((t) => (
-          <div className="term" key={t.term}>
-            <span className="term-name">
-              {trv(t.term)}
-              {getLang() === "ja" && t.reading && tr("（{0}）", t.reading)}
-            </span>
-            <p className="term-desc">{trv(t.description)}</p>
-          </div>
-        ))}
+        {(main.length ? main : all).map(row)}
+        {main.length > 0 && rest.length > 0 && (
+          <details className="sheet-more">
+            <summary className="muted" style={{ fontSize: 13, cursor: "pointer" }}>
+              {tr("ほかの言葉（{0}語）", rest.length)}
+            </summary>
+            {rest.map(row)}
+          </details>
+        )}
         <Link href="/glossary" style={{ fontSize: 13 }}>
           {tr("辞典でほかの用語も見る ›")}
         </Link>

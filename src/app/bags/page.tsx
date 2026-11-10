@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SingleChips } from "@/components/ChipGroup";
 import { beanTitle, roastColor, Stars, stars, yen } from "@/components/RecordCard";
-import { announceBuddy } from "@/lib/buddy";
+import { announceBuddy, pick } from "@/lib/buddy";
 import { deleteBag, listBags, listRecords, putBag } from "@/lib/db";
 import { PROCESSES, ROASTS } from "@/lib/glossary";
 import { today } from "@/lib/lastScan";
@@ -12,6 +12,7 @@ import { bestRecipe, recipeText } from "@/lib/recipe";
 import type { Bag, TastingRecord } from "@/lib/types";
 import EmptyState from "@/components/EmptyState";
 import { tr, trJoin, trv } from "@/lib/i18n";
+import { askConfirm } from "@/components/ConfirmSheet";
 
 function emptyBag(): Omit<Bag, "id" | "createdAt"> {
   return { origin: "", farm: "", roast: null, process: null, shop: "", note: "", price: null, boughtAt: today(), finished: false };
@@ -220,7 +221,7 @@ export default function BagsPage() {
     if (b.low && !bags?.find((x) => x.id === b.id)?.low)
       announceBuddy({
         mood: "normal",
-        text: tr("{0}、そろそろなくなりそう？次の豆探す？", beanTitle(b)),
+        text: pick([tr("{0}、そろそろなくなりそう？次の豆探す？", beanTitle(b)), tr("{0}、残り少なくなってきたね。次も同じ豆にする？", beanTitle(b))]),
         action: { label: tr("調べる"), href: "/scan" },
       });
     await putBag(b);
@@ -228,7 +229,7 @@ export default function BagsPage() {
   }
 
   async function remove(id: string) {
-    if (!confirm(tr("この豆を削除しますか？（記録は残ります）"))) return;
+    if (!(await askConfirm({ message: tr("この豆を削除しますか？（記録は残ります）"), action: tr("削除") }))) return;
     await deleteBag(id);
     setBags((bs) => bs?.filter((x) => x.id !== id) ?? null);
   }

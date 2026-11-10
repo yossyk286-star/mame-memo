@@ -10,11 +10,12 @@ import {
 } from "@/lib/glossary";
 import { DRINKS } from "@/lib/knownBeans";
 import type { TermLookup } from "@/lib/menuScan";
-import { announceBuddy } from "@/lib/buddy";
+import { announceBuddy, pick } from "@/lib/buddy";
 import { loadMyTerms, saveMyTerms, type MyTerm } from "@/lib/myTerms";
 import { loadPasscode, normalizePasscode, savePasscode } from "@/lib/passcode";
 import Skeleton from "@/components/Skeleton";
 import { getLang, tr, trv } from "@/lib/i18n";
+import { askConfirm } from "@/components/ConfirmSheet";
 
 const FILTERS: ("すべて" | "自分で追加" | "ドリンク" | GlossaryCategory)[] = [
   "すべて",
@@ -128,13 +129,13 @@ export default function GlossaryPage() {
     setMyTerms(next);
     saveMyTerms(next);
     setJustAdded(t.term);
-    announceBuddy({ mood: "wow", text: tr("「{0}」を覚えたね。ひとつ詳しくなった！", t.term) });
+    announceBuddy({ mood: "wow", text: pick([tr("「{0}」を覚えたね。ひとつ詳しくなった！", t.term), tr("「{0}」をメモしたよ。お店で見かけたら思い出してね", t.term), tr("「{0}」、覚えた！コーヒーの話がもっと楽しくなるね", t.term)]) });
     setQuery(t.term);
     setFilter("すべて");
   }
 
-  function remove(term: string) {
-    if (!confirm(tr("「{0}」を辞典から外しますか？", term))) return;
+  async function remove(term: string) {
+    if (!(await askConfirm({ message: tr("「{0}」を辞典から外しますか？", term), action: tr("外す") }))) return;
     const next = myTerms.filter((m) => m.term !== term);
     setMyTerms(next);
     saveMyTerms(next);
@@ -165,6 +166,16 @@ export default function GlossaryPage() {
             ),
         )
       : [];
+  // 種類ごとに見出しを付けてまとめる。自分で足した言葉はいちばん上
+  const groups: [string, typeof terms][] = [];
+  for (const t of terms) {
+    const head = t.mine ? "自分で追加" : t.category;
+    const g = groups.find(([h]) => h === head);
+    if (g) g[1].push(t);
+    else groups.push([head, [t]]);
+  }
+  // 探して数件だけ見つかったときは、説明まで開いておく
+  const few = !!q && terms.length + drinks.length <= 3;
   // 言葉そのものが辞典にないときだけ、調べて足すボタンを出す
   const exact =
     all.some((t) => t.term.toLowerCase() === q || t.reading === q || tr(t.term).toLowerCase() === q) ||
@@ -210,73 +221,91 @@ export default function GlossaryPage() {
       <main className="content" style={{ gap: 10 }}>
         {!q && filter === "すべて" && <DailyQuiz />}
         {!q && (filter === "すべて" || filter === "抽出") && (
-          <section className="tips">
-            <h2>{tr("選び方の目安")}</h2>
+          <details className="tips tips-fold">
+            <summary>
+              <h2>{tr("選び方の目安")}</h2>
+            </summary>
             <ul>
               {CHOOSING_TIPS.map((t) => (
                 <li key={t}>{trv(t)}</li>
               ))}
             </ul>
-          </section>
+          </details>
         )}
         {q && !exact && <AddTerm key={q} query={query} onAdded={add} />}
-        {drinks.map((d) => (
-          <article
-            key={`drink-${d.name}`}
-            className="card"
-            style={{ gap: 4, padding: "12px 16px" }}
-          >
-            <div className="card-top">
-              <h3 style={{ fontSize: 15 }}>{trv(d.name)}</h3>
-              <span className="muted" style={{ fontSize: 11 }}>
-                {tr("ドリンク")}
-              </span>
+        {drinks.length > 0 && (
+          <section className="term-group">
+            {filter === "すべて" && <h2 className="term-group-head">{tr("ドリンク")}</h2>}
+            <div className="list-group">
+              {drinks.map((d) => (
+                <details key={`drink-${d.name}`} className="term-row" open={few}>
+                  <summary>
+                    <strong>{trv(d.name)}</strong>
+                  </summary>
+                  <div className="fold-body">
+                    <p className="term-desc">{trv(d.description)}</p>
+                    <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                      {tr("作り方：{0}", trv(d.recipe))}
+                    </p>
+                  </div>
+                </details>
+              ))}
             </div>
-            <p className="term-desc">{trv(d.description)}</p>
-            <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-              {tr("作り方：{0}", d.recipe)}
-            </p>
-          </article>
-        ))}
+          </section>
+        )}
         {filter !== "ドリンク" &&
-          terms.map((t) => (
-            <article
-              key={`${t.mine}-${t.term}`}
-              className="card"
-              style={{
-                gap: 4,
-                padding: "12px 16px",
-                outline:
-                  justAdded === t.term ? "2px solid var(--accent)" : undefined,
-              }}
-            >
-              <div className="card-top">
-                <h3 style={{ fontSize: 15 }}>
-                  {trv(t.term)}
-                  {getLang() === "ja" && t.reading && <span className="muted">{tr("（{0}）", t.reading)}</span>}
-                </h3>
-                <span className="muted" style={{ fontSize: 11 }}>
-                  {t.mine ? tr("自分で追加・{0}", t.category) : tr(t.category)}
-                </span>
+          groups.map(([head, list]) => {
+            const rows = (
+              <div className="list-group">
+                {list.map((t) => (
+                  <details
+                    key={`${t.mine}-${t.category}-${t.term}`}
+                    className="term-row"
+                    open={few || justAdded === t.term}
+                    style={{ outline: justAdded === t.term ? "2px solid var(--accent)" : undefined, outlineOffset: -2 }}
+                  >
+                    <summary>
+                      <strong>
+                        {trv(t.term)}
+                        {getLang() === "ja" && t.reading && <span className="muted">{tr("（{0}）", t.reading)}</span>}
+                      </strong>
+                      {t.mine && <span className="muted">{tr(t.category)}</span>}
+                    </summary>
+                    <div className="fold-body">
+                      <p className="term-desc">{trv(t.description)}</p>
+                      {t.mine && (
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          style={{ height: 32, alignSelf: "flex-end", padding: "0 12px", fontSize: 12 }}
+                          onClick={() => remove(t.term)}
+                        >
+                          {tr("辞典から外す")}
+                        </button>
+                      )}
+                    </div>
+                  </details>
+                ))}
               </div>
-              <p className="term-desc">{trv(t.description)}</p>
-              {t.mine && (
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  style={{
-                    height: 32,
-                    alignSelf: "flex-end",
-                    padding: "0 12px",
-                    fontSize: 12,
-                  }}
-                  onClick={() => remove(t.term)}
-                >
-                  {tr("辞典から外す")}
-                </button>
-              )}
-            </article>
-          ))}
+            );
+            // 「すべて」で何も探していないときは、種類ごとに畳んで目次のように見せる
+            if (filter === "すべて" && !q)
+              return (
+                <details key={head} className="month-fold term-fold" open={head === "自分で追加"}>
+                  <summary>
+                    <span>{trv(head)}</span>
+                    <span className="month-fold-count">{tr("{0}語", list.length)}</span>
+                  </summary>
+                  <div className="month-body">{rows}</div>
+                </details>
+              );
+            return (
+              <section key={head} className="term-group">
+                {filter === "すべて" && <h2 className="term-group-head">{trv(head)}</h2>}
+                {rows}
+              </section>
+            );
+          })}
         {filter !== "ドリンク" && terms.length === 0 && !q && (
           <p className="empty">{tr("まだありません。")}</p>
         )}
