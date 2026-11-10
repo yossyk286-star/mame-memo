@@ -49,6 +49,14 @@ function DetailSection({ title, rows }: { title: string; rows: Row[] }) {
 function DetailBody() {
   const loaded = useRecordFromQuery();
   const router = useRouter();
+  // いちばん上にいるときだけ、上のバーにもお酒の色を差す（スクロールしたらふつうの色に戻す）
+  const [atTop, setAtTop] = useState(true);
+  useEffect(() => {
+    const onScroll = () => setAtTop(window.scrollY < 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   // 写真を足したらその場で表示を変える
   const [r, setR] = useState(loaded);
   useEffect(() => setR(loaded), [loaded]);
@@ -148,7 +156,7 @@ function DetailBody() {
 
   return (
     <>
-      <header className="sub-header" style={r ? ({ "--kind": roastColor(r.roast) } as React.CSSProperties) : undefined}>
+      <header className="sub-header" data-top={atTop ? "" : undefined} style={r ? ({ "--kind": roastColor(r.roast) } as React.CSSProperties) : undefined}>
         <Link href="/" className="back" onClick={back}>
           {tr("‹ 戻る")}
         </Link>
