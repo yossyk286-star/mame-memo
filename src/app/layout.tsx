@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import ServiceWorker from "@/components/ServiceWorker";
 import LangGate from "@/components/LangGate";
-import LaunchScreen from "@/components/LaunchScreen";
+import LaunchScreen, { LAUNCH_BOOT } from "@/components/LaunchScreen";
 import Buddy from "@/components/Buddy";
 import ClearField from "@/components/ClearField";
 import TabBar from "@/components/TabBar";
@@ -56,7 +56,7 @@ export default function RootLayout({
     // data-theme / data-accent は THEME_BOOT が描画前に付けるので、React の食い違い警告を出さない
     <html lang="ja" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT + LAUNCH_BOOT }} />
       </head>
       <body>
         <LaunchScreen />
