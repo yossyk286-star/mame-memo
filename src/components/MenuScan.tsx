@@ -41,6 +41,7 @@ import MoodPicker from "./MoodPicker";
 import TasteBars from "./TasteBars";
 import Skeleton from "./Skeleton";
 import { getLang, tr, trJoin, trv } from "@/lib/i18n";
+import { askConfirm } from "@/components/ConfirmSheet";
 
 
 
@@ -236,8 +237,8 @@ export default function MenuScan({
       setPairing(null);
     }
   }
-  function hide(names: string[], label: string) {
-    if (!confirm(tr("{0}を一覧から消しますか？", label))) return;
+  async function hide(names: string[], label: string) {
+    if (!(await askConfirm({ message: tr("{0}を一覧から消しますか？", label), action: tr("消す") }))) return;
     setUndo({ label, beans });
     setLocalHit(null);
     replaceBeans(beans.filter((b) => !names.includes(b.name)));

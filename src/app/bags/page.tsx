@@ -12,6 +12,7 @@ import { bestRecipe, recipeText } from "@/lib/recipe";
 import type { Bag, TastingRecord } from "@/lib/types";
 import EmptyState from "@/components/EmptyState";
 import { tr, trJoin, trv } from "@/lib/i18n";
+import { askConfirm } from "@/components/ConfirmSheet";
 
 function emptyBag(): Omit<Bag, "id" | "createdAt"> {
   return { origin: "", farm: "", roast: null, process: null, shop: "", note: "", price: null, boughtAt: today(), finished: false };
@@ -228,7 +229,7 @@ export default function BagsPage() {
   }
 
   async function remove(id: string) {
-    if (!confirm(tr("この豆を削除しますか？（記録は残ります）"))) return;
+    if (!(await askConfirm({ message: tr("この豆を削除しますか？（記録は残ります）"), action: tr("削除") }))) return;
     await deleteBag(id);
     setBags((bs) => bs?.filter((x) => x.id !== id) ?? null);
   }

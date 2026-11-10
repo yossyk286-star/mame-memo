@@ -16,6 +16,7 @@ import { dayTotal } from "@/lib/dayTotal";
 import BackupNudge from "@/components/BackupNudge";
 import MonthRecap from "@/components/MonthRecap";
 import { beanTitle } from "@/components/RecordCard";
+import NumText from "@/components/NumText";
 
 const WEEKDAYS = "日月火水木金土";
 
@@ -135,7 +136,7 @@ export default function RecordsPage() {
               <h2 className="date-head">
                 {dateHead(day.date)}
                 {/* 絞り込み中は一部の記録だけになるので、その日の合計は出さない */}
-                {!filtering && <span className="date-total">{dayTotal(day.records)}</span>}
+                {!filtering && <span className="date-total"><NumText text={dayTotal(day.records)} /></span>}
               </h2>
             )}
             <div className="list-group">
