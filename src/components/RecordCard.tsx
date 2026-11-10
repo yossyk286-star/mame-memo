@@ -74,8 +74,9 @@ function Thumb({ record: r }: { record: TastingRecord }) {
 
 /** 記録の一覧の1行。2行に詰めて、画面にたくさん並ぶようにする。showDate=false は日付で区切った一覧用 */
 export default function RecordCard({ record: r, showDate = true }: { record: TastingRecord; showDate?: boolean }) {
+  // 焙煎度は左のマークでわかるので、精製・淹れ方から書く（店や値段まで見えるように）
   const sub = [
-    ...[r.roast, r.process, r.method].filter((t) => t && t !== "不明").map((t) => tr(t!)),
+    ...[r.process, r.method].filter((t) => t && t !== "不明").map((t) => tr(t!)),
     r.shop && tr(r.shop),
     r.price && yen(r.price),
     showDate && shortDate(r.date),

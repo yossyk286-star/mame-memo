@@ -132,15 +132,17 @@ export default function RecordsPage() {
             <label htmlFor="r-search" className="visually-hidden">
               {tr("記録を検索")}
             </label>
-            <input
-              id="r-search"
-              type="search"
-              className="input"
-              placeholder={tr("産地・店・味で探す")}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
             <BeanSortBar
+              search={
+                <input
+                  id="r-search"
+                  type="search"
+                  className="input"
+                  placeholder={tr("産地・店・味で探す")}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              }
               roasts={(records ?? []).map((r) => r.roast)}
               roast={roast}
               onRoast={setRoast}
