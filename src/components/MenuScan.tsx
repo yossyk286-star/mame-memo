@@ -620,9 +620,9 @@ export default function MenuScan({
           {tr("豆の名前をタップすると、説明や飲み方が開きます。「＋記録」を押すと、豆の情報が入った状態で感想を書けます。")}
         </Hint>
       ) : (
-        <p className={styles.lead}>
+        <Hint id="scan-lead" className={styles.lead}>
           {tr("メニューを撮るか文字で入れると、豆ごとに解説とおすすめの飲み方を出して、記録の項目に入れます。")}
-        </p>
+        </Hint>
       )}
       {!savedPasscode && (
         <div className="field">
@@ -693,7 +693,7 @@ export default function MenuScan({
 
       {status !== "reading" && (
         <label className="btn-secondary" data-tour="scan-photo" style={{ cursor: "pointer" }}>
-          {status === "done" ? tr("写真から") : tr("写真フォルダから選んで読み取る")}
+          {tr("写真から")}
           {/* capture を付けないとカメラではなく写真の一覧が開く */}
           <input
             type="file"
@@ -705,9 +705,9 @@ export default function MenuScan({
         </label>
       )}
 
-        {status === "done" && !textOpen && (
+        {status !== "reading" && !textOpen && (
           <button type="button" className="btn-secondary" data-tour="scan-text" onClick={() => setTextOpen(true)}>
-            {tr("文字で")}
+            {status === "done" ? tr("文字で") : tr("名前で調べる")}
           </button>
         )}
       </div>
@@ -742,18 +742,7 @@ export default function MenuScan({
               {tr("この内容で調べる")}
             </button>
           </div>
-        ) : (
-          status !== "done" && (
-            <button
-              type="button"
-              className="btn-secondary"
-              data-tour="scan-text"
-              onClick={() => setTextOpen(true)}
-            >
-              {tr("文字で入力して調べる")}
-            </button>
-          )
-        ))}
+        ) : null)}
 
       {status !== "reading" && extra}
 

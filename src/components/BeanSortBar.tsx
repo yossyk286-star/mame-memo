@@ -4,6 +4,7 @@ import { roastColor } from "@/components/RecordCard";
 import { AREAS, ROAST_FILTERS, SORT_LABELS, type SortKey } from "@/lib/beanSort";
 import type { Roast } from "@/lib/types";
 import { tr, trv } from "@/lib/i18n";
+import SortPick from "@/components/SortPick";
 
 /** 焙煎度・産地の地域の絞り込みと、酸味・苦味などの並び替え。焙煎度と地域は出てくるものだけ並べる */
 export default function BeanSortBar({
@@ -18,6 +19,7 @@ export default function BeanSortBar({
   sorts,
   defaultLabel,
   extra,
+  search,
 }: {
   roasts: (Roast | null)[];
   roast: Roast | null;
@@ -31,11 +33,24 @@ export default function BeanSortBar({
   defaultLabel: string;
   /** 焙煎度の前に並べるボタン（★4以上など） */
   extra?: React.ReactNode;
+  /** 並び替えボタンの左に置く検索欄 */
+  search?: React.ReactNode;
 }) {
   const roastsUsed = ROAST_FILTERS.filter((r) => roasts.includes(r));
   const areasUsed = AREAS.filter((a) => areas.includes(a));
   return (
     <>
+      <div className="search-sort">
+        {search}
+        <SortPick
+          value={sort}
+          options={(["default", ...sorts] as SortKey[]).map((k) => ({
+            key: k,
+            label: k === "default" ? tr(defaultLabel) : tr(SORT_LABELS[k]),
+          }))}
+          onChange={onSort}
+        />
+      </div>
       {(roastsUsed.length > 1 || areasUsed.length > 1 || extra) && (
         <div className="scroll-row" role="group" aria-label={tr("焙煎度と産地で絞り込み")}>
           {trv(extra)}
@@ -64,13 +79,6 @@ export default function BeanSortBar({
           ))}
         </div>
       )}
-      <div className="scroll-row" role="group" aria-label={tr("並び替え")}>
-        {(["default", ...sorts] as SortKey[]).map((s) => (
-          <button key={s} type="button" className="chip" aria-pressed={sort === s} onClick={() => onSort(s)}>
-            {s === "default" ? tr(defaultLabel) : tr(SORT_LABELS[s])}
-          </button>
-        ))}
-      </div>
     </>
   );
 }
