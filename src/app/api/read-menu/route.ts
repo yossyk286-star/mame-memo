@@ -373,6 +373,11 @@ export async function POST(req: Request) {
 }
 
 function apiError(e: unknown) {
+  // 答えが長すぎて途中で切れ、形を読み取れなかったとき（メニューの豆が多いときに起きやすい）
+  if (e instanceof Anthropic.AnthropicError && e.message.startsWith("Failed to parse")) {
+    console.error("read-menu parse error", e.message.slice(0, 200));
+    return error(422, "豆が多すぎて読み切れませんでした。メニューを半分ずつ撮ってみてください");
+  }
   if (e instanceof Anthropic.RateLimitError)
     return error(429, "混み合っています。少し待ってからもう一度お試しください");
   if (e instanceof Anthropic.AuthenticationError) return error(503, "API キーが正しくないようです");
@@ -380,5 +385,7 @@ function apiError(e: unknown) {
     console.error("read-menu API error", e.status, e.message);
     return error(502, "読み取りに失敗しました（利用上限に達した可能性があります）");
   }
-  throw e;
+  // 思いがけない失敗でも、画面に理由を出せるよう JSON で返す
+  console.error("read-menu unexpected error", e);
+  return error(500, "読み取りに失敗しました。もう一度お試しください");
 }
