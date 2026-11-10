@@ -4,9 +4,6 @@ import { getLang } from "./i18n";
 type Text = { ja: string; en: string };
 export type GuideSection = { id: string; title: Text; where: Text; steps: Text[]; href?: string };
 
-/** 使い方の画面から「はじめの説明」をもう一度出すときのイベント */
-export const WELCOME_EVENT = "app:show-welcome";
-
 export const t = (x: Text) => (getLang() === "en" ? x.en : x.ja);
 
 export const GUIDE: GuideSection[] = [
@@ -105,22 +102,43 @@ export const GUIDE: GuideSection[] = [
   },
 ];
 
-/** 初めて開いたときの説明（数枚） */
-export const WELCOME: { title: Text; body: Text }[] = [
-  {
-    title: { ja: "まめメモへようこそ", en: "Welcome to Mame Memo" },
-    body: { ja: "飲んだコーヒーを記録して、だんだん詳しくなるアプリです。記録はこの端末の中だけに保存されます。", en: "Record the coffee you drink and learn as you go. Your records stay on this device." },
+/** 初めて開いたときのあいさつ。このあと画面の上で案内（TOURS.home）に進む */
+export const WELCOME = {
+  title: { ja: "まめメモへようこそ", en: "Welcome to Mame Memo" },
+  body: {
+    ja: "飲んだコーヒーを記録して、だんだん詳しくなるアプリです。記録はこの端末の中だけに保存されます。どこを押すとどうなるか、画面で案内しますね。",
+    en: "Record the coffee you drink and learn as you go. Your records stay on this device. Let me show you around the screen.",
   },
-  {
-    title: { ja: "飲んだら「＋ 記録する」", en: "Tap “Log it” after a cup" },
-    body: { ja: "産地と★だけでも保存できます。味や淹れ方は、あとから足せば大丈夫です。", en: "The origin and stars are enough. Add taste and brewing details whenever you like." },
+};
+
+/** 画面の上で、実際のボタンを光らせて矢印と吹き出しで案内する。target は data-tour の値 */
+export type TourStep = { target: string; text: Text };
+export type TourId = "home" | "scan";
+export const TOURS: Record<TourId, { path: string; steps: TourStep[] }> = {
+  home: {
+    path: "/",
+    steps: [
+      { target: "fab", text: { ja: "飲んだらここを押して記録します。産地と★だけでも保存できます。", en: "Tap here after a cup to record it. The origin and stars are enough." } },
+      { target: "tab-scan", text: { ja: "カフェではここ。メニューを撮ると、豆ごとの解説とおすすめが出ます。", en: "At a café, tap here. Shoot a menu to get notes and picks for each bean." } },
+      { target: "tab-wishlist", text: { ja: "「☆」を付けた気になる豆は、ここにたまります。", en: "Beans you star (☆) collect here." } },
+      { target: "tab-taste", text: { ja: "味マップ・産地の国スタンプ・店員さんに見せる画面はここから。", en: "Your taste map, origin stamps and the staff screen are here." } },
+      { target: "settings", text: { ja: "使い方とバックアップは、いつでもここ（設定）から。", en: "The guide and backups are always here in Settings." } },
+    ],
   },
-  {
-    title: { ja: "カフェでは真ん中のカメラ", en: "At a café, use the center camera" },
-    body: { ja: "メニューを撮ると、豆ごとの解説とおすすめが出ます。スイーツから選ぶこともできます。", en: "Shoot a menu to get notes and picks for each bean. You can also choose by sweets." },
+  scan: {
+    path: "/scan",
+    steps: [
+      { target: "scan-shoot", text: { ja: "ここを押してメニューを撮ると、豆ごとに解説とおすすめの飲み方が出ます。", en: "Tap here to shoot a menu. You'll get notes and brewing tips for each bean." } },
+      { target: "scan-photo", text: { ja: "撮ってある写真からも読み取れます（5枚まで）。", en: "You can also read photos you already took (up to 5)." } },
+      { target: "scan-text", text: { ja: "名前を打って調べることもできます。", en: "Or type a name to look it up." } },
+      { target: "scan-food", text: { ja: "フードやスイーツのメニューを撮ると、それぞれに合うコーヒーが出ます。", en: "Shoot the food or dessert menu to see coffees that go with each item." } },
+      { target: "scan-show", text: { ja: "好みを大きな字で出して、店員さんに見せられます。", en: "Show your taste in large type to the staff." } },
+    ],
   },
-  {
-    title: { ja: "たまるほど好みがわかる", en: "The more you record, the more you learn" },
-    body: { ja: "好みタブで味マップや産地の国スタンプが見られます。使い方はいつでも設定から見直せます。", en: "See your taste map and origin stamps in the Taste tab. The guide is always in Settings." },
-  },
-];
+};
+
+/** 案内を始めるイベント。detail に TourId */
+export const TOUR_EVENT = "app:start-tour";
+export function startTour(id: TourId) {
+  window.dispatchEvent(new CustomEvent(TOUR_EVENT, { detail: id }));
+}
