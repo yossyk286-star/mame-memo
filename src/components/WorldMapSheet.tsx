@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { markSheetOrigin } from "@/lib/sheetDepth";
 import { beanTitle, stars } from "@/components/RecordCard";
 import WorldMap from "@/components/WorldMap";
 import { REGIONS, type Stamp } from "@/lib/countries";
@@ -13,6 +15,7 @@ const COUNTRIES = REGIONS.flatMap((r) => r.countries.map((c) => c.name));
 export default function WorldMapSheet({ stamps, onClose }: { stamps: Map<string, Stamp>; onClose: () => void }) {
   const [picked, setPicked] = useState<string | null>(null);
   useEffect(() => {
+    markSheetOrigin();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -22,7 +25,8 @@ export default function WorldMapSheet({ stamps, onClose }: { stamps: Map<string,
   const stamp = picked ? stamps.get(picked) : undefined;
   const best = stamp && [...stamp.records].sort((a, b) => b.overall - a.overall || b.date.localeCompare(a.date))[0];
 
-  return (
+  // 後ろの画面（.app）を奥へ下げるので、シートはその外（body の直下）に置く
+  return createPortal(
     <div className="sheet-backdrop" onClick={onClose}>
       <section
         className="sheet jmap-sheet"
@@ -76,6 +80,7 @@ export default function WorldMapSheet({ stamps, onClose }: { stamps: Map<string,
 
         <p className="jmap-credit">{tr("地図：Natural Earth")}</p>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
