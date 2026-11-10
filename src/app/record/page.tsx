@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import RadarChart from "@/components/RadarChart";
@@ -82,7 +83,7 @@ function DetailBody() {
       footer: trJoin([r.shop, r.date.replaceAll("-", "/")]),
       photo: photosOf(r)[0] ?? null,
     });
-    await shareImage(blob, beanTitle(r)).catch(() => alert(tr("共有できませんでした")));
+    await shareImage(blob, beanTitle(r)).catch(() => toast("共有できませんでした", { tone: "warn" }));
   }
 
   async function addQA(qa: QA) {

@@ -6,6 +6,8 @@ import Buddy from "@/components/Buddy";
 import ClearField from "@/components/ClearField";
 import ConfirmHost from "@/components/ConfirmSheet";
 import TabBar from "@/components/TabBar";
+import Toaster from "@/components/Toaster";
+import SmoothDetails from "@/components/SmoothDetails";
 import Welcome from "@/components/Welcome";
 import InstallHint from "@/components/InstallHint";
 import Milestones from "@/components/Milestones";
@@ -88,6 +90,8 @@ export default function RootLayout({
           <Milestones />
           <InstallHint />
           <ConfirmHost />
+          <Toaster />
+          <SmoothDetails />
         </LangGate>
         <ServiceWorker />
         <ThemeSync />
