@@ -20,6 +20,7 @@
 "API キーが正しくないようです": "The API key looks wrong.",
 "読み取りに失敗しました（利用上限に達した可能性があります）": "Reading failed (the usage limit may have been reached).",
 "読み取りに失敗しました。もう一度お試しください": "Reading failed. Please try again.",
+"豆が多すぎて読み切れませんでした。メニューを半分ずつ撮ってみてください": "Too many beans to read at once. Try photographing half the menu at a time.",
 "＋ 買ったお酒を登録": "+ Add a bottle you bought",
 "名前": "Name",
 "必須": "Required",
