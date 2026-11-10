@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { MultiChips, SingleChips } from "./ChipGroup";
 import GlossarySheet from "./GlossarySheet";
 import SavedCheck from "./SavedCheck";
+import { shortDate, stars } from "./RecordCard";
 import { announceBuddy, buddyLine } from "@/lib/buddy";
 import { deleteRecord, putRecord, listRecords } from "@/lib/db";
+import { clearStash, saveStash } from "@/lib/recordDraft";
 import {
   FLAVORS,
   METHODS,
@@ -240,6 +242,8 @@ export default function RecordForm({
   prefill,
   beanFilled = false,
   fromWish = false,
+  autosave = false,
+  resumed = false,
   onSaved,
 }: {
   initial?: TastingRecord;
@@ -251,6 +255,10 @@ export default function RecordForm({
   fromWish?: boolean;
   /** 保存後の動き。なければ一覧（編集なら詳細）に戻る */
   onSaved?: (record: TastingRecord) => void;
+  /** 入力のたびに書きかけとして残す（新しい記録の画面で、前の書きかけが残っていないとき） */
+  autosave?: boolean;
+  /** 書きかけの続きを開いたとき true（開いた時点から書きかけとして残す） */
+  resumed?: boolean;
 }) {
   const router = useRouter();
 
@@ -282,12 +290,41 @@ export default function RecordForm({
     } catch {}
   }
 
+  // 自分で何か入れたら true（開いただけの読み取り結果などは書きかけとして残さない）
+  const touched = useRef(resumed);
+  const update = (fn: (d: RecordDraft) => RecordDraft) => {
+    touched.current = true;
+    setDraft(fn);
+  };
   const set = <K extends keyof RecordDraft>(key: K, value: RecordDraft[K]) =>
-    setDraft((d) => ({ ...d, [key]: value }));
+    update((d) => ({ ...d, [key]: value }));
+
+  // 書きかけを残す（新しい記録の画面だけ）。前の書きかけが残っている間は上書きしない
+  useEffect(() => {
+    if (!autosave || initial || !touched.current) return;
+    const t = setTimeout(() => saveStash(draft), 300);
+    return () => clearTimeout(t);
+  }, [draft, initial, autosave]);
+
+  // 前に飲んだ豆の名前（農園・品種名）を候補に出す。同じ名前を選んだら産地なども入れて、前回の★を見せる
+  const [past, setPast] = useState<TastingRecord[]>([]);
+  const pastNames = [...new Set(past.map((r) => r.farm.trim()).filter(Boolean))];
+  const sameName = (a: string, b: string) => a.trim().normalize("NFKC").toLowerCase() === b.trim().normalize("NFKC").toLowerCase();
+  const before = draft.farm.trim() ? past.filter((r) => r.id !== initial?.id && sameName(r.farm, draft.farm)) : [];
+
+  function setFarm(farm: string) {
+    const hit = initial ? undefined : past.find((r) => sameName(r.farm, farm));
+    update((d) => {
+      // 自分で入れた産地・焙煎度・精製があれば、そちらを優先する
+      if (!hit || d.origin || d.roast || d.process) return { ...d, farm };
+      return { ...d, farm, origin: hit.origin, roast: hit.roast, process: hit.process };
+    });
+  }
 
   // 過去に入れた店名を候補に出す
   useEffect(() => {
     listRecords().then((rs) => {
+      setPast(rs);
       setShopNames([...new Set(rs.map((r) => r.shop).filter(Boolean))]);
       // 今日すでに記録した店があれば、新しい記録の店名に先に入れておく
       const latest = rs[0];
@@ -310,7 +347,7 @@ export default function RecordForm({
   async function onPhotos(files: FileList | null) {
     try {
       const added = await shrinkPhotos(files);
-      setDraft((d) => ({ ...d, photos: [...d.photos, ...added] }));
+      update((d) => ({ ...d, photos: [...d.photos, ...added] }));
     } catch {
       setError("写真を読み込めませんでした");
     }
@@ -332,6 +369,7 @@ export default function RecordForm({
       updatedAt: now,
     };
     await putRecord(record);
+    if (autosave && !initial) clearStash();
     // ✓ を少し見せてから移る（動きを減らす設定の人はすぐ移る）
     setSaved(true);
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) await new Promise((r) => setTimeout(r, 700));
@@ -368,9 +406,21 @@ export default function RecordForm({
           id="f-farm"
           className="input"
           placeholder={tr("例：〇〇農園 / SL28")}
+          list="farm-names"
           value={draft.farm}
-          onChange={(e) => set("farm", e.target.value)}
+          onChange={(e) => setFarm(e.target.value)}
         />
+        <datalist id="farm-names">
+          {pastNames.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
+        {before.length > 0 && (
+          <p className="muted past-note">
+            {tr("前に飲んだ：{0}・{1}・{2}", stars(before[0].overall), shortDate(before[0].date), before[0].shop)}
+            {before.length > 1 && tr("（ほか{0}回）", before.length - 1)}
+          </p>
+        )}
       </div>
     </>
   );

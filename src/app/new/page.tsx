@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import MenuScan, { PickedBean } from "@/components/MenuScan";
 import RecordForm from "@/components/RecordForm";
+import DraftNote from "@/components/DraftNote";
+import { clearStash, loadStash, type Stash } from "@/lib/recordDraft";
 import { beanTitle, stars } from "@/components/RecordCard";
 import { deleteWish, getBag, getWish, listBags, listRecords } from "@/lib/db";
 import { loadLastScan, markRecorded } from "@/lib/lastScan";
@@ -73,6 +75,12 @@ function NewRecord() {
   const [loaded, setLoaded] = useState(false);
   // メニューの豆を選んでいる間はフォームを隠す（メニューにない豆を記録するときだけ出す）
   const [manual, setManual] = useState(false);
+  // 前に書きかけて保存しなかった記録と、「続きを書く」で開いた書きかけ
+  const [stash, setStash] = useState<Stash | null>(null);
+  const [resumed, setResumed] = useState<RecordDraft | null>(null);
+  useEffect(() => {
+    loadStash().then(setStash);
+  }, []);
 
   // お店で撮っておいた今日のメニューがあれば、撮り直さずにそこから選べる
   useEffect(() => {
@@ -131,6 +139,22 @@ function NewRecord() {
         <h1>{tr("新しい記録")}</h1>
       </header>
 
+      {stash && (
+        <DraftNote
+          stash={stash}
+          onResume={() => {
+            setResumed({ ...stash.draft, photos: stash.draft.photos ?? [] });
+            setStash(null);
+            setPicked(null);
+            setManual(true);
+          }}
+          onDiscard={() => {
+            clearStash();
+            setStash(null);
+          }}
+        />
+      )}
+
       {saveCount > 0 && !picked && (
         <section
           className="tips"
@@ -166,6 +190,7 @@ function NewRecord() {
           key={`${saveCount}:${loaded}`}
           onPick={(b) => {
             setPicked(b);
+            setResumed(null);
             window.scrollTo({ top: 0 });
           }}
           initialBeans={remaining}
@@ -190,13 +215,17 @@ function NewRecord() {
       ) : (
         /* 豆を選んだり保存したりしたらフォームを作り直して読み取り結果を入れる */
         <RecordForm
-          key={`${saveCount}:${picked?.name ?? "blank"}`}
-          prefill={{
-            ...carry,
-            ...(picked ? beanToDraft(picked) : {}),
-            ...(picked && foodParam && picked.name === beanParam ? { sweets: foodParam } : {}),
-          }}
-          beanFilled={!!picked}
+          key={`${saveCount}:${picked?.name ?? "blank"}:${resumed ? "resumed" : ""}`}
+          prefill={
+            resumed ?? {
+              ...carry,
+              ...(picked ? beanToDraft(picked) : {}),
+              ...(picked && foodParam && picked.name === beanParam ? { sweets: foodParam } : {}),
+            }
+          }
+          beanFilled={!!picked && !resumed}
+          autosave={!stash}
+          resumed={!!resumed}
           fromWish={!!wishId}
           onSaved={(r) => {
             if (picked) {
@@ -209,6 +238,7 @@ function NewRecord() {
               setWishId(null);
             }
             setCarry({ shop: r.shop, date: r.date });
+            setResumed(null);
             setPicked(null);
             setManual(false);
             setSaveCount((n) => n + 1);

@@ -25,6 +25,8 @@ import { findSaved, saveLookups } from "@/lib/savedLookups";
 import { MOODS, moodFromText, wordMatch } from "@/lib/moods";
 import { loadPasscode, PASSCODE_KEY } from "@/lib/passcode";
 import { shrinkForReading } from "@/lib/photo";
+import { addPending, fetchOnline, loadPending, OfflineError, setPending as savePending } from "@/lib/pending";
+import PendingPhotos from "./PendingPhotos";
 import { EMPTY_PREFS, loadPrefs } from "@/lib/prefs";
 import { announceBuddy } from "@/lib/buddy";
 import { bestPick, MIN_RECORDS, scoreBeans } from "@/lib/recommend";
@@ -447,26 +449,77 @@ export default function MenuScan({
     // 写真フォルダからは何枚か選べる（表と裏など）。1枚ずつ順に読み取って一覧に足す
     const picked = [...(e.target.files ?? [])];
     e.target.value = "";
-    const files = picked.slice(0, MAX_PHOTOS);
-    if (files.length === 0) return;
+    if (picked.length === 0) return;
     if (!passcode) return setError("先に合言葉を入れてください");
-    let failed = 0;
-    for (const [i, file] of files.entries()) {
-      if (files.length > 1) setProgress({ at: i + 1, of: files.length });
-      if (!(await scan(file))) failed++;
-    }
-    setProgress(null);
-    if (files.length > 1 && failed > 0)
-      setError(tr("{0}枚のうち{1}枚は読み取れませんでした。その写真だけ撮り直してみてください", files.length, failed));
-    else if (picked.length > MAX_PHOTOS && failed === 0)
+    const allOk = await readPhotos(picked.slice(0, MAX_PHOTOS));
+    if (picked.length > MAX_PHOTOS && allOk)
       setError(tr("一度に読み取れるのは{0}枚までです。残りはもう一度選んでください", MAX_PHOTOS));
   }
+
+  /** 何枚かを順に読み取る。電波がなくて読めなかった写真は取っておいて、電波が戻ったら読み取る */
+  async function readPhotos(files: Blob[]): Promise<boolean> {
+    let failed = 0;
+    const offline: Blob[] = [];
+    for (const [i, file] of files.entries()) {
+      // 途中で電波が切れたら、残りは送らずに取っておく
+      if (offline.length > 0) {
+        offline.push(file);
+        continue;
+      }
+      if (files.length > 1) setProgress({ at: i + 1, of: files.length });
+      const ok = await scan(file);
+      if (ok === "offline") offline.push(file);
+      else if (!ok) failed++;
+    }
+    setProgress(null);
+    if (offline.length > 0) {
+      try {
+        setPending(await addPending("drink", await Promise.all(offline.map(shrinkForReading))));
+        setError("");
+      } catch {
+        setError(new OfflineError().message);
+      }
+    } else if (files.length > 1 && failed > 0)
+      setError(tr("{0}枚のうち{1}枚は読み取れませんでした。その写真だけ撮り直してみてください", files.length, failed));
+    return offline.length === 0 && failed === 0;
+  }
+
+  // 電波がなくて取っておいた写真。開いたときと電波が戻ったときに読み取る
+  const [pending, setPending] = useState<Blob[]>([]);
+  const [pendingBusy, setPendingBusy] = useState(false);
+  const readPendingRef = useRef<() => void>(() => {});
+  const autoTried = useRef(false);
+  readPendingRef.current = async () => {
+    if (pendingBusy || !passcode || !navigator.onLine) return;
+    const list = await loadPending("drink");
+    if (list.length === 0) return setPending([]);
+    setPendingBusy(true);
+    await savePending("drink", []);
+    setPending([]);
+    await readPhotos(list);
+    setPendingBusy(false);
+  };
+  useEffect(() => {
+    loadPending("drink").then(setPending);
+    const onOnline = () => readPendingRef.current();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, []);
+  // 合言葉を読み込んだあと、電波があればすぐ読み取る
+  useEffect(() => {
+    if (passcode && pending.length > 0 && navigator.onLine && !autoTried.current) {
+      // 開いたときに自動で読むのは1回だけ（電波はあるのにつながらないとき、何度も繰り返さないように）
+      autoTried.current = true;
+      readPendingRef.current();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedPasscode, pending.length > 0]);
 
   // 写真が撮れないときや、店員さんに聞いた豆は文字で調べる
   const [textOpen, setTextOpen] = useState(false);
   const [text, setText] = useState("");
 
-  async function scan(photo: Blob) {
+  async function scan(photo: Blob): Promise<boolean | "offline"> {
     // 小さい字も読めるよう、長辺1600pxまでにして送る（Haiku なので料金はほぼ変わらない）
     return await request(async () => ({
       image: await blobToBase64(await shrinkForReading(photo)),
@@ -503,12 +556,14 @@ export default function MenuScan({
   async function request(
     payload: () => Promise<{ image?: string; text?: string }>,
     query?: string,
-  ) {
+  ): Promise<boolean | "offline"> {
     setLocalHit(null);
     if (!passcode) {
       setError("先に合言葉を入れてください");
       return false;
     }
+    // 写真は電波が戻ったら読み取れるよう呼び出し側で取っておく
+    if (!navigator.onLine && query === undefined) return "offline";
     if (!navigator.onLine) {
       setError("オフラインのため読み取れません。電波のあるところでもう一度お試しください");
       return false;
@@ -518,7 +573,7 @@ export default function MenuScan({
     setSearching(query ?? null);
     setStatus("reading");
     try {
-      const res = await fetch("/api/read-menu", {
+      const res = await fetchOnline("/api/read-menu", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -551,8 +606,9 @@ export default function MenuScan({
       setTextOpen(false);
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "読み取りに失敗しました");
       setStatus(beansRef.current.length ? "done" : "idle");
+      if (err instanceof OfflineError && query === undefined) return "offline";
+      setError(err instanceof Error ? err.message : "読み取りに失敗しました");
       return false;
     }
   }
@@ -586,6 +642,18 @@ export default function MenuScan({
         </div>
       )}
 
+      <PendingPhotos
+        count={pending.length}
+        busy={pendingBusy}
+        onRead={() => {
+          if (!navigator.onLine) return setError("まだ電波がありません。電波のあるところでもう一度お試しください");
+          readPendingRef.current();
+        }}
+        onDiscard={() => {
+          savePending("drink", []);
+          setPending([]);
+        }}
+      />
       <div className={status === "done" ? styles.shootRow : styles.shootCol}>
       <label
         className={`btn-primary ${styles.shoot}`}

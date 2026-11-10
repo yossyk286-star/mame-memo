@@ -25,13 +25,18 @@ interface MameDB extends DBSchema {
     key: string;
     value: Bag;
   };
+  /** 書きかけの記録や、電波がなくて読み取れなかった写真など、ちょっとした保存場所 */
+  kv: {
+    key: string;
+    value: unknown;
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<MameDB>> | null = null;
 
 function getDB() {
   if (!dbPromise) {
-    dbPromise = openDB<MameDB>("mame-memo", 3, {
+    dbPromise = openDB<MameDB>("mame-memo", 4, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           const store = db.createObjectStore("records", { keyPath: "id" });
@@ -41,12 +46,26 @@ function getDB() {
         if (oldVersion < 2) db.createObjectStore("wishes", { keyPath: "id" });
         // v3: 家の豆
         if (oldVersion < 3) db.createObjectStore("bags", { keyPath: "id" });
+        // v4: 書きかけの記録・あとで読み取る写真
+        if (oldVersion < 4) db.createObjectStore("kv");
       },
     });
     // ブラウザに「消さないで」と依頼する（対応ブラウザのみ）
     navigator.storage?.persist?.().catch(() => {});
   }
   return dbPromise;
+}
+
+export async function getKV<T>(key: string): Promise<T | undefined> {
+  return (await (await getDB()).get("kv", key)) as T | undefined;
+}
+
+export async function setKV(key: string, value: unknown) {
+  await (await getDB()).put("kv", value, key);
+}
+
+export async function deleteKV(key: string) {
+  await (await getDB()).delete("kv", key);
 }
 
 /** 新しい順（日付 → 作成時刻） */
