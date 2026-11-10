@@ -14,6 +14,8 @@ import EmptyState from "@/components/EmptyState";
 import { getLang, tr } from "@/lib/i18n";
 import { dayTotal } from "@/lib/dayTotal";
 import BackupNudge from "@/components/BackupNudge";
+import MonthRecap from "@/components/MonthRecap";
+import { beanTitle } from "@/components/RecordCard";
 
 const WEEKDAYS = "日月火水木金土";
 
@@ -126,6 +128,7 @@ export default function RecordsPage() {
       )}
 
       <main className="content" style={{ paddingBottom: 96 }}>
+        {records && <MonthRecap records={records} titleOf={beanTitle} />}
         {records && <BackupNudge count={records.length} />}
         {records && records.length > 0 && (
           <div className="filter-bar">
