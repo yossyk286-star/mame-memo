@@ -6,13 +6,26 @@ import Buddy from "@/components/Buddy";
 import ClearField from "@/components/ClearField";
 import TabBar from "@/components/TabBar";
 import Welcome from "@/components/Welcome";
+import InstallHint from "@/components/InstallHint";
+import Milestones from "@/components/Milestones";
 import ThemeSync from "@/components/ThemeSync";
 import { THEME_BOOT } from "@/lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "まめメモ",
-  description: "飲んだコーヒーを記録して、だんだん詳しくなるアプリ",
+  description: "メニューを撮るだけで、どんなコーヒーかすぐわかる。飲んだコーヒーを記録して、だんだん詳しくなるアプリ",
+  metadataBase: new URL("https://mame-memo.vercel.app"),
+  // LINE などで URL を送ったときに出る画像と一言
+  openGraph: {
+    title: "まめメモ",
+    description: "メニューを撮るだけで、どんなコーヒーかすぐわかる。飲んだコーヒーを記録して、だんだん詳しくなるアプリ",
+    siteName: "まめメモ",
+    locale: "ja_JP",
+    type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "まめメモ" }],
+  },
+  twitter: { card: "summary_large_image", images: ["/og.png"] },
   appleWebApp: { capable: true, title: "まめメモ", statusBarStyle: "default", startupImage: startupImages() },
 };
 
@@ -66,6 +79,8 @@ export default function RootLayout({
           <Buddy />
           <ClearField />
           <Welcome />
+          <Milestones />
+          <InstallHint />
         </LangGate>
         <ServiceWorker />
         <ThemeSync />

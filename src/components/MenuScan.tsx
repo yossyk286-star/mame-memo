@@ -20,6 +20,7 @@ import {
 } from "@/lib/db";
 import { loadDishRanks, loadTodayMenu, saveDishRanks, type FoodMenu, type MenuRank } from "@/lib/foodPairing";
 import { findKnownBean } from "@/lib/knownBeans";
+import PasscodeField from "./PasscodeField";
 import { loadLastScan, saveLastScan, today } from "@/lib/lastScan";
 import { findSaved, saveLookups } from "@/lib/savedLookups";
 import { MOODS, moodFromText, wordMatch } from "@/lib/moods";
@@ -625,21 +626,13 @@ export default function MenuScan({
         </Hint>
       )}
       {!savedPasscode && (
-        <div className="field">
-          <label className="label" htmlFor="scan-pass">
-            {tr("合言葉")}
-          </label>
-          <input
-            id="scan-pass"
-            className="input"
-            type="text"
-            autoComplete="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            value={passcode}
-            onChange={(e) => setPasscode(e.target.value)}
-          />
-        </div>
+        <PasscodeField
+          value={passcode}
+          onChange={setPasscode}
+          need={tr("撮って読み取るには「合言葉」が要ります。")}
+          free={[tr("定番の産地19種の解説（名前で調べる）"), tr("よくあるスイーツに合うコーヒー（スイーツから）"), tr("記録・辞典・味マップ・スタンプ帳")]}
+          forceOpen={error.includes("合言葉")}
+        />
       )}
 
       <PendingPhotos
