@@ -5,7 +5,7 @@ import type { Process, Roast, TastingRecord } from "./types";
 import { beanTitle } from "@/components/RecordCard";
 
 /** アプリごとに違うところ（名前・称号・しるし・友だちに送る豆）をここにまとめる。ほかの部品は両アプリで同じ */
-export const APP = { id: "mame-memo", name: "まめメモ", url: "https://mame-memo.vercel.app" };
+export const APP = { id: "mame-memo", name: "まめメモ", url: "https://mame-memo.vercel.app", emblem: "bean" };
 
 /** 好み画面や相性の文で使う呼び名 */
 export const WORDS = {
@@ -27,12 +27,13 @@ export const TITLES = [
   { at: 100, name: "珈琲仙人" },
 ];
 
+/** icon は Medal に彫る絵の名前。「#10」のように # で始まるときは数字を彫る */
 export type Badge = { id: string; icon: string; label: string; how: string; done: boolean };
 
 const ROASTS: [Roast, string][] = [
-  ["浅煎り", "🌤️"],
-  ["中煎り", "☕"],
-  ["深煎り", "🌑"],
+  ["浅煎り", "bean"],
+  ["中煎り", "bean-half"],
+  ["深煎り", "bean-full"],
 ];
 
 /** あつめるしるし（24個）。done は記録から決める */
@@ -55,28 +56,28 @@ export function badgesOf(records: TastingRecord[]): Badge[] {
   });
   const b = (id: string, icon: string, label: string, how: string, done: boolean): Badge => ({ id, icon, label, how, done });
   return [
-    b("n1", "🌱", "1杯目", "はじめて記録する", n >= 1),
-    b("n10", "🔟", "10杯目", "10杯記録する", n >= 10),
-    b("n25", "🎖️", "25杯目", "25杯記録する", n >= 25),
-    b("n50", "🏅", "50杯目", "50杯記録する", n >= 50),
-    b("n100", "💯", "100杯目", "100杯記録する", n >= 100),
-    b("p3", "📍", "産地3か国", "3か国の豆を飲む", places.size >= 3),
-    b("p5", "🗺️", "産地5か国", "5か国の豆を飲む", places.size >= 5),
-    b("p10", "🧭", "産地10か国", "10か国の豆を飲む", places.size >= 10),
-    b("p15", "✈️", "産地15か国", "15か国の豆を飲む", places.size >= 15),
-    b("regions", "🌏", "3地域ぜんぶ", "アフリカ・中南米・アジアの豆を飲む", regions.size >= 3),
+    b("n1", "sprout", "1杯目", "はじめて記録する", n >= 1),
+    b("n10", "#10", "10杯目", "10杯記録する", n >= 10),
+    b("n25", "#25", "25杯目", "25杯記録する", n >= 25),
+    b("n50", "#50", "50杯目", "50杯記録する", n >= 50),
+    b("n100", "#100", "100杯目", "100杯記録する", n >= 100),
+    b("p3", "pin", "産地3か国", "3か国の豆を飲む", places.size >= 3),
+    b("p5", "map", "産地5か国", "5か国の豆を飲む", places.size >= 5),
+    b("p10", "compass", "産地10か国", "10か国の豆を飲む", places.size >= 10),
+    b("p15", "plane", "産地15か国", "15か国の豆を飲む", places.size >= 15),
+    b("regions", "globe", "3地域ぜんぶ", "アフリカ・中南米・アジアの豆を飲む", regions.size >= 3),
     ...ROASTS.map(([k, icon]) => b(`r-${k}`, icon, k, `${k}を記録する`, roasts.has(k))),
-    b("r-all", "🎨", "焙煎度ぜんぶ", "浅煎り・中煎り・深煎りを記録する", ROASTS.every(([k]) => roasts.has(k))),
-    b("methods", "⚗️", "淹れ方3種", "3種類の淹れ方で記録する", methods.size >= 3),
-    b("process3", "🫘", "精製3種", "3種類の精製方法の豆を記録する", processes.size >= 3),
-    b("natural", "🍒", "ナチュラル", "ナチュラル精製の豆を記録する", records.some((r) => r.process === "Natural")),
-    b("star5", "⭐", "★5の1杯", "★5をつける", records.some((r) => r.overall >= 5)),
-    b("shop3", "🏪", "お店3軒", "3軒のお店で記録する", shops >= 3),
-    b("shop10", "🧁", "お店10軒", "10軒のお店で記録する", shops >= 10),
-    b("home", "🏠", "家で一杯", "家で淹れて記録する", records.some((r) => isHome(r.shop))),
-    b("photo", "📷", "写真5枚", "写真つきの記録を5つ", records.filter((r) => r.photos?.length || r.photo).length >= 5),
-    b("weekend", "🌅", "週末の一杯", "土日に記録する", weekend),
-    b("three", "☕", "1日に3杯", "同じ日に3杯記録する", [...perDay.values()].some((c) => c >= 3)),
+    b("r-all", "beans", "焙煎度ぜんぶ", "浅煎り・中煎り・深煎りを記録する", ROASTS.every(([k]) => roasts.has(k))),
+    b("methods", "dripper", "淹れ方3種", "3種類の淹れ方で記録する", methods.size >= 3),
+    b("process3", "beans", "精製3種", "3種類の精製方法の豆を記録する", processes.size >= 3),
+    b("natural", "cherry", "ナチュラル", "ナチュラル精製の豆を記録する", records.some((r) => r.process === "Natural")),
+    b("star5", "star", "★5の1杯", "★5をつける", records.some((r) => r.overall >= 5)),
+    b("shop3", "store", "お店3軒", "3軒のお店で記録する", shops >= 3),
+    b("shop10", "cup", "お店10軒", "10軒のお店で記録する", shops >= 10),
+    b("home", "home", "家で一杯", "家で淹れて記録する", records.some((r) => isHome(r.shop))),
+    b("photo", "camera", "写真5枚", "写真つきの記録を5つ", records.filter((r) => r.photos?.length || r.photo).length >= 5),
+    b("weekend", "sun", "週末の一杯", "土日に記録する", weekend),
+    b("three", "cups", "1日に3杯", "同じ日に3杯記録する", [...perDay.values()].some((c) => c >= 3)),
   ];
 }
 
