@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import BuddyFace from "@/components/BuddyFace";
-import { announceBuddy } from "@/lib/buddy";
+import { announceBuddy, pick } from "@/lib/buddy";
 import { beanTitle, roastColor } from "@/components/RecordCard";
 import { listBags, listRecords } from "@/lib/db";
 import { loadLastScan, today } from "@/lib/lastScan";
@@ -156,7 +156,7 @@ export default function PairPage() {
     const home = matchBags(bags, pairing);
     setResult({ query, pairing, from, records: mine, bags: home });
     if (home[0]) {
-      announceBuddy({ text: tr("家にある「{0}」、{1}に合いそう！", beanTitle(home[0].item), pairing.dish), mood: "happy" });
+      announceBuddy({ text: pick([tr("家にある「{0}」、{1}に合いそう！", beanTitle(home[0].item), pairing.dish), tr("{1}なら、家の「{0}」がよさそうだよ", beanTitle(home[0].item), pairing.dish)]), mood: "happy" });
     }
   }
 
