@@ -1,5 +1,6 @@
 "use client";
 
+import SearchField from "@/components/SearchField";
 import { useEffect, useState } from "react";
 import DailyQuiz from "@/components/DailyQuiz";
 import {
@@ -190,14 +191,13 @@ export default function GlossaryPage() {
         <label htmlFor="g-search" className="visually-hidden">
           {tr("用語を検索")}
         </label>
-        <input
+        <SearchField
           id="g-search"
-          type="search"
-          className="input"
+          name="glossary"
           placeholder={tr("用語を検索")}
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
+          onChange={(v) => {
+            setQuery(v);
             setJustAdded(null);
           }}
         />

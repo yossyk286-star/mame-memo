@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import BeanSortBar from "@/components/BeanSortBar";
+import SearchField from "@/components/SearchField";
 import Hint from "@/components/Hint";
 import SwipeRecord from "@/components/SwipeRecord";
 import { listRecords, putRecord } from "@/lib/db";
@@ -183,14 +184,7 @@ export default function RecordsPage() {
             </label>
             <BeanSortBar
               search={
-                <input
-                  id="r-search"
-                  type="search"
-                  className="input"
-                  placeholder={tr("産地・店・味で探す")}
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
+                <SearchField id="r-search" name="records" placeholder={tr("産地・店・味で探す")} value={query} onChange={setQuery} />
               }
               roasts={(records ?? []).map((r) => r.roast)}
               roast={roast}
