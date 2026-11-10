@@ -72,6 +72,16 @@ function Thumb({ record: r }: { record: TastingRecord }) {
   );
 }
 
+/** 消す確認シートに出す「何を消すか」（マーク＋名前） */
+export function RecordPreview({ record }: { record: TastingRecord }) {
+  return (
+    <>
+      <Thumb record={record} />
+      <strong>{beanTitle(record)}</strong>
+    </>
+  );
+}
+
 /** 記録の一覧の1行。2行に詰めて、画面にたくさん並ぶようにする。showDate=false は日付で区切った一覧用 */
 export default function RecordCard({ record: r, showDate = true }: { record: TastingRecord; showDate?: boolean }) {
   // 焙煎度は左のマークでわかるので、精製・淹れ方から書く（店や値段まで見えるように）
