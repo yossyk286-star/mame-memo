@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   beanToDraft,
@@ -39,7 +40,7 @@ import Hint from "./Hint";
 import MenuPicks, { scoreWord } from "./MenuPicks";
 import MoodPicker from "./MoodPicker";
 import TasteBars from "./TasteBars";
-import Skeleton from "./Skeleton";
+import Steps from "./Steps";
 import { getLang, tr, trJoin, trv } from "@/lib/i18n";
 import { askConfirm } from "@/components/ConfirmSheet";
 
@@ -186,6 +187,9 @@ export default function MenuScan({
   }, [beans]);
   // 何枚か選んだときの「何枚目を読み取り中か」
   const [progress, setProgress] = useState<{ at: number; of: number } | null>(null);
+  // 待つあいだの段（0 写真を整える・1 AI が読む／調べる・2 好みと照らす）と、いま届いた豆（1枚ずつ浮かべる）
+  const [phase, setPhase] = useState(0);
+  const [fresh, setFresh] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [records, setRecords] = useState<TastingRecord[]>([]);
   const [wishes, setWishes] = useState<WishBean[]>([]);
@@ -257,6 +261,7 @@ export default function MenuScan({
       const added = { ...b, id: crypto.randomUUID(), savedAt: Date.now() };
       await putWish(added);
       setWishes((ws) => [added, ...ws]);
+      toast("気になるに入れました", { tone: "star", action: { label: "見る", href: "/wishlist" } });
     }
   }
 
@@ -574,12 +579,15 @@ export default function MenuScan({
     setError("");
     setSearching(query ?? null);
     setStatus("reading");
+    setPhase(query ? 1 : 0);
     try {
+      const body = await payload();
+      setPhase(1);
       const res = await fetchOnline("/api/read-menu", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...(await payload()),
+          ...body,
           passcode: passcode.trim().normalize("NFKC"),
           lang: getLang(),
         }),
@@ -587,6 +595,7 @@ export default function MenuScan({
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) setSavedPasscode(false);
       if (!res.ok) throw new Error(data.error ?? "読み取りに失敗しました");
+      setPhase(2);
       try {
         localStorage.setItem(PASSCODE_KEY, passcode.trim().normalize("NFKC"));
       } catch {}
@@ -599,6 +608,7 @@ export default function MenuScan({
       // 今読み取った豆を今日の一覧の上に足す（何枚かに分かれたメニューを続けて撮っても、新しい分がすぐ見えるように）
       const next = [...result.beans, ...beansRef.current.filter((b) => !result.beans.some((r) => r.name === b.name))];
       beansRef.current = next;
+      setFresh(result.beans.map((b) => b.name));
       setBeans(next);
       setPairing(null);
       saveLastScan(next, loadLastScan()?.recorded ?? []);
@@ -648,11 +658,11 @@ export default function MenuScan({
           setPending([]);
         }}
       />
-      <div className={status === "done" ? styles.shootRow : styles.shootCol}>
+      {/* 読み取り中は、押したボタンの段が「いま何をしているか」の帯に変わる */}
+      {status !== "reading" && <div className={status === "done" ? styles.shootRow : styles.shootCol}>
       <label
         data-tour="scan-shoot"
         className={`btn-primary ${styles.shoot}`}
-        aria-disabled={status === "reading"}
       >
         <svg
           width="20"
@@ -668,25 +678,17 @@ export default function MenuScan({
           <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
           <circle cx="12" cy="13" r="3.5" />
         </svg>
-        {status === "reading" && !searching
-          ? progress
-            ? tr("読み取り中…（{0}/{1}枚）", progress.at, progress.of)
-            : tr("読み取り中…")
-          : status === "done"
-            ? tr("撮る")
-            : tr("メニューを撮って読み取る")}
+        {status === "done" ? tr("撮る") : tr("メニューを撮って読み取る")}
         <input
           type="file"
           accept="image/*"
           capture="environment"
           onChange={onPhoto}
-          disabled={status === "reading"}
           className="visually-hidden"
         />
       </label>
 
-      {status !== "reading" && (
-        <label className="btn-secondary" data-tour="scan-photo" style={{ cursor: "pointer" }}>
+      <label className="btn-secondary" data-tour="scan-photo" style={{ cursor: "pointer" }}>
           {tr("写真から")}
           {/* capture を付けないとカメラではなく写真の一覧が開く */}
           <input
@@ -697,14 +699,13 @@ export default function MenuScan({
             className="visually-hidden"
           />
         </label>
-      )}
 
-        {status !== "reading" && !textOpen && (
+        {!textOpen && (
           <button type="button" className="btn-secondary" data-tour="scan-text" onClick={() => setTextOpen(true)}>
             {status === "done" ? tr("文字で") : tr("名前で調べる")}
           </button>
         )}
-      </div>
+      </div>}
 
       {status !== "reading" &&
         (textOpen ? (
@@ -733,17 +734,23 @@ export default function MenuScan({
       {status !== "reading" && extra}
 
       {status === "reading" && (
-        <Skeleton
+        <Steps
           // メニューの文を貼ったときは長いので名前は出さない
-          label={
+          title={
             !searching
-              ? tr("メニューを読み取っています…")
+              ? progress
+                ? tr("読み取り中…（{0}/{1}枚）", progress.at, progress.of)
+                : tr("メニューを読んでいます")
               : searching.length > 20
-                ? tr("入れた文から調べています…")
-                : tr("「{0}」を調べています…", searching)
+                ? tr("入れた文から調べています")
+                : tr("「{0}」を調べています", searching)
           }
-          cards={searching && searching.length <= 20 ? 1 : 3}
-          lines={searching && searching.length <= 20 ? 3 : 2}
+          steps={
+            searching
+              ? ["名前を受け取りました", "豆の情報を調べています", "好みと照らします"]
+              : ["写真を整えています", "豆の名前を読んでいます", "好みと照らします"]
+          }
+          at={phase}
         />
       )}
 
@@ -915,7 +922,7 @@ export default function MenuScan({
       )}
         </div>
       )}
-      {pairingBusy && <Skeleton label={tr("合う順を考えています…")} cards={2} lines={1} />}
+      {pairingBusy && <Steps title="合う順を考えています" steps={["豆の一覧をまとめました", "相性を考えています", "合う順に並べます"]} at={1} />}
       {moodLocal && !pairingBusy && (moodWords.length > 1 || moodWords.some((w) => !MOODS.some((m) => m.label === w))) && (
         <p className={styles.lead}>
           {tr("{0}に合いそうな順に並べました", moodWords.map((w) => tr("「{0}」", w)).join(""))}
@@ -962,7 +969,8 @@ export default function MenuScan({
             <p className={styles.lead}>{tr("ここから下は{0}が入っていないもの", mustWords)}</p>
           )}
           <article
-            className={`${styles.bean} ${i === best ? styles.best : ""} ${open ? "" : styles.closed}`}
+            className={`${styles.bean} ${i === best ? styles.best : ""} ${open ? "" : styles.closed} ${fresh.includes(b.name) ? "reveal-item" : ""}`}
+            style={fresh.includes(b.name) ? { animationDelay: `${Math.min(fresh.indexOf(b.name), 6) * 0.08}s` } : undefined}
           >
             {/* 右上の角に置き、度数や「＋記録」から離して押し間違いを防ぐ。閉じたカードでは「＋記録」が右にあるので、開いたときだけ出す */}
             {open && <button
