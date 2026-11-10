@@ -181,6 +181,7 @@ export default function GlossaryPage() {
         </label>
         <input
           id="g-search"
+          data-tour="g-search"
           type="search"
           className="input"
           placeholder={tr("用語を検索")}
@@ -190,7 +191,7 @@ export default function GlossaryPage() {
             setJustAdded(null);
           }}
         />
-        <div className="scroll-row">
+        <div className="scroll-row" data-tour="g-filter">
           {FILTERS.filter((c) => c !== "自分で追加" || myTerms.length > 0).map(
             (c) => (
               <button

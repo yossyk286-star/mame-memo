@@ -52,7 +52,7 @@ export default function WishlistPage() {
 
       <main className="content" style={{ paddingTop: 16 }}>
         {wishes && wishes.length > 1 && (
-          <div className="filter-bar">
+          <div className="filter-bar" data-tour="wish-sort">
             <BeanSortBar
               roasts={wishes.map((w) => w.roast)}
               roast={roast}
@@ -68,16 +68,18 @@ export default function WishlistPage() {
           </div>
         )}
         {wishes?.length === 0 && (
-          <EmptyState
-            title={tr("気になる豆、まだないよ")}
-            actions={[{ href: "/scan", label: tr("メニューを撮って探す") }]}
-          >
-            {tr("お店でメニューを撮って「☆ 気になる」を押すと、ここに残るよ。")}
-          </EmptyState>
+          <div data-tour="wish-item">
+            <EmptyState
+              title={tr("気になる豆、まだないよ")}
+              actions={[{ href: "/scan", label: tr("メニューを撮って探す") }]}
+            >
+              {tr("お店でメニューを撮って「☆ 気になる」を押すと、ここに残るよ。")}
+            </EmptyState>
+          </div>
         )}
         {wishes && wishes.length > 0 && shown.length === 0 && <p className="empty">{tr("当てはまる豆がありません。")}</p>}
-        {shown.map((w) => (
-          <article key={w.id} className="card">
+        {shown.map((w, i) => (
+          <article key={w.id} className="card" data-tour={i === 0 ? "wish-item" : undefined}>
             <div className="card-top">
               <h2>{trv(w.name)}</h2>
               <span className="muted">{new Date(w.savedAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" })}</span>
