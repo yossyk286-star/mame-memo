@@ -656,6 +656,7 @@ export default function MenuScan({
       />
       <div className={status === "done" ? styles.shootRow : styles.shootCol}>
       <label
+        data-tour="scan-shoot"
         className={`btn-primary ${styles.shoot}`}
         aria-disabled={status === "reading"}
       >
@@ -691,7 +692,7 @@ export default function MenuScan({
       </label>
 
       {status !== "reading" && (
-        <label className="btn-secondary" style={{ cursor: "pointer" }}>
+        <label className="btn-secondary" data-tour="scan-photo" style={{ cursor: "pointer" }}>
           {status === "done" ? tr("写真から") : tr("写真フォルダから選んで読み取る")}
           {/* capture を付けないとカメラではなく写真の一覧が開く */}
           <input
@@ -705,7 +706,7 @@ export default function MenuScan({
       )}
 
         {status === "done" && !textOpen && (
-          <button type="button" className="btn-secondary" onClick={() => setTextOpen(true)}>
+          <button type="button" className="btn-secondary" data-tour="scan-text" onClick={() => setTextOpen(true)}>
             {tr("文字で")}
           </button>
         )}
@@ -746,6 +747,7 @@ export default function MenuScan({
             <button
               type="button"
               className="btn-secondary"
+              data-tour="scan-text"
               onClick={() => setTextOpen(true)}
             >
               {tr("文字で入力して調べる")}
