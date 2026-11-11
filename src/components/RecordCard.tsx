@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
-import { markIfLoaded, markLoaded, photosOf, usePhotoURLs } from "@/lib/photo";
+import { markIfLoaded, markLoaded, photosOf, useThumbURL } from "@/lib/photo";
 import type { Roast, TastingRecord } from "@/lib/types";
 import { getLang, tr } from "@/lib/i18n";
 import { isPlainClick, nameForTransition, transitionTo } from "@/lib/viewTransition";
@@ -62,8 +62,12 @@ export function shortDate(date: string) {
 
 /** 写真があれば小さく、なければ焙煎度の色の四角に1文字 */
 function Thumb({ record: r }: { record: TastingRecord }) {
-  const [url] = usePhotoURLs(photosOf(r).slice(0, 1));
-  if (url) {
+  const first = photosOf(r)[0];
+  // 小さく作り直した写真を使う（元の大きな写真を毎回読み直すと、タブを移るたびに重くなる）
+  const url = useThumbURL(`${r.id}:${r.updatedAt}`, first);
+  if (first) {
+    // 縮小版ができるまでは同じ大きさの空き枠を出して、行の高さや並びが動かないようにする
+    if (!url) return <span className="thumb thumb-wait" style={{ borderColor: roastColor(r.roast) }} aria-hidden="true" />;
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={url} alt="" className="thumb photo-fade" loading="lazy" decoding="async" ref={markIfLoaded} onLoad={markLoaded} style={{ borderColor: roastColor(r.roast) }} />;
   }

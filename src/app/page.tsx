@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import BeanSortBar from "@/components/BeanSortBar";
 import SearchField from "@/components/SearchField";
 import Hint from "@/components/Hint";
@@ -47,6 +47,14 @@ export default function RecordsPage() {
   const [area, setArea] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("default");
   const [goodOnly, setGoodOnly] = useState(false);
+
+  // 閉じている月の中身は、画面が出て落ち着いてから作る（タブを移った瞬間に全部の記録を作ると、かくっと止まる）
+  const [allMonths, setAllMonths] = useState(false);
+  useEffect(() => {
+    if (!records || allMonths) return;
+    const t = window.setTimeout(() => startTransition(() => setAllMonths(true)), 450);
+    return () => window.clearTimeout(t);
+  }, [records, allMonths]);
 
   useEffect(() => {
     const scan = loadLastScan();
@@ -220,12 +228,17 @@ export default function RecordsPage() {
         )}
         {foldMonths
           ? months.map((m, i) => (
-              <details key={m.month} className="month-fold" open={i === 0}>
+              <details
+                key={m.month}
+                className="month-fold"
+                open={i === 0}
+                onToggle={(e) => e.currentTarget.open && !allMonths && setAllMonths(true)}
+              >
                 <summary>
                   <span>{monthHead(m.month)}</span>
                   <span className="month-fold-count">{tr("{0}杯", m.count)}</span>
                 </summary>
-                <div className="month-body">{m.days.map(renderDay)}</div>
+                <div className="month-body">{(i === 0 || allMonths) && m.days.map(renderDay)}</div>
               </details>
             ))
           : days.map(renderDay)}
