@@ -28,7 +28,18 @@ export const TITLES = [
 ];
 
 /** icon は Medal に彫る絵の名前。「#10」のように # で始まるときは数字を彫る */
-export type Badge = { id: string; icon: string; label: string; how: string; done: boolean };
+export type Badge = {
+  id: string;
+  icon: string;
+  label: string;
+  how: string;
+  done: boolean;
+  /** 取ったあと、もっと続けるとプラチナになる。left はあと何、unit はその単位 */
+  plat?: { done: boolean; how: string; left: number; unit: string };
+};
+
+/** プラチナの目安。have が need に届いたらプラチナ */
+const platOf = (have: number, need: number, how: string, unit: string) => ({ done: have >= need, how, left: Math.max(0, need - have), unit });
 
 const ROASTS: [Roast, string][] = [
   ["浅煎り", "bean"],
@@ -49,12 +60,19 @@ export function badgesOf(records: TastingRecord[]): Badge[] {
   const shops = groupByShop(records).length;
   const perDay = new Map<string, number>();
   for (const r of records) perDay.set(r.date, (perDay.get(r.date) ?? 0) + 1);
-  const weekend = records.some((r) => {
-    const [y, m, d] = r.date.split("-").map(Number);
-    const w = new Date(y, m - 1, d).getDay();
-    return w === 0 || w === 6;
-  });
-  const b = (id: string, icon: string, label: string, how: string, done: boolean): Badge => ({ id, icon, label, how, done });
+  const weekends = new Set(
+    records
+      .filter((r) => {
+        const [y, m, d] = r.date.split("-").map(Number);
+        const w = new Date(y, m - 1, d).getDay();
+        return w === 0 || w === 6;
+      })
+      .map((r) => r.date),
+  ).size;
+  const b = (id: string, icon: string, label: string, how: string, done: boolean, plat?: Badge["plat"]): Badge => ({ id, icon, label, how, done, plat });
+  const roastCount = (k: string) => records.filter((r) => r.roast === k).length;
+  const homeCount = records.filter((r) => isHome(r.shop)).length;
+  const photoCount = records.filter((r) => r.photos?.length || r.photo).length;
   return [
     b("n1", "sprout", "1杯目", "はじめて記録する", n >= 1),
     b("n10", "#10", "10杯目", "10杯記録する", n >= 10),
@@ -65,19 +83,19 @@ export function badgesOf(records: TastingRecord[]): Badge[] {
     b("p5", "map", "産地5か国", "5か国の豆を飲む", places.size >= 5),
     b("p10", "compass", "産地10か国", "10か国の豆を飲む", places.size >= 10),
     b("p15", "plane", "産地15か国", "15か国の豆を飲む", places.size >= 15),
-    b("regions", "globe", "3地域ぜんぶ", "アフリカ・中南米・アジアの豆を飲む", regions.size >= 3),
-    ...ROASTS.map(([k, icon]) => b(`r-${k}`, icon, k, `${k}を記録する`, roasts.has(k))),
-    b("r-all", "beans", "焙煎度ぜんぶ", "浅煎り・中煎り・深煎りを記録する", ROASTS.every(([k]) => roasts.has(k))),
-    b("methods", "dripper", "淹れ方3種", "3種類の淹れ方で記録する", methods.size >= 3),
+    b("regions", "globe", "3地域ぜんぶ", "アフリカ・中南米・アジアの豆を飲む", regions.size >= 3, platOf(places.size, 20, "20か国の豆を飲む", "か国")),
+    ...ROASTS.map(([k, icon]) => b(`r-${k}`, icon, k, `${k}を記録する`, roasts.has(k), platOf(roastCount(k), 10, `${k}を10杯`, "杯"))),
+    b("r-all", "beans", "焙煎度ぜんぶ", "浅煎り・中煎り・深煎りを記録する", ROASTS.every(([k]) => roasts.has(k)), platOf(Math.min(...ROASTS.map(([k]) => roastCount(k))), 5, "焙煎度それぞれ5杯", "杯")),
+    b("methods", "dripper", "淹れ方3種", "3種類の淹れ方で記録する", methods.size >= 3, platOf(methods.size, 5, "5種類の淹れ方", "種類")),
     b("process3", "beans", "精製3種", "3種類の精製方法の豆を記録する", processes.size >= 3),
-    b("natural", "cherry", "ナチュラル", "ナチュラル精製の豆を記録する", records.some((r) => r.process === "Natural")),
-    b("star5", "star", "★5の1杯", "★5をつける", records.some((r) => r.overall >= 5)),
+    b("natural", "cherry", "ナチュラル", "ナチュラル精製の豆を記録する", records.some((r) => r.process === "Natural"), platOf(records.filter((r) => r.process === "Natural").length, 10, "ナチュラルを10杯", "杯")),
+    b("star5", "star", "★5の1杯", "★5をつける", records.some((r) => r.overall >= 5), platOf(records.filter((r) => r.overall >= 5).length, 5, "★5を5回", "回")),
     b("shop3", "store", "お店3軒", "3軒のお店で記録する", shops >= 3),
     b("shop10", "cup", "お店10軒", "10軒のお店で記録する", shops >= 10),
-    b("home", "home", "家で一杯", "家で淹れて記録する", records.some((r) => isHome(r.shop))),
-    b("photo", "camera", "写真5枚", "写真つきの記録を5つ", records.filter((r) => r.photos?.length || r.photo).length >= 5),
-    b("weekend", "sun", "週末の一杯", "土日に記録する", weekend),
-    b("three", "cups", "1日に3杯", "同じ日に3杯記録する", [...perDay.values()].some((c) => c >= 3)),
+    b("home", "home", "家で一杯", "家で淹れて記録する", homeCount > 0, platOf(homeCount, 10, "家で10杯", "杯")),
+    b("photo", "camera", "写真5枚", "写真つきの記録を5つ", photoCount >= 5, platOf(photoCount, 20, "写真つきの記録を20", "つ")),
+    b("weekend", "sun", "週末の一杯", "土日に記録する", weekends > 0, platOf(weekends, 5, "週末5日", "日")),
+    b("three", "cups", "1日に3杯", "同じ日に3杯記録する", [...perDay.values()].some((c) => c >= 3), platOf([...perDay.values()].filter((c) => c >= 3).length, 5, "3杯の日を5日", "日")),
   ];
 }
 

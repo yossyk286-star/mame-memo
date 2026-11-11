@@ -2420,5 +2420,21 @@
 "酸味は？": "Acidity?",
 "量": "Size",
 "開いたときの画面": "Start screen",
-"📍 近くの前に行ったお店": "📍 Places nearby you've been"
+"📍 近くの前に行ったお店": "📍 Places nearby you've been",
+"あと{0}{1}でプラチナ": "{0} more for Platinum",
+"プラチナ": "Platinum",
+"プラチナ {0}": "Platinum {0}",
+"「{0}」がプラチナに": "\"{0}\" is now Platinum",
+"★5を5回": "Five ★5 ratings",
+"家で10杯": "10 at home",
+"写真つきの記録を20": "20 logs with photos",
+"3杯の日を5日": "5 days with 3 cups",
+"20か国の豆を飲む": "Beans from 20 countries",
+"浅煎りを10杯": "10 light roasts",
+"中煎りを10杯": "10 medium roasts",
+"深煎りを10杯": "10 dark roasts",
+"焙煎度それぞれ5杯": "5 of each roast",
+"5種類の淹れ方": "5 brew methods",
+"ナチュラルを10杯": "10 naturals",
+"週末5日": "5 weekend days"
 }
