@@ -12,14 +12,7 @@ import {
 } from "@/lib/menuScan";
 import { AREAS, ROAST_FILTERS, areaOf } from "@/lib/beanSort";
 import { countryOf } from "@/lib/countries";
-import {
-  deleteWish,
-  listRecords,
-  listWishes,
-  putBag,
-  putWish,
-  type WishBean,
-} from "@/lib/db";
+import { deleteWish, listRecords, listWishes, peekRecords, peekWishes, putBag, putWish, type WishBean } from "@/lib/db";
 import { loadDishRanks, loadTodayMenu, saveDishRanks, type FoodMenu, type MenuRank } from "@/lib/foodPairing";
 import { findKnownBean } from "@/lib/knownBeans";
 import PasscodeField from "./PasscodeField";
@@ -192,8 +185,8 @@ export default function MenuScan({
   const [phase, setPhase] = useState(0);
   const [fresh, setFresh] = useState<string[]>([]);
   const [error, setError] = useState("");
-  const [records, setRecords] = useState<TastingRecord[]>([]);
-  const [wishes, setWishes] = useState<WishBean[]>([]);
+  const [records, setRecords] = useState<TastingRecord[]>(() => peekRecords() ?? []);
+  const [wishes, setWishes] = useState<WishBean[]>(() => peekWishes() ?? []);
   const [prefs, setPrefs] = useState(EMPTY_PREFS);
   // 頼むスイーツとの相性（豆の名前ごと）
   const [sweet, setSweet] = useState("");

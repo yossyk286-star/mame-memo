@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import BeanSortBar from "@/components/BeanSortBar";
 import { areaOf, sortBy, type SortKey } from "@/lib/beanSort";
-import { deleteWish, listWishes, type WishBean } from "@/lib/db";
+import { deleteWish, listWishes, peekWishes, type WishBean } from "@/lib/db";
 import type { Roast } from "@/lib/types";
 import EmptyState from "@/components/EmptyState";
 import { getLang, tr, trv } from "@/lib/i18n";
@@ -12,7 +12,7 @@ import { askConfirm } from "@/components/ConfirmSheet";
 
 /** メニューで「気になる」と印を付けた、次に試したい豆の一覧 */
 export default function WishlistPage() {
-  const [wishes, setWishes] = useState<WishBean[] | null>(null);
+  const [wishes, setWishes] = useState<WishBean[] | null>(peekWishes);
   const [roast, setRoast] = useState<Roast | null>(null);
   const [area, setArea] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("default");
