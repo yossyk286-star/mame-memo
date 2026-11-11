@@ -7,13 +7,29 @@ import {
   beanToDraft,
   farmOf,
   type MenuScanResult,
-  type DishIdeas, type PairingResult,
+  type DishIdeas,
+  type PairingResult,
   type ScannedBean,
 } from "@/lib/menuScan";
 import { AREAS, ROAST_FILTERS, areaOf } from "@/lib/beanSort";
 import { countryOf } from "@/lib/countries";
-import { deleteWish, listRecords, listWishes, peekRecords, peekWishes, putBag, putWish, type WishBean } from "@/lib/db";
-import { loadDishRanks, loadTodayMenu, saveDishRanks, type FoodMenu, type MenuRank } from "@/lib/foodPairing";
+import {
+  deleteWish,
+  listRecords,
+  listWishes,
+  peekRecords,
+  peekWishes,
+  putBag,
+  putWish,
+  type WishBean,
+} from "@/lib/db";
+import {
+  loadDishRanks,
+  loadTodayMenu,
+  saveDishRanks,
+  type FoodMenu,
+  type MenuRank,
+} from "@/lib/foodPairing";
 import { findKnownBean } from "@/lib/knownBeans";
 import PasscodeField from "./PasscodeField";
 import { loadLastScan, saveLastScan, today } from "@/lib/lastScan";
@@ -21,7 +37,13 @@ import { findSaved, saveLookups } from "@/lib/savedLookups";
 import { MOODS, moodFromText, wordMatch } from "@/lib/moods";
 import { loadPasscode, PASSCODE_KEY } from "@/lib/passcode";
 import { shrinkForReading } from "@/lib/photo";
-import { addPending, fetchOnline, loadPending, OfflineError, setPending as savePending } from "@/lib/pending";
+import {
+  addPending,
+  fetchOnline,
+  loadPending,
+  OfflineError,
+  setPending as savePending,
+} from "@/lib/pending";
 import PendingPhotos from "./PendingPhotos";
 import { EMPTY_PREFS, loadPrefs } from "@/lib/prefs";
 import { announceBuddy, pick } from "@/lib/buddy";
@@ -38,13 +60,16 @@ import Steps from "./Steps";
 import { getLang, tr, trJoin, trv } from "@/lib/i18n";
 import { askConfirm } from "@/components/ConfirmSheet";
 
-
-
 /** 相棒が「好きなやつ」を教えた一覧。アプリを開いている間は同じ一覧で何度も言わない */
 const announcedScans = new Set<string>();
 
 /** 調べた豆について AI に聞くときの質問の例 */
-const ASK_SUGGESTIONS = ["どんな味？", "初心者でも飲みやすい？", "ミルクに合う？", "似た豆は？"];
+const ASK_SUGGESTIONS = [
+  "どんな味？",
+  "初心者でも飲みやすい？",
+  "ミルクに合う？",
+  "似た豆は？",
+];
 
 /** 閉じたカードに出す、味のひとこと（2つまで） */
 function tasteWords({ taste: t }: ScannedBean) {
@@ -128,7 +153,9 @@ function findKey(text: string) {
   return text
     .normalize("NFKC")
     .toLowerCase()
-    .replace(/[\u3041-\u3096]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60))
+    .replace(/[\u3041-\u3096]/g, (c) =>
+      String.fromCharCode(c.charCodeAt(0) + 0x60),
+    )
     .replace(/\s+/g, "");
 }
 
@@ -142,7 +169,9 @@ function partOf(word: string, beans: ScannedBean[]) {
 }
 
 function findText(d: ScannedBean) {
-  return [d.name, d.origin, d.roast, d.process, d.menuNote].filter(Boolean).join(" ");
+  return [d.name, d.origin, d.roast, d.process, d.menuNote]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** 写真フォルダから一度に選べる枚数（1枚ずつ AI に送るので、多すぎると時間とお金がかかる） */
@@ -180,12 +209,16 @@ export default function MenuScan({
     beansRef.current = beans;
   }, [beans]);
   // 何枚か選んだときの「何枚目を読み取り中か」
-  const [progress, setProgress] = useState<{ at: number; of: number } | null>(null);
+  const [progress, setProgress] = useState<{ at: number; of: number } | null>(
+    null,
+  );
   // 待つあいだの段（0 写真を整える・1 AI が読む／調べる・2 好みと照らす）と、いま届いた豆（1枚ずつ浮かべる）
   const [phase, setPhase] = useState(0);
   const [fresh, setFresh] = useState<string[]>([]);
   const [error, setError] = useState("");
-  const [records, setRecords] = useState<TastingRecord[]>(() => peekRecords() ?? []);
+  const [records, setRecords] = useState<TastingRecord[]>(
+    () => peekRecords() ?? [],
+  );
   const [wishes, setWishes] = useState<WishBean[]>(() => peekWishes() ?? []);
   const [prefs, setPrefs] = useState(EMPTY_PREFS);
   // 頼むスイーツとの相性（豆の名前ごと）
@@ -202,13 +235,20 @@ export default function MenuScan({
   // 豆ごとに、料理メニューの中から合う順を聞いた結果と、聞いている豆
   const [dishRanks, setDishRanks] = useState<Record<string, MenuRank[]>>({});
   const [dishRanking, setDishRanking] = useState<string | null>(null);
-  const [dishRankError, setDishRankError] = useState<{ name: string; text: string } | null>(null);
+  const [dishRankError, setDishRankError] = useState<{
+    name: string;
+    text: string;
+  } | null>(null);
   // 料理メニューをまだ読み取っていないときに「合う料理を探す」で挙げてもらった料理
   const [dishIdeas, setDishIdeas] = useState<Record<string, MenuRank[]>>({});
   // 買った豆を、家で何回かに分けて淹れる豆として登録する
   const [bagged, setBagged] = useState<string[]>([]);
   // AI を使わずに出したとき、どこから出したか（調べ直すボタン用）
-  const [localHit, setLocalHit] = useState<{ name: string; how: string; query: string } | null>(null);
+  const [localHit, setLocalHit] = useState<{
+    name: string;
+    how: string;
+    query: string;
+  } | null>(null);
 
   // localStorage はブラウザでしか読めないので、表示後に読み込む
   useEffect(() => {
@@ -225,7 +265,10 @@ export default function MenuScan({
   }, []);
 
   // 調べた結果を一覧から外す（今日の一覧からだけ。前に調べた情報は残るので、また調べても AI は使わない）
-  const [undo, setUndo] = useState<{ label: string; beans: ScannedBean[] } | null>(null);
+  const [undo, setUndo] = useState<{
+    label: string;
+    beans: ScannedBean[];
+  } | null>(null);
   function replaceBeans(next: ScannedBean[]) {
     saveLastScan(next, loadLastScan()?.recorded ?? []);
     setBeans(next);
@@ -236,7 +279,13 @@ export default function MenuScan({
     }
   }
   async function hide(names: string[], label: string) {
-    if (!(await askConfirm({ message: tr("{0}を一覧から消しますか？", label), action: tr("消す") }))) return;
+    if (
+      !(await askConfirm({
+        message: tr("{0}を一覧から消しますか？", label),
+        action: tr("消す"),
+      }))
+    )
+      return;
     setUndo({ label, beans });
     setLocalHit(null);
     replaceBeans(beans.filter((b) => !names.includes(b.name)));
@@ -252,10 +301,18 @@ export default function MenuScan({
       await deleteWish(wish.id);
       setWishes((ws) => ws.filter((w) => w.id !== wish.id));
     } else {
-      const added = { ...b, id: crypto.randomUUID(), savedAt: Date.now(), shop: loadShopToday() || undefined };
+      const added = {
+        ...b,
+        id: crypto.randomUUID(),
+        savedAt: Date.now(),
+        shop: loadShopToday() || undefined,
+      };
       await putWish(added);
       setWishes((ws) => [added, ...ws]);
-      toast("気になるに入れました", { tone: "star", action: { label: "見る", href: "/wishlist" } });
+      toast("気になるに入れました", {
+        tone: "star",
+        action: { label: "見る", href: "/wishlist" },
+      });
     }
   }
 
@@ -270,7 +327,14 @@ export default function MenuScan({
     const key = beans.map((b) => b.name).join("|");
     if (announcedScans.has(key)) return;
     announcedScans.add(key);
-    announceBuddy({ mood: "happy", text: pick([tr("「{0}」、きっと好きなやつだよ", beans[best].name), tr("「{0}」が好みに合いそう！", beans[best].name), tr("ぼくのおすすめは「{0}」かな", beans[best].name)]) });
+    announceBuddy({
+      mood: "happy",
+      text: pick([
+        tr("「{0}」、きっと好きなやつだよ", beans[best].name),
+        tr("「{0}」が好みに合いそう！", beans[best].name),
+        tr("ぼくのおすすめは「{0}」かな", beans[best].name),
+      ]),
+    });
   }, [best, beans]);
 
   // 気分を選んだら、その順に並べる（番号はおすすめの計算と同じ、元の並びのまま持つ）。いくつでも選べる
@@ -283,24 +347,36 @@ export default function MenuScan({
   // タップで開いているカード（1杯だけのときは最初から開く）
   const [openCard, setOpenCard] = useState<string | null>(null);
   // スイーツとの相性を出したときは、その順を優先する
-  const roastsHere = ROAST_FILTERS.filter((r) => beans.some((b) => b.roast === r));
+  const roastsHere = ROAST_FILTERS.filter((r) =>
+    beans.some((b) => b.roast === r),
+  );
   const areasHere = AREAS.filter((a) => beans.some((b) => areaOf(b) === a));
   // 調べ直してその焙煎度・地域がなくなったときは絞り込みを外す
-  const activeRoast = roast && roastsHere.length > 1 && roastsHere.includes(roast) ? roast : null;
-  const activeArea = area && areasHere.length > 1 && areasHere.includes(area) ? area : null;
+  const activeRoast =
+    roast && roastsHere.length > 1 && roastsHere.includes(roast) ? roast : null;
+  const activeArea =
+    area && areasHere.length > 1 && areasHere.includes(area) ? area : null;
   // 選んだ気分を、味で並べるもの（甘めなど）と、入っていてほしい言葉（ベリーなど）に分ける。
   // どちらでもない言葉があれば AI に聞く
   const moodParts = useMemo(
     () => moodWords.map((w) => partOf(w, beans)),
     [moodWords, beans],
   );
-  const moodLocal = moodParts.length > 0 && moodParts.every((p) => p.mood || p.must);
-  const mustWords = moodParts.filter((p) => p.must).map((p) => tr("「{0}」", p.label)).join("");
+  const moodLocal =
+    moodParts.length > 0 && moodParts.every((p) => p.mood || p.must);
+  const mustWords = moodParts
+    .filter((p) => p.must)
+    .map((p) => tr("「{0}」", p.label))
+    .join("");
   const { order, hits } = useMemo(() => {
     const key = findKey(find);
     const idx = beans
       .map((_, i) => i)
-      .filter((i) => (!activeRoast || beans[i].roast === activeRoast) && (!activeArea || areaOf(beans[i]) === activeArea))
+      .filter(
+        (i) =>
+          (!activeRoast || beans[i].roast === activeRoast) &&
+          (!activeArea || areaOf(beans[i]) === activeArea),
+      )
       .filter((i) => !key || findKey(findText(beans[i])).includes(key));
     if (pairing) {
       const s = (i: number) => pairing.byName.get(beans[i].name)?.score ?? 0;
@@ -318,14 +394,22 @@ export default function MenuScan({
     // 「ベリー」など言葉で入れたものは、全部入っている豆を上にまとめる
     const musts = moodParts.flatMap((p) => (p.must ? [p.must] : []));
     const ok = (i: number) => musts.every((f) => f(beans[i]));
-    const sorted = idx.sort((a, b) => Number(ok(b)) - Number(ok(a)) || total.get(b)! - total.get(a)!);
-    return { order: sorted, hits: musts.length > 0 ? sorted.filter(ok).length : null };
+    const sorted = idx.sort(
+      (a, b) => Number(ok(b)) - Number(ok(a)) || total.get(b)! - total.get(a)!,
+    );
+    return {
+      order: sorted,
+      hits: musts.length > 0 ? sorted.filter(ok).length : null,
+    };
   }, [beans, moodParts, moodLocal, pairing, activeRoast, activeArea, find]);
   const sortSummary = [
     activeRoast,
     activeArea,
     moodWords.length > 0 && !pairing && tr("気分：{0}", trJoin(moodWords)),
-    pairing && (pairing.mood ? tr("気分：{0}", pairing.sweet) : tr("スイーツ：{0}", pairing.sweet)),
+    pairing &&
+      (pairing.mood
+        ? tr("気分：{0}", pairing.sweet)
+        : tr("スイーツ：{0}", pairing.sweet)),
   ]
     .filter(Boolean)
     .join("／");
@@ -352,8 +436,16 @@ export default function MenuScan({
   /** 今日読み取った料理メニューを、この豆に合う順に AI に並べてもらう */
   async function rankDishes(b: ScannedBean) {
     if (dishRanking) return;
-    if (!passcode) return setDishRankError({ name: b.name, text: "先に合言葉を入れてください" });
-    if (!navigator.onLine) return setDishRankError({ name: b.name, text: "オフラインのため調べられません" });
+    if (!passcode)
+      return setDishRankError({
+        name: b.name,
+        text: "先に合言葉を入れてください",
+      });
+    if (!navigator.onLine)
+      return setDishRankError({
+        name: b.name,
+        text: "オフラインのため調べられません",
+      });
     setDishRankError(null);
     setDishRanking(b.name);
     try {
@@ -371,19 +463,30 @@ export default function MenuScan({
       if (res.status === 401) setSavedPasscode(false);
       if (!res.ok) throw new Error(data.error ?? "相性を調べられませんでした");
       if ("ideas" in data) {
-        const ideas = (data as DishIdeas).ideas.map((r) => ({ name: r.dish, score: Math.min(5, Math.max(1, r.score)), reason: r.reason }));
+        const ideas = (data as DishIdeas).ideas.map((r) => ({
+          name: r.dish,
+          score: Math.min(5, Math.max(1, r.score)),
+          reason: r.reason,
+        }));
         setDishIdeas((prev) => ({ ...prev, [b.name]: ideas }));
         return;
       }
       const ranks = (data as PairingResult).ranks
         .filter((r) => foodMenu[r.index])
-        .map((r) => ({ name: foodMenu[r.index].dish, score: Math.min(5, Math.max(1, r.score)), reason: r.reason }))
+        .map((r) => ({
+          name: foodMenu[r.index].dish,
+          score: Math.min(5, Math.max(1, r.score)),
+          reason: r.reason,
+        }))
         .sort((x, y) => y.score - x.score);
       const next = { ...dishRanks, [b.name]: ranks };
       setDishRanks(next);
       saveDishRanks(foodMenu, next);
     } catch (err) {
-      setDishRankError({ name: b.name, text: err instanceof Error ? err.message : "相性を調べられませんでした" });
+      setDishRankError({
+        name: b.name,
+        text: err instanceof Error ? err.message : "相性を調べられませんでした",
+      });
     } finally {
       setDishRanking(null);
     }
@@ -401,7 +504,11 @@ export default function MenuScan({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           [asMood ? "mood" : "sweet"]: s,
-          beans: beans.map(({ name, roast, process }) => ({ name, roast, process })),
+          beans: beans.map(({ name, roast, process }) => ({
+            name,
+            roast,
+            process,
+          })),
           passcode: passcode.trim().normalize("NFKC"),
           lang: getLang(),
         }),
@@ -421,7 +528,9 @@ export default function MenuScan({
       setPairing({ sweet: s, mood: asMood, byName });
       if (!asMood) setMoodWords([]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "相性を調べられませんでした");
+      setError(
+        err instanceof Error ? err.message : "相性を調べられませんでした",
+      );
     } finally {
       setPairingBusy(false);
     }
@@ -454,7 +563,12 @@ export default function MenuScan({
     if (!passcode) return setError("先に合言葉を入れてください");
     const allOk = await readPhotos(picked.slice(0, MAX_PHOTOS));
     if (picked.length > MAX_PHOTOS && allOk)
-      setError(tr("一度に読み取れるのは{0}枚までです。残りはもう一度選んでください", MAX_PHOTOS));
+      setError(
+        tr(
+          "一度に読み取れるのは{0}枚までです。残りはもう一度選んでください",
+          MAX_PHOTOS,
+        ),
+      );
   }
 
   /** 何枚かを順に読み取る。電波がなくて読めなかった写真は取っておいて、電波が戻ったら読み取る */
@@ -475,13 +589,24 @@ export default function MenuScan({
     setProgress(null);
     if (offline.length > 0) {
       try {
-        setPending(await addPending("drink", await Promise.all(offline.map(shrinkForReading))));
+        setPending(
+          await addPending(
+            "drink",
+            await Promise.all(offline.map(shrinkForReading)),
+          ),
+        );
         setError("");
       } catch {
         setError(new OfflineError().message);
       }
     } else if (files.length > 1 && failed > 0)
-      setError(tr("{0}枚のうち{1}枚は読み取れませんでした。その写真だけ撮り直してみてください", files.length, failed));
+      setError(
+        tr(
+          "{0}枚のうち{1}枚は読み取れませんでした。その写真だけ撮り直してみてください",
+          files.length,
+          failed,
+        ),
+      );
     return offline.length === 0 && failed === 0;
   }
 
@@ -508,7 +633,12 @@ export default function MenuScan({
   }, []);
   // 合言葉を読み込んだあと、電波があればすぐ読み取る
   useEffect(() => {
-    if (passcode && pending.length > 0 && navigator.onLine && !autoTried.current) {
+    if (
+      passcode &&
+      pending.length > 0 &&
+      navigator.onLine &&
+      !autoTried.current
+    ) {
       // 開いたときに自動で読むのは1回だけ（電波はあるのにつながらないとき、何度も繰り返さないように）
       autoTried.current = true;
       readPendingRef.current();
@@ -547,7 +677,8 @@ export default function MenuScan({
     setLocalHit(null);
     if (!fresh) {
       const known = findKnownBean(q);
-      if (known) return (showLocal(known, "アプリに入っている情報", q), setText(""));
+      if (known)
+        return (showLocal(known, "アプリに入っている情報", q), setText(""));
       const saved = findSaved(q);
       if (saved) return (showLocal(saved, "前に調べた情報", q), setText(""));
     }
@@ -566,7 +697,9 @@ export default function MenuScan({
     // 写真は電波が戻ったら読み取れるよう呼び出し側で取っておく
     if (!navigator.onLine && query === undefined) return "offline";
     if (!navigator.onLine) {
-      setError("オフラインのため読み取れません。電波のあるところでもう一度お試しください");
+      setError(
+        "オフラインのため読み取れません。電波のあるところでもう一度お試しください",
+      );
       return false;
     }
 
@@ -600,7 +733,12 @@ export default function MenuScan({
       // 次からは AI を呼ばずに出せるよう保存しておく
       saveLookups(result.beans, query);
       // 今読み取った豆を今日の一覧の上に足す（何枚かに分かれたメニューを続けて撮っても、新しい分がすぐ見えるように）
-      const next = [...result.beans, ...beansRef.current.filter((b) => !result.beans.some((r) => r.name === b.name))];
+      const next = [
+        ...result.beans,
+        ...beansRef.current.filter(
+          (b) => !result.beans.some((r) => r.name === b.name),
+        ),
+      ];
       beansRef.current = next;
       setFresh(result.beans.map((b) => b.name));
       setBeans(next);
@@ -623,11 +761,15 @@ export default function MenuScan({
     <section className={styles.box} aria-label={tr("メニューを撮って入力")}>
       {status === "done" ? (
         <Hint id="scan-done" className={styles.lead}>
-          {tr("豆の名前をタップすると、説明や飲み方が開きます。「＋記録」を押すと、豆の情報が入った状態で感想を書けます。")}
+          {tr(
+            "豆の名前をタップすると、説明や飲み方が開きます。「＋記録」を押すと、豆の情報が入った状態で感想を書けます。",
+          )}
         </Hint>
       ) : (
         <Hint id="scan-lead" className={styles.lead}>
-          {tr("メニューを撮るか文字で入れると、豆ごとに解説とおすすめの飲み方を出して、記録の項目に入れます。")}
+          {tr(
+            "メニューを撮るか文字で入れると、豆ごとに解説とおすすめの飲み方を出して、記録の項目に入れます。",
+          )}
         </Hint>
       )}
       {!savedPasscode && (
@@ -635,9 +777,13 @@ export default function MenuScan({
           value={passcode}
           onChange={setPasscode}
           need={tr("撮って読み取るには「合言葉」が要ります。")}
-          free={[tr("定番の産地19種の解説（名前で調べる）"), tr("よくあるスイーツに合うコーヒー（スイーツから）"), tr("記録・辞典・味マップ・スタンプ帳")]}
+          free={[
+            tr("定番の産地19種の解説（名前で調べる）"),
+            tr("よくあるスイーツに合うコーヒー（スイーツから）"),
+            tr("記録・辞典・味マップ・スタンプ帳"),
+          ]}
           forceOpen={error.includes("合言葉")}
-        error={error.includes("合言葉") ? error : ""}
+          error={error.includes("合言葉") ? error : ""}
         />
       )}
 
@@ -645,7 +791,10 @@ export default function MenuScan({
         count={pending.length}
         busy={pendingBusy}
         onRead={() => {
-          if (!navigator.onLine) return setError("まだ電波がありません。電波のあるところでもう一度お試しください");
+          if (!navigator.onLine)
+            return setError(
+              "まだ電波がありません。電波のあるところでもう一度お試しください",
+            );
           readPendingRef.current();
         }}
         onDiscard={() => {
@@ -654,53 +803,64 @@ export default function MenuScan({
         }}
       />
       {/* 読み取り中は、押したボタンの段が「いま何をしているか」の帯に変わる */}
-      {status !== "reading" && <div className={status === "done" ? styles.shootRow : styles.shootCol}>
-      <label
-        data-tour="scan-shoot"
-        className={`btn-primary ${styles.shoot}`}
-      >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
-          <circle cx="12" cy="13" r="3.5" />
-        </svg>
-        {status === "done" ? tr("撮る") : tr("メニューを撮って読み取る")}
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={onPhoto}
-          className="visually-hidden"
-        />
-      </label>
+      {status !== "reading" && (
+        <div className={status === "done" ? styles.shootRow : styles.shootCol}>
+          <label
+            data-tour="scan-shoot"
+            className={`btn-primary ${styles.shoot}`}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+              <circle cx="12" cy="13" r="3.5" />
+            </svg>
+            {status === "done" ? tr("撮る") : tr("メニューを撮って読み取る")}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={onPhoto}
+              className="visually-hidden"
+            />
+          </label>
 
-      <label className="btn-secondary" data-tour="scan-photo" style={{ cursor: "pointer" }}>
-          {tr("写真から")}
-          {/* capture を付けないとカメラではなく写真の一覧が開く */}
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={onPhoto}
-            className="visually-hidden"
-          />
-        </label>
+          <label
+            className="btn-secondary"
+            data-tour="scan-photo"
+            style={{ cursor: "pointer" }}
+          >
+            {tr("写真から")}
+            {/* capture を付けないとカメラではなく写真の一覧が開く */}
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={onPhoto}
+              className="visually-hidden"
+            />
+          </label>
 
-        {!textOpen && (
-          <button type="button" className="btn-secondary" data-tour="scan-text" onClick={() => setTextOpen(true)}>
-            {status === "done" ? tr("文字で") : tr("名前で調べる")}
-          </button>
-        )}
-      </div>}
+          {!textOpen && (
+            <button
+              type="button"
+              className="btn-secondary"
+              data-tour="scan-text"
+              onClick={() => setTextOpen(true)}
+            >
+              {status === "done" ? tr("文字で") : tr("名前で調べる")}
+            </button>
+          )}
+        </div>
+      )}
 
       {status !== "reading" &&
         (textOpen ? (
@@ -711,7 +871,9 @@ export default function MenuScan({
             <textarea
               id="scan-text"
               className="input"
-              placeholder={tr("例：ケニア カリンドゥンドゥ 深煎り（メニューの文を貼り付けても大丈夫です）")}
+              placeholder={tr(
+                "例：ケニア カリンドゥンドゥ 深煎り（メニューの文を貼り付けても大丈夫です）",
+              )}
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
@@ -742,8 +904,16 @@ export default function MenuScan({
           }
           steps={
             searching
-              ? ["名前を受け取りました", "豆の情報を調べています", "好みと照らします"]
-              : ["写真を整えています", "豆の名前を読んでいます", "好みと照らします"]
+              ? [
+                  "名前を受け取りました",
+                  "豆の情報を調べています",
+                  "好みと照らします",
+                ]
+              : [
+                  "写真を整えています",
+                  "豆の名前を読んでいます",
+                  "好みと照らします",
+                ]
           }
           at={phase}
         />
@@ -760,8 +930,15 @@ export default function MenuScan({
       )}
 
       {undo && (
-        <div className="row" style={{ alignItems: "center", flexWrap: "nowrap" }}>
-          <p className={styles.lead} style={{ flex: 1, margin: 0 }} role="status">
+        <div
+          className="row"
+          style={{ alignItems: "center", flexWrap: "nowrap" }}
+        >
+          <p
+            className={styles.lead}
+            style={{ flex: 1, margin: 0 }}
+            role="status"
+          >
             {tr("{0}を一覧から外しました。", undo.label)}
           </p>
           <button
@@ -786,17 +963,25 @@ export default function MenuScan({
 
       {beans.length > 0 && !picks && (
         <Hint id="scan-picks" className={styles.lead}>
-          {tr("記録が{0}件以上たまるか、「好み」タブの「わたしの好み」を登録すると、好みに合いそうな豆に「おすすめ」を付けます。", MIN_RECORDS)}
+          {tr(
+            "記録が{0}件以上たまるか、「好み」タブの「わたしの好み」を登録すると、好みに合いそうな豆に「おすすめ」を付けます。",
+            MIN_RECORDS,
+          )}
         </Hint>
       )}
       {beans.length > 0 && picks && best < 0 && (
         <p className={styles.lead}>
-          {tr("今回は、これまでの好みとはっきり合う豆が見つかりませんでした。新しい味を試すチャンスです。")}
+          {tr(
+            "今回は、これまでの好みとはっきり合う豆が見つかりませんでした。新しい味を試すチャンスです。",
+          )}
         </p>
       )}
 
       {beans.length > 1 && (
-        <div className="row" style={{ alignItems: "center", flexWrap: "nowrap" }}>
+        <div
+          className="row"
+          style={{ alignItems: "center", flexWrap: "nowrap" }}
+        >
           <button
             type="button"
             className="chip"
@@ -817,118 +1002,150 @@ export default function MenuScan({
           />
         </div>
       )}
-      {beans.length > 1 && sortSummary && <p className={styles.sortNow}>{trv(sortSummary)}</p>}
+      {beans.length > 1 && sortSummary && (
+        <p className={styles.sortNow}>{trv(sortSummary)}</p>
+      )}
       {beans.length > 1 && find.trim() && order.length === 0 && (
-        <p className={styles.lead}>{tr("「{0}」に当てはまる豆はありません。", find.trim())}</p>
+        <p className={styles.lead}>
+          {tr("「{0}」に当てはまる豆はありません。", find.trim())}
+        </p>
       )}
       {beans.length > 1 && sortOpen && (
         <div className={styles.sortPanel}>
-      {(roastsHere.length > 1 || areasHere.length > 1) && (
-        <div className="scroll-row" role="group" aria-label={tr("焙煎度と産地で絞り込み")}>
-          {(roastsHere.length > 1 ? roastsHere : []).map((r) => (
-            <button
-              key={r}
-              type="button"
-              className="chip kind-chip"
-              style={{ "--kc": roastColor(r) } as React.CSSProperties}
-              aria-pressed={activeRoast === r}
-              onClick={() => setRoast(activeRoast === r ? null : r)}
+          {(roastsHere.length > 1 || areasHere.length > 1) && (
+            <div
+              className="scroll-row"
+              role="group"
+              aria-label={tr("焙煎度と産地で絞り込み")}
             >
-              {trv(r)}
-            </button>
-          ))}
-          {(areasHere.length > 1 ? areasHere : []).map((a) => (
-            <button
-              key={a}
-              type="button"
-              className="chip"
-              aria-pressed={activeArea === a}
-              onClick={() => setArea(activeArea === a ? null : a)}
-            >
-              {trv(a)}
-            </button>
-          ))}
-        </div>
-      )}
-      {beans.length > 1 && (
-        <MoodPicker
-          labels={MOODS.map((m) => m.label)}
-          suggest={(q) => MOODS.filter((m) => m.label.includes(q) || m.words.test(q)).map((m) => m.label)}
-          values={moodWords}
-          busy={pairingBusy}
-          onChange={(words) => {
-            setMoodWords(words);
-            setPairing((p) => (words.length > 0 || p?.mood ? null : p));
-            // わからない言葉が入っているときは、選んだ気分をまとめて AI に聞く
-            if (words.some((w) => !partOf(w, beans).mood && !partOf(w, beans).must))
-              pairWith(words.join("・"), true);
-          }}
-        />
-      )}
-      {beans.length > 1 && (
-        <form
-          className="row"
-          style={{ flexWrap: "nowrap" }}
-          onSubmit={(e) => {
-            e.preventDefault();
-            pairWith();
-          }}
-        >
-          <label htmlFor="scan-sweet" className="visually-hidden">
-            {tr("一緒に食べるスイーツ")}
-          </label>
-          <input
-            id="scan-sweet"
-            className="input"
-            type="search"
-            enterKeyHint="go"
-            maxLength={40}
-            placeholder={tr("スイーツに合う順（例：チーズケーキ）")}
-            value={sweet}
-            onChange={(e) => setSweet(e.target.value)}
-          />
-          <button
-            type="submit"
-            className="btn-secondary"
-            disabled={!sweet.trim() || pairingBusy}
-          >
-            {pairingBusy ? tr("調べ中…") : tr("並べる")}
-          </button>
-        </form>
-      )}
-      {beans.length > 1 && foodMenu.length > 0 && (
-        <div className="scroll-row" aria-label={tr("さっき読み取った料理")}>
-          {foodMenu.map(({ dish: d }) => (
-            <button
-              key={d}
-              type="button"
-              className="chip"
-              aria-pressed={!pairing?.mood && pairing?.sweet === d}
-              disabled={pairingBusy}
-              onClick={() => {
-                setSweet(d);
-                pairWith(d);
+              {(roastsHere.length > 1 ? roastsHere : []).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  className="chip kind-chip"
+                  style={{ "--kc": roastColor(r) } as React.CSSProperties}
+                  aria-pressed={activeRoast === r}
+                  onClick={() => setRoast(activeRoast === r ? null : r)}
+                >
+                  {trv(r)}
+                </button>
+              ))}
+              {(areasHere.length > 1 ? areasHere : []).map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  className="chip"
+                  aria-pressed={activeArea === a}
+                  onClick={() => setArea(activeArea === a ? null : a)}
+                >
+                  {trv(a)}
+                </button>
+              ))}
+            </div>
+          )}
+          {beans.length > 1 && (
+            <MoodPicker
+              labels={MOODS.map((m) => m.label)}
+              suggest={(q) =>
+                MOODS.filter((m) => m.label.includes(q) || m.words.test(q)).map(
+                  (m) => m.label,
+                )
+              }
+              values={moodWords}
+              busy={pairingBusy}
+              onChange={(words) => {
+                setMoodWords(words);
+                setPairing((p) => (words.length > 0 || p?.mood ? null : p));
+                // わからない言葉が入っているときは、選んだ気分をまとめて AI に聞く
+                if (
+                  words.some(
+                    (w) => !partOf(w, beans).mood && !partOf(w, beans).must,
+                  )
+                )
+                  pairWith(words.join("・"), true);
+              }}
+            />
+          )}
+          {beans.length > 1 && (
+            <form
+              className="row"
+              style={{ flexWrap: "nowrap" }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                pairWith();
               }}
             >
-              {trv(d)}
-            </button>
-          ))}
+              <label htmlFor="scan-sweet" className="visually-hidden">
+                {tr("一緒に食べるスイーツ")}
+              </label>
+              <input
+                id="scan-sweet"
+                className="input"
+                type="search"
+                enterKeyHint="go"
+                maxLength={40}
+                placeholder={tr("スイーツに合う順（例：チーズケーキ）")}
+                value={sweet}
+                onChange={(e) => setSweet(e.target.value)}
+              />
+              <button
+                type="submit"
+                className="btn-secondary"
+                disabled={!sweet.trim() || pairingBusy}
+              >
+                {pairingBusy ? tr("調べ中…") : tr("並べる")}
+              </button>
+            </form>
+          )}
+          {beans.length > 1 && foodMenu.length > 0 && (
+            <div className="scroll-row" aria-label={tr("さっき読み取った料理")}>
+              {foodMenu.map(({ dish: d }) => (
+                <button
+                  key={d}
+                  type="button"
+                  className="chip"
+                  aria-pressed={!pairing?.mood && pairing?.sweet === d}
+                  disabled={pairingBusy}
+                  onClick={() => {
+                    setSweet(d);
+                    pairWith(d);
+                  }}
+                >
+                  {trv(d)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
-        </div>
+      {pairingBusy && (
+        <Steps
+          title="合う順を考えています"
+          steps={[
+            "豆の一覧をまとめました",
+            "相性を考えています",
+            "合う順に並べます",
+          ]}
+          at={1}
+        />
       )}
-      {pairingBusy && <Steps title="合う順を考えています" steps={["豆の一覧をまとめました", "相性を考えています", "合う順に並べます"]} at={1} />}
-      {moodLocal && !pairingBusy && (moodWords.length > 1 || moodWords.some((w) => !MOODS.some((m) => m.label === w))) && (
-        <p className={styles.lead}>
-          {tr("{0}に合いそうな順に並べました", moodWords.map((w) => tr("「{0}」", w)).join(""))}
-          {hits === null
-            ? ""
-            : hits === 0
-              ? tr("。{0}が入っているものは見つかりませんでした", mustWords)
-              : tr("。{0}が入っているのは{1}つです", mustWords, hits)}
-          {tr("（AI は使っていません）。")}
-        </p>
-      )}
+      {moodLocal &&
+        !pairingBusy &&
+        (moodWords.length > 1 ||
+          moodWords.some((w) => !MOODS.some((m) => m.label === w))) && (
+          <p className={styles.lead}>
+            {tr(
+              "{0}に合いそうな順に並べました",
+              moodWords.map((w) => tr("「{0}」", w)).join(""),
+            )}
+            {hits === null
+              ? ""
+              : hits === 0
+                ? tr("。{0}が入っているものは見つかりませんでした", mustWords)
+                : tr("。{0}が入っているのは{1}つです", mustWords, hits)}
+            {tr("（AI は使っていません）。")}
+          </p>
+        )}
 
       {pairing && (
         <div
@@ -960,180 +1177,243 @@ export default function MenuScan({
         const words = tasteWords(b);
         return (
           <Fragment key={i}>
-          {n > 0 && n === hits && (
-            <p className={styles.lead}>{tr("ここから下は{0}が入っていないもの", mustWords)}</p>
-          )}
-          <article
-            className={`${styles.bean} ${i === best ? styles.best : ""} ${open ? "" : styles.closed} ${fresh.includes(b.name) ? "reveal-item" : ""}`}
-            style={fresh.includes(b.name) ? { animationDelay: `${Math.min(fresh.indexOf(b.name), 6) * 0.08}s` } : undefined}
-          >
-            {/* 右上の角に置き、度数や「＋記録」から離して押し間違いを防ぐ。閉じたカードでは「＋記録」が右にあるので、開いたときだけ出す */}
-            {open && <button
-              type="button"
-              className={styles.remove}
-              aria-label={tr("{0}を一覧から外す", b.name)}
-              onClick={() => hide([b.name], tr("「{0}」", b.name))}
-            >
-              ✕
-            </button>}
-            {i === best && picks && (
-              <div className={styles.pick}>
-                <strong>{tr("あなたへのおすすめ")}</strong>
-                <span>{trJoin(picks[i].reasons, "、")}</span>
-              </div>
+            {n > 0 && n === hits && (
+              <p className={styles.lead}>
+                {tr("ここから下は{0}が入っていないもの", mustWords)}
+              </p>
             )}
-            <button
-              type="button"
-              className={styles.cardHead}
-              aria-expanded={open}
-              onClick={() => setOpenCard(open ? null : b.name)}
+            <article
+              className={`${styles.bean} ${i === best ? styles.best : ""} ${open ? "" : styles.closed} ${fresh.includes(b.name) ? "reveal-item" : ""}`}
+              style={
+                fresh.includes(b.name)
+                  ? {
+                      animationDelay: `${Math.min(fresh.indexOf(b.name), 6) * 0.08}s`,
+                    }
+                  : undefined
+              }
             >
-              <span className={styles.cardTop}>
-                <span className={styles.name}>{trv(b.name)}</span>
-                {open && b.roast && <span className={styles.abv}>{trv(b.roast)}</span>}
-              </span>
-            </button>
-            {!open && (
-              <button type="button" className={styles.oneLine} onClick={() => setOpenCard(b.name)}>
-                {match && `${"●".repeat(match.score)}${"○".repeat(5 - match.score)} `}
-                {[b.roast && trv(b.roast), words, b.origin && tr(b.origin)].filter(Boolean).join("｜") || tr("タップで詳しく")}
+              {/* 右上の角に置き、度数や「＋記録」から離して押し間違いを防ぐ。閉じたカードでは「＋記録」が右にあるので、開いたときだけ出す */}
+              {open && (
+                <button
+                  type="button"
+                  className={styles.remove}
+                  aria-label={tr("{0}を一覧から外す", b.name)}
+                  onClick={() => hide([b.name], tr("「{0}」", b.name))}
+                >
+                  ✕
+                </button>
+              )}
+              {i === best && picks && (
+                <div className={styles.pick}>
+                  <strong>{tr("あなたへのおすすめ")}</strong>
+                  <span>{trJoin(picks[i].reasons, "、")}</span>
+                </div>
+              )}
+              <button
+                type="button"
+                className={styles.cardHead}
+                aria-expanded={open}
+                onClick={() => setOpenCard(open ? null : b.name)}
+              >
+                <span className={styles.cardTop}>
+                  <span className={styles.name}>{trv(b.name)}</span>
+                  {open && b.roast && (
+                    <span className={styles.abv}>{trv(b.roast)}</span>
+                  )}
+                </span>
               </button>
-            )}
-            {open && (
-              <>
-                {match && (
-                  <p className={styles.match}>
-                    <strong>
-                      {pairing?.mood ? tr("気分に合う度") : tr("{0}との相性", pairing?.sweet)}{" "}
-                      {scoreWord(match.score)} {"●".repeat(match.score) + "○".repeat(5 - match.score)}
-                    </strong>
-                    {trv(match.reason)}
-                  </p>
-                )}
-                {badges.length > 0 && (
-                  <div className={styles.badges}>
+              {!open && (
+                <button
+                  type="button"
+                  className={styles.oneLine}
+                  onClick={() => setOpenCard(b.name)}
+                >
+                  {match &&
+                    `${"●".repeat(match.score)}${"○".repeat(5 - match.score)} `}
+                  {[b.roast && trv(b.roast), words, b.origin && tr(b.origin)]
+                    .filter(Boolean)
+                    .join("｜") || tr("タップで詳しく")}
+                </button>
+              )}
+              {open && (
+                <>
+                  {match && (
+                    <p className={styles.match}>
+                      <strong>
+                        {pairing?.mood
+                          ? tr("気分に合う度")
+                          : tr("{0}との相性", pairing?.sweet)}{" "}
+                        {scoreWord(match.score)}{" "}
+                        {"●".repeat(match.score) + "○".repeat(5 - match.score)}
+                      </strong>
+                      {trv(match.reason)}
+                    </p>
+                  )}
+                  {/* ほめ言葉と産地などは1行に並べる */}
+                  <div className="tags">
                     {badges.map((t) => (
                       <span key={t} className={styles.badge}>
                         {trv(t)}
                       </span>
                     ))}
+                    {[b.origin, b.roast, b.process].filter(Boolean).map((t) => (
+                      <span key={t} className="tag">
+                        {trv(t)}
+                      </span>
+                    ))}
                   </div>
-                )}
-                <div className="tags">
-                  {[b.origin, b.roast, b.process].filter(Boolean).map((t) => (
-                    <span key={t} className="tag">
-                      {trv(t)}
-                    </span>
-                  ))}
-                </div>
-                {b.taste && <TasteBars taste={b.taste} />}
-                {b.menuNote && <p className="muted">{tr("メニューの説明：{0}", b.menuNote)}</p>}
-                <p className={styles.text}>{trv(b.explanation)}</p>
-                <p className={styles.text}>
-                  <strong>{tr("おすすめの飲み方：")}</strong>
-                  {trv(b.recommendation)}
-                </p>
-                {b.sweets && (
-                  <p className={styles.text}>
-                    <strong>{tr("合うスイーツ：")}</strong>
-                    {trv(b.sweets)}
-                  </p>
-                )}
-                {localHit?.name === b.name && (
-                  <p className={styles.localNote}>
-                    {tr("{0}から出しました（AI は使っていません）", localHit.how)}
-                    {passcode && (
-                      <>
-                        {" "}
-                        <button type="button" className={styles.relook} onClick={() => lookupText(true, localHit.query)}>
-                          {tr("AI で調べ直す")}
-                        </button>
-                      </>
-                    )}
-                  </p>
-                )}
-                <div style={{ "--kind": roastColor(b.roast) } as React.CSSProperties}>
-                  {foodMenu.length > 0 ? (
-                    <MenuPicks
-                      label={tr("さっきの料理メニューなら")}
-                      button={tr("さっきの料理メニューから選ぶ")}
-                      ranks={dishRanks[b.name]}
-                      busy={dishRanking === b.name}
-                      error={dishRankError?.name === b.name ? dishRankError.text : ""}
-                      onAsk={() => rankDishes(b)}
-                    />
-                  ) : (
-                    <MenuPicks
-                      label={tr("このコーヒーに合う料理")}
-                      button={tr("合う料理を探す")}
-                      ranks={dishIdeas[b.name]}
-                      busy={dishRanking === b.name}
-                      error={dishRankError?.name === b.name ? dishRankError.text : ""}
-                      onAsk={() => rankDishes(b)}
-                    />
+                  {b.taste && <TasteBars taste={b.taste} />}
+                  {b.menuNote && (
+                    <p className="muted">
+                      {tr("メニューの説明：{0}", b.menuNote)}
+                    </p>
                   )}
-                </div>
-                {b.methodNotes && b.methodNotes.length > 0 && (
+                  <p className={styles.text}>{trv(b.explanation)}</p>
+                  <p className={styles.text}>
+                    <strong>{tr("おすすめの飲み方：")}</strong>
+                    {trv(b.recommendation)}
+                  </p>
+                  {b.sweets && (
+                    <p className={styles.text}>
+                      <strong>{tr("合うスイーツ：")}</strong>
+                      {trv(b.sweets)}
+                    </p>
+                  )}
+                  {localHit?.name === b.name && (
+                    <p className={styles.localNote}>
+                      {tr(
+                        "{0}から出しました（AI は使っていません）",
+                        localHit.how,
+                      )}
+                      {passcode && (
+                        <>
+                          {" "}
+                          <button
+                            type="button"
+                            className={styles.relook}
+                            onClick={() => lookupText(true, localHit.query)}
+                          >
+                            {tr("AI で調べ直す")}
+                          </button>
+                        </>
+                      )}
+                    </p>
+                  )}
+                  <div
+                    style={
+                      { "--kind": roastColor(b.roast) } as React.CSSProperties
+                    }
+                  >
+                    {foodMenu.length > 0 ? (
+                      <MenuPicks
+                        label={tr("さっきの料理メニューなら")}
+                        button={tr("さっきの料理メニューから選ぶ")}
+                        ranks={dishRanks[b.name]}
+                        busy={dishRanking === b.name}
+                        error={
+                          dishRankError?.name === b.name
+                            ? dishRankError.text
+                            : ""
+                        }
+                        onAsk={() => rankDishes(b)}
+                      />
+                    ) : (
+                      <MenuPicks
+                        label={tr("このコーヒーに合う料理")}
+                        button={tr("合う料理を探す")}
+                        ranks={dishIdeas[b.name]}
+                        busy={dishRanking === b.name}
+                        error={
+                          dishRankError?.name === b.name
+                            ? dishRankError.text
+                            : ""
+                        }
+                        onAsk={() => rankDishes(b)}
+                      />
+                    )}
+                  </div>
+                  {b.methodNotes && b.methodNotes.length > 0 && (
+                    <details className={styles.methods}>
+                      <summary>{tr("飲み方で比べる")}</summary>
+                      <dl>
+                        {b.methodNotes.map((m) => (
+                          <div key={m.method} style={{ display: "contents" }}>
+                            <dt>{trv(m.method)}</dt>
+                            <dd>{trv(m.note)}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </details>
+                  )}
                   <details className={styles.methods}>
-                    <summary>{tr("飲み方で比べる")}</summary>
-                    <dl>
-                      {b.methodNotes.map((m) => (
-                        <div key={m.method} style={{ display: "contents" }}>
-                          <dt>{trv(m.method)}</dt>
-                          <dd>{trv(m.note)}</dd>
-                        </div>
-                      ))}
-                    </dl>
+                    <summary>{tr("AI に聞く")}</summary>
+                    <AskAI
+                      bare
+                      context={beanContext(b)}
+                      suggestions={ASK_SUGGESTIONS}
+                    />
                   </details>
-                )}
-                <details className={styles.methods}>
-                  <summary>{tr("AI に聞く")}</summary>
-                  <AskAI bare context={beanContext(b)} suggestions={ASK_SUGGESTIONS} />
-                </details>
-              </>
-            )}
-            {/* 閉じたカードは押すと開くことが分かるよう、右上の角に「⌄」を付ける（開くとそこが ✕ になる） */}
-            {!open && (
-              <button type="button" className={styles.chev} tabIndex={-1} aria-hidden="true" onClick={() => setOpenCard(b.name)}>
-                ⌄
-              </button>
-            )}
-            <div className={styles.actions}>
-              <button
-                type="button"
-                className={`${styles.act} ${styles.actMain}`}
-                style={open ? { flex: 1 } : undefined}
-                onClick={() => onPick(b)}
-              >
-                {tr("＋記録")}
-              </button>
-              <button
-                type="button"
-                className={styles.act}
-                aria-pressed={wished}
-                aria-label={wished ? tr("気になるから外す") : tr("気になる（次に試す）")}
-                onClick={() => toggleWish(b)}
-              >
-                {wished ? "★" : "☆"}
-              </button>
-              {open && (
+                </>
+              )}
+              {/* 閉じたカードは押すと開くことが分かるよう、右上の角に「⌄」を付ける（開くとそこが ✕ になる） */}
+              {!open && (
+                <button
+                  type="button"
+                  className={styles.chev}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  onClick={() => setOpenCard(b.name)}
+                >
+                  ⌄
+                </button>
+              )}
+              <div className={styles.actions}>
+                <button
+                  type="button"
+                  className={`${styles.act} ${styles.actMain}`}
+                  style={open ? { flex: 1 } : undefined}
+                  onClick={() => onPick(b)}
+                >
+                  {tr("＋記録")}
+                </button>
                 <button
                   type="button"
                   className={styles.act}
-                  disabled={bagged.includes(b.name)}
-                  aria-label={tr("家の豆に登録（買って家にある豆）")}
-                  onClick={() => addBag(b)}
+                  aria-pressed={wished}
+                  aria-label={
+                    wished ? tr("気になるから外す") : tr("気になる（次に試す）")
+                  }
+                  onClick={() => toggleWish(b)}
                 >
-                  {bagged.includes(b.name) ? tr("家の豆 ✓") : tr("＋家の豆")}
+                  {wished ? "★" : "☆"}
                 </button>
-              )}
-            </div>
-          </article>
+                {open && (
+                  <button
+                    type="button"
+                    className={styles.act}
+                    disabled={bagged.includes(b.name)}
+                    aria-label={tr("家の豆に登録（買って家にある豆）")}
+                    onClick={() => addBag(b)}
+                  >
+                    {bagged.includes(b.name) ? tr("家の豆 ✓") : tr("＋家の豆")}
+                  </button>
+                )}
+              </div>
+            </article>
           </Fragment>
         );
       })}
       {beans.length > 1 && (
-        <button type="button" className={`btn-ghost ${styles.clearAll}`} onClick={() => hide(beans.map((b) => b.name), tr("{0}種類すべて", beans.length))}>
+        <button
+          type="button"
+          className={`btn-ghost ${styles.clearAll}`}
+          onClick={() =>
+            hide(
+              beans.map((b) => b.name),
+              tr("{0}種類すべて", beans.length),
+            )
+          }
+        >
           {tr("一覧をすべて消す")}
         </button>
       )}
