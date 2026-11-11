@@ -121,3 +121,71 @@ export function favToWish([name, roast, process, origin, taste]: Fav, from: stri
     methodNotes: [],
   };
 }
+
+/** ホームの上に出す「いまの時間」のカード（さけは夜、まめは朝）。from〜to 時（to が24を超えると翌日） */
+export const MOMENT = {
+  from: 6,
+  to: 11,
+  title: "おはよう。今朝の1杯、残しておこう",
+  shoot: "メニューを撮る",
+};
+
+/**
+ * 記録が少ないうちの好み診断（44）。答えは「わたしの好み」に入って、おすすめに使われる。
+ * multi は複数選べる。value は MyPrefs に入れる値
+ */
+export type QuizQ =
+  | { key: "roasts" | "avoidRoasts" | "methods" | "ways" | "likes"; q: string; multi: true; options: { label: string; value: string }[] }
+  | { key: "acidity" | "bitterness" | "body" | "budget"; q: string; multi?: false; options: { label: string; value: number | null }[] };
+
+const pick = (xs: string[]) => xs.map((v) => ({ label: v, value: v }));
+
+export const TASTE_QUIZ: QuizQ[] = [
+  { key: "roasts", q: "好きな焙煎度は？", multi: true, options: pick(["浅煎り", "中煎り", "深煎り"]) },
+  {
+    key: "acidity",
+    q: "酸味は？",
+    options: [
+      { label: "控えめが好き", value: 1 },
+      { label: "少しなら", value: 2 },
+      { label: "どちらでも", value: null },
+      { label: "明るい酸が好き", value: 4 },
+      { label: "しっかり酸っぱいのが好き", value: 5 },
+    ],
+  },
+  {
+    key: "bitterness",
+    q: "苦みは？",
+    options: [
+      { label: "控えめが好き", value: 1 },
+      { label: "やや控えめ", value: 2 },
+      { label: "どちらでも", value: null },
+      { label: "ほどよく苦いのが好き", value: 4 },
+      { label: "がつんと苦いのが好き", value: 5 },
+    ],
+  },
+  {
+    key: "body",
+    q: "軽いのと濃いの、どっちが好き？",
+    options: [
+      { label: "軽くすっきり", value: 1 },
+      { label: "やや軽め", value: 2 },
+      { label: "どちらでも", value: null },
+      { label: "ややしっかり", value: 4 },
+      { label: "濃くどっしり", value: 5 },
+    ],
+  },
+  { key: "likes", q: "好きな味は？", multi: true, options: pick(["チェリー", "ベリー", "柑橘", "黄桃", "フローラル", "チョコレート", "ナッツ", "キャラメル"]) },
+  { key: "methods", q: "好きな淹れ方は？", multi: true, options: pick(["ドリップ", "エアロプレス", "エスプレッソ", "サイフォン", "フレンチプレス"]) },
+  { key: "ways", q: "好きな飲み方は？", multi: true, options: pick(["ホット", "アイス", "ブラック", "ミルク"]) },
+  {
+    key: "budget",
+    q: "お店で1杯いくらくらいまで？",
+    options: [
+      { label: "〜500円", value: 500 },
+      { label: "〜800円", value: 800 },
+      { label: "〜1,200円", value: 1200 },
+      { label: "気にしない", value: null },
+    ],
+  },
+];

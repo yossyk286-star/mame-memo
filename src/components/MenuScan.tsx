@@ -1,5 +1,6 @@
 "use client";
 
+import { loadShopToday } from "@/lib/shopToday";
 import { toast } from "@/lib/toast";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -258,7 +259,7 @@ export default function MenuScan({
       await deleteWish(wish.id);
       setWishes((ws) => ws.filter((w) => w.id !== wish.id));
     } else {
-      const added = { ...b, id: crypto.randomUUID(), savedAt: Date.now() };
+      const added = { ...b, id: crypto.randomUUID(), savedAt: Date.now(), shop: loadShopToday() || undefined };
       await putWish(added);
       setWishes((ws) => [added, ...ws]);
       toast("気になるに入れました", { tone: "star", action: { label: "見る", href: "/wishlist" } });
@@ -643,6 +644,7 @@ export default function MenuScan({
           need={tr("撮って読み取るには「合言葉」が要ります。")}
           free={[tr("定番の産地19種の解説（名前で調べる）"), tr("よくあるスイーツに合うコーヒー（スイーツから）"), tr("記録・辞典・味マップ・スタンプ帳")]}
           forceOpen={error.includes("合言葉")}
+        error={error.includes("合言葉") ? error : ""}
         />
       )}
 
@@ -783,7 +785,7 @@ export default function MenuScan({
           </button>
         </div>
       )}
-      {error && (
+      {error && !(error.includes("合言葉") && !savedPasscode) && (
         <p className="error" role="alert">
           {trv(error)}
         </p>
