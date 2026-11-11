@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SingleChips } from "@/components/ChipGroup";
 import { beanTitle, roastColor, Stars, stars, yen } from "@/components/RecordCard";
 import { announceBuddy, pick } from "@/lib/buddy";
-import { deleteBag, listBags, listRecords, putBag } from "@/lib/db";
+import { deleteBag, listBags, listRecords, peekBags, peekRecords, putBag } from "@/lib/db";
 import { PROCESSES, ROASTS } from "@/lib/glossary";
 import { today } from "@/lib/lastScan";
 import { bestRecipe, recipeText } from "@/lib/recipe";
@@ -241,8 +241,8 @@ function BagCard({
 
 /** 家で淹れるために買った豆。1袋を何回かに分けて記録し、淹れ方や日にちでの変化も追える */
 export default function BagsPage() {
-  const [bags, setBags] = useState<Bag[] | null>(null);
-  const [records, setRecords] = useState<TastingRecord[]>([]);
+  const [bags, setBags] = useState<Bag[] | null>(peekBags);
+  const [records, setRecords] = useState<TastingRecord[]>(() => peekRecords() ?? []);
 
   useEffect(() => {
     listBags().then(setBags);

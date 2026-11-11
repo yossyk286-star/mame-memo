@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import BuddyFace from "@/components/BuddyFace";
 import { announceBuddy, pick } from "@/lib/buddy";
 import { beanTitle, roastColor } from "@/components/RecordCard";
-import { listBags, listRecords } from "@/lib/db";
+import { listBags, listRecords, peekBags, peekRecords } from "@/lib/db";
 import { loadLastScan, today } from "@/lib/lastScan";
 import type { PairingResult, ScannedBean } from "@/lib/menuScan";
 import {
@@ -81,8 +81,8 @@ export default function PairPage() {
   const [dish, setDish] = useState("");
   const [passcode, setPasscode] = useState("");
   const [savedPasscode, setSavedPasscode] = useState(true);
-  const [records, setRecords] = useState<TastingRecord[]>([]);
-  const [bags, setBags] = useState<Bag[]>([]);
+  const [records, setRecords] = useState<TastingRecord[]>(() => peekRecords() ?? []);
+  const [bags, setBags] = useState<Bag[]>(() => peekBags() ?? []);
   const [recent, setRecent] = useState<string[]>([]);
   const [result, setResult] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);

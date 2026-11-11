@@ -6,7 +6,7 @@ import { beanTitle, stars, yen } from "@/components/RecordCard";
 import TasteMap from "@/components/TasteMap";
 import { summarize, type GroupAverage } from "@/lib/analysis";
 import { collectStamps } from "@/lib/countries";
-import { listBags, listRecords, listWishes } from "@/lib/db";
+import { listBags, listRecords, listWishes, peekBags, peekRecords, peekWishes } from "@/lib/db";
 import { nextIdeas } from "@/lib/nextBean";
 import { loadPrefs } from "@/lib/prefs";
 import { groupByShop } from "@/lib/shops";
@@ -113,9 +113,9 @@ function BarsSwitch({ groups }: { groups: [string, GroupAverage[]][] }) {
 }
 
 export default function TastePage() {
-  const [records, setRecords] = useState<TastingRecord[] | null>(null);
-  const [wishCount, setWishCount] = useState(0);
-  const [bagCount, setBagCount] = useState(0);
+  const [records, setRecords] = useState<TastingRecord[] | null>(peekRecords);
+  const [wishCount, setWishCount] = useState(() => peekWishes()?.length ?? 0);
+  const [bagCount, setBagCount] = useState(() => peekBags()?.filter((b) => !b.finished).length ?? 0);
   const [view, setView] = useState<View>("taste");
   const [order, setOrder] = useState<Record<View, string[]>>({ taste: [], title: [] });
   const [editing, setEditing] = useState(false);
