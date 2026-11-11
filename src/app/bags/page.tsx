@@ -1,6 +1,6 @@
 "use client";
 
-import BackChevron from "@/components/BackChevron";
+import BackLink from "@/components/BackLink";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SingleChips } from "@/components/ChipGroup";
@@ -14,9 +14,11 @@ import type { Bag, TastingRecord } from "@/lib/types";
 import EmptyState from "@/components/EmptyState";
 import { tr, trJoin, trv } from "@/lib/i18n";
 import { askConfirm } from "@/components/ConfirmSheet";
+import { useFeatures } from "@/lib/features";
+import { BAG_SIZES, daysSinceDate, DRINK_WITHIN, remaining, roastedOf } from "@/lib/bottleLife";
 
 function emptyBag(): Omit<Bag, "id" | "createdAt"> {
-  return { origin: "", farm: "", roast: null, process: null, shop: "", note: "", price: null, boughtAt: today(), finished: false };
+  return { origin: "", farm: "", roast: null, process: null, shop: "", note: "", price: null, boughtAt: today(), finished: false, size: null, openedAt: null };
 }
 
 /** 買った豆を登録するフォーム */
@@ -78,6 +80,16 @@ function AddBag({ onAdded }: { onAdded: (b: Bag) => void }) {
         </label>
         <input id="b-shop" className="input" placeholder={tr("例：〇〇珈琲")} value={draft.shop} onChange={(e) => set("shop", e.target.value)} />
       </div>
+      <fieldset className="field">
+        <legend className="label">{tr("量")}</legend>
+        <div className="chip-wrap">
+          {BAG_SIZES.map((g) => (
+            <button key={g} type="button" className="chip" aria-pressed={draft.size === g} onClick={() => set("size", draft.size === g ? null : g)}>
+              {`${g}g`}
+            </button>
+          ))}
+        </div>
+      </fieldset>
       <div className="field">
         <label className="label" htmlFor="b-price">
           {tr("買った値段（円）")}
@@ -123,6 +135,11 @@ function BagCard({
   const mine = records.filter((r) => r.bagId === b.id);
   const avg = mine.length ? mine.reduce((a, r) => a + r.overall, 0) / mine.length : 0;
   const best = bestRecipe(mine);
+  const f = useFeatures();
+  // 残りメーター（45）と、焙煎からの日数・飲み頃（46）
+  const left = remaining(b, mine, f.pour);
+  const days = daysSinceDate(roastedOf(b));
+  const late = days >= DRINK_WITHIN;
   return (
     <article className="card" style={{ gap: 6, opacity: b.finished ? 0.7 : 1 }}>
       <div className="card-top">
@@ -151,6 +168,26 @@ function BagCard({
             </span>
           ))}
       </p>
+      {!b.finished && f.meter && (
+        <div className="meter-row" aria-label={tr("残り約{0}%", Math.round(left.ratio * 100))}>
+          <span className="bottle-meter" aria-hidden="true">
+            <i style={{ width: `${left.ratio * 100}%`, background: left.ratio < 0.25 ? "var(--danger)" : roastColor(b.roast) }} />
+          </span>
+          <span className="muted">{left.cups > 0 ? tr("残り約{0}%・あと{1}杯くらい", Math.round(left.ratio * 100), left.cups) : tr("そろそろ空きそう")}</span>
+        </div>
+      )}
+      {!b.finished && (
+        <p className={late ? "open-days is-late" : "open-days muted"}>
+          {days <= 0 ? tr("今日焙煎") : tr("焙煎から{0}日", days)}
+          {late ? tr("・そろそろ飲みきりたい頃です") : tr("・{0}日くらいまでがおいしい頃です", DRINK_WITHIN)}
+          {!b.openedAt && (
+            <label className="text-btn roast-date">
+              {tr("焙煎日を入れる")}
+              <input type="date" className="visually-hidden" max={today()} onChange={(e) => e.target.value && onChange({ ...b, openedAt: e.target.value })} />
+            </label>
+          )}
+        </p>
+      )}
       <p style={{ margin: 0, fontSize: 14 }}>
         {mine.length > 0 ? (
           <>
@@ -238,9 +275,7 @@ export default function BagsPage() {
   return (
     <>
       <header className="sub-header">
-        <Link href="/taste" className="back">
-          <BackChevron />
-        </Link>
+        <BackLink fallback="/taste" />
         <h1>{tr("家の豆")}</h1>
       </header>
       <p className="lead">{tr("買った豆を登録しておくと、淹れるたびにすぐ記録できて、淹れ方や日にちでの味の変化も追えます。")}</p>

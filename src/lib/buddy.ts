@@ -1,6 +1,8 @@
 import { countryOf } from "./countries";
 import type { TastingRecord } from "./types";
 import { tr } from "./i18n";
+import { caffeineMg } from "./dayTotal";
+import { loadFeatures } from "./features";
 
 /**
  * 相棒（ちっちゃいコーヒー豆）が言うひとこと。記録を保存したとき・アプリを開いたときなど。
@@ -132,8 +134,11 @@ export function buddyLine(
   const isToday = r.date === localDate(now);
   const sameDay = all.filter((x) => x.date === r.date).length;
   const hour = now.getHours();
+  // とりすぎの目安は設定の「1日のカフェイン量」（38）。超えたら心配、1.5倍でもっと心配
+  const grams = all.filter((x) => x.date === r.date).reduce((g, x) => g + caffeineMg(x), 0);
+  const limit = loadFeatures().limit;
 
-  if (isToday && sameDay >= 6)
+  if (isToday && sameDay >= 2 && grams >= limit * 1.5)
     return {
       mood: "worried",
       text: pick([
@@ -143,7 +148,7 @@ export function buddyLine(
         tr("ちょっと待って、{0}杯目だよ。ドキドキしてない？", sameDay),
       ]),
     };
-  if (isToday && sameDay >= 4)
+  if (isToday && sameDay >= 2 && grams >= limit)
     return {
       mood: "worried",
       text: pick([

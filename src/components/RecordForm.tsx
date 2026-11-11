@@ -8,7 +8,7 @@ import GlossarySheet from "./GlossarySheet";
 import { RecordPreview, shortDate, stars } from "./RecordCard";
 import { toast } from "@/lib/toast";
 import { announceBuddy, buddyLine } from "@/lib/buddy";
-import { deleteRecord, putRecord, listRecords } from "@/lib/db";
+import { deleteWithUndo, putRecord, listRecords } from "@/lib/db";
 import { clearStash, saveStash } from "@/lib/recordDraft";
 import {
   FLAVORS,
@@ -24,6 +24,9 @@ import { PhotoAddButton, PhotoRow } from "./PhotoAdd";
 import type { Overall, Recipe, RecordDraft, Score, TastingRecord } from "@/lib/types";
 import { tr, trv } from "@/lib/i18n";
 import { askConfirm } from "@/components/ConfirmSheet";
+import { reducedMotion, useFeatures } from "@/lib/features";
+import { photoDate } from "@/lib/exif";
+import { geoAllowed, here, nearbyShops, type LatLng } from "@/lib/geo";
 
 const SCORES: Score[] = [1, 2, 3, 4, 5];
 
@@ -201,20 +204,25 @@ function RecipeFields({ value, onChange }: { value: Recipe; onChange: (r: Recipe
 function StarRating({
   value,
   onChange,
+  missing = false,
 }: {
   value: Overall | null;
   onChange: (v: Overall) => void;
+  /** 入れ忘れて保存しようとしたとき */
+  missing?: boolean;
 }) {
+  // ★を押すたびに左から順に灯す（25）。数字は回して入れ替える（22）
+  const [wave, setWave] = useState(0);
   return (
-    <div className="field">
+    <div className="field" data-missing={missing ? "" : undefined} id="f-overall-field">
       <span className="label" id="f-overall">
         {tr("総合")}{" "}<span className="req">{tr("必須")}</span>
       </span>
-      <div className="star-rating" role="radiogroup" aria-labelledby="f-overall">
+      <div className="star-rating" role="radiogroup" aria-labelledby="f-overall" data-wave={wave ? (wave % 2 ? "a" : "b") : undefined}>
         {SCORES.map((n) => {
           const fill = value ? Math.max(0, Math.min(1, value - n + 1)) : 0;
           return (
-            <span key={n} className={`star-cell${fill > 0 ? " on" : ""}`}>
+            <span key={n} className={`star-cell${fill > 0 ? " on" : ""}`} style={{ "--i": n - 1 } as CSSProperties}>
               <span className="star" aria-hidden="true" style={{ "--f": `${fill * 100}%` } as CSSProperties}>
                 ★
               </span>
@@ -225,17 +233,31 @@ function StarRating({
                   role="radio"
                   aria-checked={value === v}
                   aria-label={`★${v}`}
-                  onClick={() => onChange(v)}
+                  onClick={() => {
+                    setWave((w) => w + 1);
+                    onChange(v);
+                  }}
                 />
               ))}
             </span>
           );
         })}
         <span className={`star-rating-num${value ? "" : " is-empty"}`} aria-hidden="true">
-          {value ? value.toFixed(1) : tr("左半分で0.5")}
+          {value ? <RollNum text={value.toFixed(1)} /> : tr("左半分で0.5")}
         </span>
       </div>
+      {missing && <p className="error field-msg">{tr("総合の評価を選んでください")}</p>}
     </div>
+  );
+}
+
+/** 数字が変わったとき、上から回ってきて入れ替わる（22）。設定で止められる */
+function RollNum({ text }: { text: string }) {
+  const { numRoll } = useFeatures();
+  return (
+    <span className="roll" key={numRoll ? text : undefined} data-roll={numRoll ? "" : undefined}>
+      {text}
+    </span>
   );
 }
 
@@ -272,7 +294,7 @@ export default function RecordForm({
       action: tr("削除"),
     });
     if (!ok) return;
-    await deleteRecord(initial.id);
+    await deleteWithUndo(initial);
     router.replace("/");
   }
   const [draft, setDraft] = useState<RecordDraft>(() =>
@@ -285,6 +307,34 @@ export default function RecordForm({
   const [shopNames, setShopNames] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  // 保存できたら、ボタンが ✓ に縮んでから移る（9）
+  const [done, setDone] = useState(false);
+  // 入れ忘れた必須の欄（28）
+  const [missing, setMissing] = useState<"shop" | "overall" | null>(null);
+  const features = useFeatures();
+  const show = (field: string) => !features.hidden.includes(field);
+  // 写真の撮った日を日付に入れたとき、元の日付（「今日にする」で戻す）
+  const [dateFromPhoto, setDateFromPhoto] = useState<string | null>(null);
+  // いまいる場所（近くの前に行ったお店・保存するときに記録へ残す）
+  const [geo, setGeo] = useState<LatLng | null>(null);
+  const [nearby, setNearby] = useState<{ shop: string; m: number }[] | null>(null);
+  // 前に位置を許可していれば、聞かずに場所を取っておく
+  useEffect(() => {
+    if (initial) return;
+    geoAllowed().then((ok) => {
+      if (ok) here().then(setGeo);
+    });
+  }, [initial]);
+
+  async function findNearby() {
+    const at = geo ?? (await here());
+    if (!at) {
+      toast("場所がわかりませんでした（位置情報の許可を確かめてください）", { tone: "warn" });
+      return;
+    }
+    setGeo(at);
+    setNearby(nearbyShops(past, at));
+  }
   // 編集はふだん全部の項目を見たいので「くわしく」から。新規は前に選んだほう
   const [mode, setModeState] = useState<FormMode>("くわしく");
   useEffect(() => {
@@ -353,6 +403,15 @@ export default function RecordForm({
 
   async function onPhotos(files: FileList | null) {
     try {
+      // 新しい記録で、写真の撮った日が今日でなければ、日付をその日にする（47）
+      const first = files?.[0];
+      if (!initial && first && draft.photos.length === 0) {
+        const d = await photoDate(first);
+        if (d && d !== draft.date && d <= today()) {
+          setDateFromPhoto(draft.date);
+          update((x) => ({ ...x, date: d }));
+        }
+      }
       const added = await shrinkPhotos(files);
       update((d) => ({ ...d, photos: [...d.photos, ...added] }));
     } catch {
@@ -360,9 +419,18 @@ export default function RecordForm({
     }
   }
 
+  /** 入れ忘れた欄を赤くして、見えるところまで動かす */
+  function flagMissing(field: "shop" | "overall") {
+    setMissing(null);
+    // 同じ欄でもう一度押したときも揺らすため、いったん外してから付ける
+    requestAnimationFrame(() => setMissing(field));
+    document.getElementById(field === "shop" ? "f-shop" : "f-overall-field")?.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
+  }
+
   async function save() {
-    if (!draft.shop.trim()) return setError("店名を入れるか「家で」を選んでください");
-    if (!draft.overall) return setError("総合の評価を選んでください");
+    if (!draft.shop.trim()) return flagMissing("shop");
+    if (!draft.overall) return flagMissing("overall");
+    setMissing(null);
     setError("");
     setSaving(true);
     const now = Date.now();
@@ -374,6 +442,8 @@ export default function RecordForm({
       id: initial?.id ?? crypto.randomUUID(),
       createdAt: initial?.createdAt ?? now,
       updatedAt: now,
+      // 家で飲んだときは場所を残さない
+      ...(!initial && geo && draft.shop.trim() !== "家" ? { geo } : {}),
     };
     await putRecord(record);
     if (autosave && !initial) clearStash();
@@ -381,12 +451,23 @@ export default function RecordForm({
     toast("保存しました");
     // 新しい記録のときだけ、相棒がひとこと言う
     if (!initial) listRecords().then((all) => announceBuddy(buddyLine(record, all, { fromWish })));
-    if (onSaved) return onSaved(record);
+    if (!reducedMotion()) {
+      setDone(true);
+      await new Promise((r) => setTimeout(r, 450));
+    }
+    if (onSaved) {
+      setDone(false);
+      setSaving(false);
+      return onSaved(record);
+    }
     router.replace(initial ? `/record?id=${record.id}` : "/");
   }
 
   const overallField = (
-    <StarRating value={draft.overall} onChange={(v) => set("overall", v)} />
+    <StarRating value={draft.overall} missing={missing === "overall"} onChange={(v) => {
+      if (missing === "overall") setMissing(null);
+      set("overall", v);
+    }} />
   );
 
   const nameFields = (
@@ -444,7 +525,7 @@ export default function RecordForm({
           onChange={(v) => set("roast", v)}
         />
       </fieldset>
-      <fieldset className="field">
+      {show("process") && <fieldset className="field">
         <legend className="label">
           {tr("精製方法")}{" "}
           <HelpButton label={tr("精製方法")} onClick={() => setSheet("精製")} />
@@ -454,8 +535,8 @@ export default function RecordForm({
           value={draft.process}
           onChange={(v) => set("process", v)}
         />
-      </fieldset>
-      <div className="field">
+      </fieldset>}
+      {show("menuNote") && <div className="field">
         <label className="label" htmlFor="f-menu">
           {tr("お店の説明")}
         </label>
@@ -466,8 +547,8 @@ export default function RecordForm({
           value={draft.menuNote}
           onChange={(e) => set("menuNote", e.target.value)}
         />
-      </div>
-      <div className="field">
+      </div>}
+      {show("sweets") && <div className="field">
         <label className="label" htmlFor="f-sweets">
           {tr("合うスイーツ")}
         </label>
@@ -478,14 +559,14 @@ export default function RecordForm({
           value={draft.sweets ?? ""}
           onChange={(e) => set("sweets", e.target.value)}
         />
-      </div>
+      </div>}
     </>
   );
 
   const tasteFields = (
     <>
       {overallField}
-      <fieldset className="field">
+      {show("method") && <fieldset className="field">
         <legend className="label">
           {tr("抽出方法")}{" "}
           <HelpButton label={tr("抽出方法")} onClick={() => setSheet("抽出")} />
@@ -495,32 +576,32 @@ export default function RecordForm({
           value={draft.method}
           onChange={(v) => set("method", v)}
         />
-      </fieldset>
+      </fieldset>}
       {/* 家で淹れたときだけ使うので、店で飲んだ記録ではたたんでおく */}
-      <details className="bean-details" open={draft.shop.trim() === "家" || hasRecipe(draft.recipe)}>
+      {show("recipe") && <details className="bean-details" open={draft.shop.trim() === "家" || hasRecipe(draft.recipe)}>
         <summary>{tr("家で淹れたレシピ（豆の量・お湯・挽き目）")}</summary>
         <RecipeFields value={draft.recipe ?? emptyRecipe()} onChange={(r) => set("recipe", r)} />
-      </details>
+      </details>}
       <div className="row" style={{ gap: 24 }}>
-        <fieldset className="field">
+        {show("temp") && <fieldset className="field">
           <legend className="label">{tr("温度")}</legend>
           <SingleChips
             options={["ホット", "アイス"] as const}
             value={draft.temp}
             onChange={(v) => set("temp", v)}
           />
-        </fieldset>
-        <fieldset className="field">
+        </fieldset>}
+        {show("style") && <fieldset className="field">
           <legend className="label">{tr("飲み方")}</legend>
           <SingleChips
             options={["ブラック", "ミルク"] as const}
             value={draft.style}
             onChange={(v) => set("style", v)}
           />
-        </fieldset>
+        </fieldset>}
       </div>
 
-      <fieldset className="field">
+      {show("flavors") && <fieldset className="field">
         <legend className="label">
           {tr("感じた味")}{" "}
           <HelpButton
@@ -554,9 +635,9 @@ export default function RecordForm({
             {tr("追加")}
           </button>
         </div>
-      </fieldset>
+      </fieldset>}
 
-      <div className="ratings">
+      {show("ratings") && <div className="ratings">
         {RATINGS.map(([key, label, low, high]) => (
           <RatingRow
             key={key}
@@ -567,8 +648,8 @@ export default function RecordForm({
             onChange={(v) => set(key, v)}
           />
         ))}
-      </div>
-      <div className="field">
+      </div>}
+      {show("price") && <div className="field">
         <label className="label" htmlFor="f-price">
           {tr("値段（1杯・円）")}
         </label>
@@ -584,7 +665,7 @@ export default function RecordForm({
             set("price", digits ? Number(digits) : null);
           }}
         />
-      </div>
+      </div>}
     </>
   );
 
@@ -606,11 +687,25 @@ export default function RecordForm({
             className="input"
             type="date"
             value={draft.date}
-            onChange={(e) => set("date", e.target.value)}
+            onChange={(e) => {
+              setDateFromPhoto(null);
+              set("date", e.target.value);
+            }}
             required
           />
+          {dateFromPhoto && (
+            <p className="muted field-note">
+              {tr("写真を撮った日にしました。")}
+              <button type="button" className="text-btn" onClick={() => {
+                set("date", dateFromPhoto);
+                setDateFromPhoto(null);
+              }}>
+                {tr("今日にする")}
+              </button>
+            </p>
+          )}
         </div>
-        <div className="field">
+        <div className="field" data-missing={missing === "shop" ? "" : undefined}>
           <label className="label" htmlFor="f-shop">
             {tr("どこで飲んだ")}{" "}<span className="req">{tr("必須")}</span>
           </label>
@@ -621,7 +716,11 @@ export default function RecordForm({
               list="shop-names"
               placeholder={tr("店名（例：〇〇珈琲）")}
               value={draft.shop}
-              onChange={(e) => set("shop", e.target.value)}
+              aria-invalid={missing === "shop" ? true : undefined}
+              onChange={(e) => {
+                if (missing === "shop") setMissing(null);
+                set("shop", e.target.value);
+              }}
             />
             {/* 家で淹れたときは店名の代わりに「家」 */}
             <button
@@ -629,11 +728,34 @@ export default function RecordForm({
               className="chip"
               style={{ flexShrink: 0 }}
               aria-pressed={draft.shop.trim() === "家"}
-              onClick={() => set("shop", draft.shop.trim() === "家" ? "" : "家")}
+              onClick={() => {
+                if (missing === "shop") setMissing(null);
+                set("shop", draft.shop.trim() === "家" ? "" : "家");
+              }}
             >
               {tr("家で")}
             </button>
           </div>
+          {missing === "shop" && <p className="error field-msg">{tr("店名を入れるか「家で」を選んでください")}</p>}
+          {/* 近くで前に記録したお店（48）。押したときだけ場所を使う */}
+          {!initial && !draft.shop.trim() && (
+            nearby === null ? (
+              <button type="button" className="text-btn near-btn" onClick={findNearby}>
+                {tr("📍 近くの前に行ったお店")}
+              </button>
+            ) : nearby.length > 0 ? (
+              <div className="chip-wrap" role="group" aria-label={tr("近くの前に行ったお店")}>
+                {nearby.slice(0, 5).map((n) => (
+                  <button key={n.shop} type="button" className="chip" onClick={() => set("shop", n.shop)}>
+                    {trv(n.shop)}
+                    <small className="muted">{` ${n.m}m`}</small>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="muted field-note">{tr("近くで記録したお店はまだありません。これから記録すると場所も残ります。")}</p>
+            )
+          )}
           <datalist id="shop-names">
             {shopNames.map((s) => (
               <option key={s} value={s} />
@@ -675,7 +797,7 @@ export default function RecordForm({
             {tasteFields}
           </>
         )}
-        <div className="field">
+        {show("memo") && <div className="field">
           <label className="label" htmlFor="f-memo">
             {tr("メモ")}
           </label>
@@ -686,9 +808,9 @@ export default function RecordForm({
             value={draft.memo}
             onChange={(e) => set("memo", e.target.value)}
           />
-        </div>
+        </div>}
 
-        <div className="field">
+        {show("photos") && <div className="field">
           <PhotoRow
             photos={draft.photos}
             onRemove={(i) =>
@@ -708,7 +830,7 @@ export default function RecordForm({
               onFiles={onPhotos}
             />
           </div>
-        </div>
+        </div>}
 
         {error && (
           <p className="error" role="alert">
@@ -724,8 +846,8 @@ export default function RecordForm({
         )}
 
         <div className="save-bar">
-          <button type="submit" className="btn-primary" disabled={saving}>
-            {saving ? tr("保存中…") : tr("保存する")}
+          <button type="submit" className={`btn-primary save-btn${done ? " is-done" : ""}`} disabled={saving} aria-live="polite">
+            {done ? <span aria-label={tr("保存しました")}>✓</span> : saving ? tr("保存中…") : tr("保存する")}
           </button>
         </div>
       </form>

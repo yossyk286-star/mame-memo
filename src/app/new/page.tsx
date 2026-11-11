@@ -15,6 +15,17 @@ import { beanToDraft, type ScannedBean } from "@/lib/menuScan";
 import { bestRecipe, recipeText } from "@/lib/recipe";
 import type { Bag, RecordDraft, TastingRecord } from "@/lib/types";
 import { tr } from "@/lib/i18n";
+import BackLink from "@/components/BackLink";
+import { backTarget, popTo } from "@/lib/nav";
+
+/** 保存したあと「来た画面へ戻る」ボタンの文字 */
+function fromLabel(from: string) {
+  const p = from.split("?")[0];
+  if (p === "/scan") return tr("調べた結果へ戻る");
+  if (p === "/pair") return tr("料理から選ぶへ戻る");
+  if (p === "/wishlist") return tr("気になる豆へ戻る");
+  return tr("前の画面へ戻る");
+}
 
 /** 家の豆から記録する画面。豆の情報は登録したものを入れて、淹れ方と感想だけ書けばよいようにする */
 function BagRecord({ bag, count, best }: { bag: Bag; count: number; best?: TastingRecord }) {
@@ -72,6 +83,9 @@ function NewRecord() {
   );
   const [savedNames, setSavedNames] = useState<string[]>([]);
   const [saveCount, setSaveCount] = useState(0);
+  // 来た画面（調べる・気になるなど）。保存したあとそこへ戻れるようにする
+  const [from, setFrom] = useState("/");
+  useEffect(() => setFrom(backTarget("/")), []);
   // 今日の読み取り結果を読み込んだら MenuScan を作り直して一覧を出す
   const [loaded, setLoaded] = useState(false);
   // メニューの豆を選んでいる間はフォームを隠す（メニューにない豆を記録するときだけ出す）
@@ -134,9 +148,7 @@ function NewRecord() {
   return (
     <>
       <header className="sub-header">
-        <Link href="/" className="back">
-          <BackChevron />
-        </Link>
+        <BackLink fallback="/" />
         <h1>{tr("新しい記録")}</h1>
       </header>
 
@@ -168,6 +180,11 @@ function NewRecord() {
               ? tr("ほかにも飲んだ豆があれば、下から選んで続けて記録できます。")
               : tr("続けて別の記録も作れます。")}
           </p>
+          {from !== "/" && (
+            <Link href={from} className="btn-primary" style={{ display: "block", textAlign: "center", marginBottom: 8 }} onClick={() => popTo(from)}>
+              {fromLabel(from)}
+            </Link>
+          )}
           <Link
             href="/"
             className="btn-secondary"

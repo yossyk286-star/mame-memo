@@ -1,6 +1,6 @@
 "use client";
 
-import BackChevron from "@/components/BackChevron";
+import BackLink from "@/components/BackLink";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import BuddyFace from "@/components/BuddyFace";
@@ -10,11 +10,13 @@ import { daysSince, lastBackup, saveBackup } from "@/lib/backup";
 import { ACCENTS, DEFAULT_THEME, loadTheme, saveTheme, type Appearance, type Theme } from "@/lib/theme";
 import { loadLangSetting, saveLangSetting, tr, trv, type LangSetting } from "@/lib/i18n";
 import { askConfirm } from "@/components/ConfirmSheet";
+import { LimitSetting, LookExtras, MotionSettings, RecordSettings, UseSettings } from "@/components/FeatureSettings";
 
 const APPEARANCES: { id: Appearance; label: string }[] = [
   { id: "auto", label: "自動" },
   { id: "light", label: "ライト" },
   { id: "dark", label: "ダーク" },
+  { id: "time", label: "時間で" },
 ];
 
 
@@ -72,9 +74,7 @@ export default function SettingsPage() {
   return (
     <>
       <header className="sub-header">
-        <Link href="/" className="back">
-          <BackChevron />
-        </Link>
+        <BackLink fallback="/" />
         <h1>{tr("設定")}</h1>
       </header>
       <main className="content" style={{ paddingTop: 16 }}>
@@ -87,7 +87,7 @@ export default function SettingsPage() {
         <section data-tour="set-look" className="card" style={{ gap: 14 }}>
           <div className="setting-row">
             <span>{tr("明るさ")}</span>
-            <div className="mode-switch three" role="group" aria-label={tr("明るさ")}>
+            <div className="mode-switch" role="group" aria-label={tr("明るさ")}>
               {APPEARANCES.map((a) => (
                 <button
                   key={a.id}
@@ -99,7 +99,7 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
-            <p className="muted">{tr("「自動」はスマホの設定に合わせて、夜は暗い画面になります。")}</p>
+            <p className="muted">{tr("「自動」はスマホの設定に合わせます。「時間で」は18時〜朝6時だけ暗い画面になります。")}</p>
           </div>
           <div className="setting-row">
             <span>{tr("文字の大きさ")}</span>
@@ -133,7 +133,18 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
+          <LookExtras />
         </section>
+
+        <h2 className="section-title">{tr("操作")}</h2>
+        <UseSettings />
+
+        <h2 className="section-title">{tr("記録")}</h2>
+        <RecordSettings />
+
+        <h2 className="section-title">{tr("動き")}</h2>
+        <MotionSettings />
+        <p className="muted settings-note">{tr("スマホで「視差効果を減らす」をオンにしていると、どの動きも出ません。")}</p>
 
         <h2 className="section-title">{tr("言語 / Language")}</h2>
         <section className="card">
@@ -172,6 +183,7 @@ export default function SettingsPage() {
               {tr("出さない")}
             </button>
           </div>
+          <LimitSetting />
         </section>
 
         <h2 className="section-title">{tr("データ")}</h2>

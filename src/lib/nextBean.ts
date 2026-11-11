@@ -1,7 +1,7 @@
 import { METHODS, PROCESSES, ROASTS, TERMS } from "./glossary";
 import type { MyPrefs } from "./prefs";
 import type { TastingRecord } from "./types";
-import { tr } from "./i18n";
+import { getLang, tr } from "./i18n";
 
 export type NextIdea = { title: string; reason: string; description?: string };
 
@@ -33,7 +33,8 @@ export function nextIdeas(records: TastingRecord[], prefs: MyPrefs, limit = 4): 
     const tried = new Set(records.filter((r) => r.roast === roast).map((r) => r.process));
     for (const process of PROCESSES.filter((p) => known(p) && !tried.has(p)).slice(0, 2)) {
       ideas.push({
-        title: tr("{0}の{1}", roast, process),
+        // 英語は「Washed light roast」の順にする
+        title: getLang() === "en" ? `${tr(process)} ${tr(roast).toLowerCase()}` : tr("{0}の{1}", roast, process),
         reason: roasts.has(roast) ? tr("{0}の評価が高めで、{1}はまだ記録がありません", roast, process) : tr("好きな{0}で、まだ記録がありません", roast),
         description: describe(process),
       });
