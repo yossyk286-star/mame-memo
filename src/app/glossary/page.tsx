@@ -17,6 +17,52 @@ import { loadPasscode, normalizePasscode, savePasscode } from "@/lib/passcode";
 import Skeleton from "@/components/Skeleton";
 import { getLang, tr, trv } from "@/lib/i18n";
 import { askConfirm } from "@/components/ConfirmSheet";
+import Link from "next/link";
+import { listRecords, peekRecords } from "@/lib/db";
+import { beanTitle, stars } from "@/components/RecordCard";
+import type { TastingRecord } from "@/lib/types";
+
+/** この言葉に当てはまる自分の記録（焙煎度・精製・淹れ方・味の言葉・産地やお店の説明に入っている） */
+function drankWith(term: string, records: TastingRecord[]) {
+  const t = term.toLowerCase();
+  return records.filter(
+    (r) =>
+      r.roast === term ||
+      r.process === term ||
+      r.method === term ||
+      r.flavors.includes(term) ||
+      // 1文字の言葉は名前からは探さない（関係ない名前に当たってしまう）
+      (t.length >= 2 && [r.origin, r.farm, r.menuNote].some((s) => s.toLowerCase().includes(t))),
+  );
+}
+
+/** 辞典の言葉の下に「あなたが飲んだ○○」（20） */
+function MyDrinks({ term, records }: { term: string; records: TastingRecord[] }) {
+  const mine = drankWith(term, records);
+  if (mine.length === 0)
+    return (
+      <p className="my-drinks is-none">
+        {tr("まだ飲んでいません。")}
+        <Link href={`/scan?q=${encodeURIComponent(term)}`}>{tr("「{0}」を調べる", term)}</Link>
+      </p>
+    );
+  const avg = Math.round((mine.reduce((s, r) => s + r.overall, 0) / mine.length) * 10) / 10;
+  return (
+    <div className="my-drinks">
+      <p>{tr("あなたが飲んだ{0}　{1}杯・平均{2}", term, mine.length, stars(avg))}</p>
+      <ul>
+        {mine.slice(0, 3).map((r) => (
+          <li key={r.id}>
+            <Link href={`/record?id=${r.id}`}>
+              {beanTitle(r)}
+              <span>{stars(r.overall)}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 const FILTERS: ("すべて" | "自分で追加" | "ドリンク" | GlossaryCategory)[] = [
   "すべて",
@@ -122,7 +168,14 @@ export default function GlossaryPage() {
   const [myTerms, setMyTerms] = useState<MyTerm[]>([]);
   const [justAdded, setJustAdded] = useState<string | null>(null);
 
-  useEffect(() => setMyTerms(loadMyTerms()), []);
+  const [records, setRecords] = useState<TastingRecord[]>(() => peekRecords() ?? []);
+  useEffect(() => {
+    setMyTerms(loadMyTerms());
+    listRecords().then(setRecords);
+    // 記録の詳細で焙煎度・精製を押したときは ?q=言葉 で来る
+    const q = new URLSearchParams(location.search).get("q");
+    if (q) setQuery(q);
+  }, []);
 
   function add(t: MyTerm) {
     // 同じ言葉を調べ直したときは新しい説明に置き換える
@@ -245,7 +298,7 @@ export default function GlossaryPage() {
                   </summary>
                   <div className="fold-body">
                     <p className="term-desc">{trv(d.description)}</p>
-                    <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                    <p className="muted" style={{ fontSize: 13, margin: 0 }}>
                       {tr("作り方：{0}", trv(d.recipe))}
                     </p>
                   </div>
@@ -274,11 +327,12 @@ export default function GlossaryPage() {
                     </summary>
                     <div className="fold-body">
                       <p className="term-desc">{trv(t.description)}</p>
+                      <MyDrinks term={t.term} records={records} />
                       {t.mine && (
                         <button
                           type="button"
                           className="btn-ghost"
-                          style={{ height: 32, alignSelf: "flex-end", padding: "0 12px", fontSize: 12 }}
+                          style={{ height: 32, alignSelf: "flex-end", padding: "0 12px", fontSize: 13 }}
                           onClick={() => remove(t.term)}
                         >
                           {tr("辞典から外す")}

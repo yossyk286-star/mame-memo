@@ -13,7 +13,7 @@ const COLORS = {
   muted: "#6b5e55",
   line: "#e2dad2",
   accent: "#7a3e22",
-  series: ["#7a3e22", "#2f7a8a"],
+  series: ["#7a3e22", "#2f7a8a", "#2f8a5e", "#8a4fb0"],
 };
 
 export type ShareSeries = { label: string; values: (number | null | undefined)[] };
@@ -265,7 +265,7 @@ export async function recordImage(r: RecordShare) {
   return toBlob(canvas);
 }
 
-/** 2つの記録をくらべた画像 */
+/** 2〜4つの記録をくらべた画像 */
 export async function compareImage(axes: string[], series: (ShareSeries & { sub: string; overall: number })[]) {
   const { canvas, ctx } = base();
   ctx.fillStyle = COLORS.accent;
@@ -293,7 +293,7 @@ export async function compareImage(axes: string[], series: (ShareSeries & { sub:
     ctx.fillStyle = COLORS.muted;
     ctx.font = font(28);
     ctx.fillText(wrap(ctx, s.sub, W - PAD * 2 - 50 - scoreW, 1)[0], PAD + 50, y + 88);
-    y += 130;
+    y += series.length > 2 ? 110 : 130;
   });
   const room = H - PAD - 80 - y;
   drawRadar(ctx, W / 2, y + room / 2, Math.min(300, room / 2 - 60), axes, series);

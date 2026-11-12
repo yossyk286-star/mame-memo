@@ -18,6 +18,12 @@ export interface Recipe {
   time: string;
 }
 
+/** 袋の裏などに書いてある数字や情報。「標高 1,900m」 */
+export interface Spec {
+  label: string;
+  value: string;
+}
+
 /** 記録の画面で AI に聞いたことと答え */
 export interface QA {
   q: string;
@@ -61,6 +67,14 @@ export interface TastingRecord {
   /** この記録について AI に聞いたこと */
   qa?: QA[];
   memo: string;
+  /** 飲んだ量（ml）。S・M・L・エスプレッソで選ぶ。入れていなければ1杯の目安でカフェインを数える */
+  ml?: number | null;
+  /** 自分で付けたタグ（「京都旅行」など。# は付けずに持つ） */
+  tags?: string[];
+  /** 外国語の産地・農園名のカタカナの読み。読み取りで AI が付けたときだけ */
+  reading?: string;
+  /** 袋の裏から読んだスペック（焙煎日・標高など） */
+  specs?: Spec[];
   /** ♥ また飲みたい。後から増やした項目なので古い記録にはない */
   again?: boolean;
   /** 飲んだ場所（位置を使ってよいときだけ）。近くの前に行ったお店を出すのに使う */

@@ -114,7 +114,7 @@ function AddBag({ onAdded }: { onAdded: (b: Bag) => void }) {
           {tr("やめる")}
         </button>
       </div>
-      <p className="muted" style={{ margin: 0, fontSize: 12 }}>
+      <p className="muted" style={{ margin: 0, fontSize: 13 }}>
         {tr("メニューを撮って調べた結果からも「家の豆に登録」で入れられます。")}
       </p>
     </form>
@@ -188,7 +188,7 @@ function BagCard({
           )}
         </p>
       )}
-      <p style={{ margin: 0, fontSize: 14 }}>
+      <p style={{ margin: 0, fontSize: 15 }}>
         {mine.length > 0 ? (
           <>
             {tr("{0}回記録・平均", mine.length)}{" "}<Stars n={Math.round(avg * 2) / 2} />

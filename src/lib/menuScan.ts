@@ -19,7 +19,7 @@ export function farmOf(b: Pick<ScannedBean, "name" | "origin" | "farm">) {
 /** 読み取った豆を記録フォームの値に変換する */
 export function beanToDraft(
   b: ScannedBean,
-): Pick<RecordDraft, "origin" | "farm" | "roast" | "process" | "method" | "menuNote" | "sweets"> {
+): Pick<RecordDraft, "origin" | "farm" | "roast" | "process" | "method" | "menuNote" | "sweets" | "reading"> {
   return {
     origin: b.origin || b.name,
     farm: farmOf(b),
@@ -28,5 +28,7 @@ export function beanToDraft(
     method: b.recommendedMethod,
     menuNote: b.menuNote,
     sweets: b.sweets ?? "",
+    // 前の版で調べた結果には読みがない
+    reading: b.reading || undefined,
   };
 }

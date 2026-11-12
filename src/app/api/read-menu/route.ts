@@ -3,7 +3,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { timingSafeEqual } from "node:crypto";
 import { BEAN_REFERENCE } from "@/lib/knownBeans";
 import { CHOOSING_TIPS, TERMS } from "@/lib/glossary";
-import { FoodMenuSchema, FoodPairingSchema, MenuScanResultSchema, PairingResultSchema, DishIdeasSchema, TermLookupSchema } from "@/lib/schemas";
+import { FoodMenuSchema, FoodPairingSchema, MenuScanResultSchema, PairingResultSchema, DishIdeasSchema, TermLookupSchema, SpecResultSchema } from "@/lib/schemas";
 
 // 料金を抑えるため一番安いモデルを使う。変えたいときは環境変数 MENU_MODEL で上書き
 const MODEL = process.env.MENU_MODEL || "claude-haiku-5-5";
@@ -170,6 +170,34 @@ export async function POST(req: Request) {
       if (!parsed) return error(422, "うまく判断できませんでした");
       if (!parsed.found || parsed.picks.length === 0) return error(422, "料理や食べ物の名前を入れてください");
       return Response.json(parsed);
+    } catch (e) {
+      return apiError(e);
+    }
+  }
+
+  // 豆の袋の裏からスペック（焙煎日・標高など）を読む（12）
+  if (typeof body?.specImage === "string") {
+    const image = body.specImage;
+    if (image.length === 0) return error(400, "写真がありません");
+    if (image.length > MAX_IMAGE_BASE64) return error(413, "写真が大きすぎます");
+    try {
+      const response = await client.messages.parse({
+        model: MODEL,
+        max_tokens: 1500,
+        system: sys(`あなたはコーヒー豆の袋やラベルを読む係です。写真に書いてある項目と値だけを、そのまま書き写してください。書いていないことは推測で足さないでください。${READING_RULES}`),
+        output_config: { effort: "low", format: zodOutputFormat(SpecResultSchema) },
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "image", source: { type: "base64", media_type: "image/jpeg", data: image } },
+              { type: "text", text: "このコーヒー豆の袋（裏）やラベルから、焙煎日・標高・生産者・品種・精製・収穫年などのスペックを読み取ってください。" },
+            ],
+          },
+        ],
+      });
+      if (!response.parsed_output) return error(422, "うまく読み取れませんでした。もう一度撮ってみてください");
+      return Response.json(response.parsed_output);
     } catch (e) {
       return apiError(e);
     }
