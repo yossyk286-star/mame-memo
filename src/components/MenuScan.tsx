@@ -1515,6 +1515,7 @@ export default function MenuScan({
           {tr("一覧をすべて消す")}
         </button>
       )}
+      {status === "done" && <div className="scan-float-space" aria-hidden="true" />}
     </section>
   );
 }
