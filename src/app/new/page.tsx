@@ -124,6 +124,8 @@ function NewRecord() {
   const [loaded, setLoaded] = useState(false);
   // メニューの豆を選んでいる間はフォームを隠す（メニューにない豆を記録するときだけ出す）
   const [manual, setManual] = useState(!!nameParam);
+  // 読み取りの段（撮る・写真から・名前で）は、押したときだけ出す。読み取った一覧があるときは最初から出す
+  const [scanOpen, setScanOpen] = useState(false);
   // 前に書きかけて保存しなかった記録と、「続きを書く」で開いた書きかけ
   const [stash, setStash] = useState<Stash | null>(null);
   const [resumed, setResumed] = useState<RecordDraft | null>(null);
@@ -256,6 +258,11 @@ function NewRecord() {
 
       {picked ? (
         <PickedBean bean={picked} onChange={() => setPicked(null)} />
+      ) : !scanOpen && remaining.length === 0 ? (
+        <button type="button" className="btn-secondary new-scan-open" onClick={() => setScanOpen(true)}>
+          <LineIcon name="camera" />
+          {tr("メニューや豆の袋から読み取る")}
+        </button>
       ) : (
         <MenuScan
           key={`${saveCount}:${loaded}`}
