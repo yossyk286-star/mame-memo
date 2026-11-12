@@ -131,8 +131,7 @@ export function PickedBean({
         {onChange && (
           <button
             type="button"
-            className="btn-ghost"
-            style={{ flexShrink: 0 }}
+            className="picked-change"
             onClick={onChange}
           >
             {tr("別の豆にする")}
