@@ -696,7 +696,7 @@ export default function MenuScan({
 
   async function scan(photo: Blob): Promise<boolean | "offline"> {
     setShot(URL.createObjectURL(photo));
-    // 小さい字も読めるよう、長辺1600pxまでにして送る（Haiku なので料金はほぼ変わらない）
+    // 小さい字も読めるよう、大きめ（長辺2576px・360万画素まで）にして送る（Haiku なので料金はほぼ変わらない）
     return await request(async () => ({
       image: await blobToBase64(await shrinkForReading(photo)),
     }));

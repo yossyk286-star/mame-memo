@@ -7,16 +7,25 @@ import { FoodMenuSchema, FoodPairingSchema, MenuScanResultSchema, PairingResultS
 
 // 料金を抑えるため一番安いモデルを使う。変えたいときは環境変数 MENU_MODEL で上書き
 const MODEL = process.env.MENU_MODEL || "claude-haiku-5-5";
-// 端末側で長辺1600pxに縮小済みの JPEG を想定。Vercel の受け取り上限（4.5MB）に収まるよう、それより大きい画像は断る
-const MAX_IMAGE_BASE64 = 3_000_000;
+// 写真から文字を読むときだけ使うモデル。読み違いが多いときは環境変数 READ_MODEL でより強いモデル（例：claude-sonnet-5-5）にできる
+const READ_MODEL = process.env.READ_MODEL || MODEL;
+// 写真を読むときは少し考えさせる（崩し字・飾り文字・英語の筆記体を一字ずつ確かめるため。Haiku なので1回0.1円ほど増えるだけ）
+const READ_EFFORT = "medium" as const;
+// 端末側で長辺2576px・360万画素までに縮小済みの JPEG を想定。Vercel の受け取り上限（4.5MB）に収まるよう、それより大きい画像は断る
+const MAX_IMAGE_BASE64 = 4_000_000;
 
 /** 写真から文字を読むときの注意。読み間違いを減らすため、メニュー・豆の読み取りで共通に使う */
 const READING_RULES = `
 ## 写真の文字の読み方（大事）
 - 名前は写真に書いてある通りに、一字ずつ正確に書き写してください。産地・農園・品種のカタカナやアルファベット（例：イルガチェフェ、Huehuetenango、ゲイシャ）も、似た有名な名前に直さずそのままにしてください。
-- 縦書き、手書き、黒板、斜めや暗い写真もあります。行や列を取り違えないよう、1つの名前は同じ行（縦書きなら同じ列）から読んでください。
+- 縦書き、手書き、黒板、斜めや暗い写真、光の反射、袋のしわで字がゆがんだ写真もあります。行や列を取り違えないよう、1つの名前は同じ行（縦書きなら同じ列）から読んでください。
 - 名前の横の値段・量・説明は名前に含めないでください。ただし産地・農園・精製方法（ナチュラル、ウォッシュトなど）が名前の一部として書かれていれば含めてください。
 - 一部がかすれたり隠れたりして読めないときは、推測で埋めず、読めた部分だけを使ってください。名前がほとんど読めないものは入れないでください。
+
+- 豆の袋やカードのロゴには、手書き風・筆記体（cursive / script）・細い飾り文字・スタンプ・箔押し・浮き出し文字など、読みにくい書体がよくあります。字の形を1文字ずつ見て読んでください。
+- ロゴの字が読みにくいときは、同じ写真の読みやすい小さい字に同じ名前がないか探して確かめてください（裏の表示ラベル、ロースター名、産地・農園・品種の欄、カタカナや英語の併記など）。小さい字で確かめられたら、そちらの書き方を使ってください。
+- 英語・スペイン語・ポルトガル語などの産地・農園・品種名は、つづり・アクセント記号（é, ñ, ã など）・ハイフンもそのまま書き写してください。筆記体や細い飾り文字では rn と m、cl と d、l と I と 1、u と n、O と 0 などを取り違えやすいので、1文字ずつ確かめてください。標高（1,900m など）やロット番号は名前に含めないでください。
+- 名前は書いてある文字のまま入れてください。英字の名前はカタカナに直さず英字のまま、カタカナ・漢字の名前は英字に直さずそのままにしてください。
 - 同じものがメニューの別の場所に2回載っていても、1つにまとめてください。`;
 // 文字で入力したときの上限（メニューの文を貼るくらいの長さ）
 const MAX_TEXT = 2000;
@@ -122,10 +131,10 @@ export async function POST(req: Request) {
     const likes = typeof body.likes === "string" ? body.likes.slice(0, 200) : "";
     try {
       const response = await client.messages.parse({
-        model: MODEL,
+        model: READ_MODEL,
         max_tokens: 6000,
         system: sys("あなたはコーヒーと食べ物の組み合わせにくわしい、やさしい案内役です。初心者にもわかる日本語で答えてください。"),
-        output_config: { effort: "low", format: zodOutputFormat(FoodMenuSchema) },
+        output_config: { effort: READ_EFFORT, format: zodOutputFormat(FoodMenuSchema) },
         messages: [
           {
             role: "user",
@@ -182,10 +191,10 @@ export async function POST(req: Request) {
     if (image.length > MAX_IMAGE_BASE64) return error(413, "写真が大きすぎます");
     try {
       const response = await client.messages.parse({
-        model: MODEL,
+        model: READ_MODEL,
         max_tokens: 1500,
         system: sys(`あなたはコーヒー豆の袋やラベルを読む係です。写真に書いてある項目と値だけを、そのまま書き写してください。書いていないことは推測で足さないでください。${READING_RULES}`),
-        output_config: { effort: "low", format: zodOutputFormat(SpecResultSchema) },
+        output_config: { effort: READ_EFFORT, format: zodOutputFormat(SpecResultSchema) },
         messages: [
           {
             role: "user",
@@ -384,6 +393,7 @@ export async function POST(req: Request) {
   const image = body?.image;
   const text = typeof body?.text === "string" ? body.text.trim() : "";
   let content: Anthropic.ContentBlockParam[];
+  const fromPhoto = !text;
   if (text) {
     if (text.length > MAX_TEXT)
       return error(413, `文字は${MAX_TEXT}文字までにしてください`);
@@ -405,18 +415,18 @@ export async function POST(req: Request) {
       },
       {
         type: "text",
-        text: "このメニューのコーヒー豆を読み取って解説してください。",
+        text: "このメニュー（または豆の袋・ラベル）のコーヒー豆を読み取って解説してください。名前はまず写真の字を一字ずつ確かめてから書いてください。",
       },
     ];
   }
 
   try {
     const response = await client.messages.parse({
-      model: MODEL,
+      model: fromPhoto ? READ_MODEL : MODEL,
       max_tokens: 8000,
       system: sys(SYSTEM),
       output_config: {
-        effort: "low",
+        effort: fromPhoto ? READ_EFFORT : "low",
         format: zodOutputFormat(MenuScanResultSchema),
       },
       messages: [{ role: "user", content }],
