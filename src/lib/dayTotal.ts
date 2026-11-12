@@ -18,3 +18,13 @@ export function dayTotal(records: TastingRecord[]) {
   parts.push(tr("カフェイン約{0}mg", mg));
   return parts.join(tr("・"));
 }
+
+/** カウンター画面で使う、1杯ぶんの量の出し方と1日の目安（大人で1日400mgまで） */
+export const DAY_AMOUNT = {
+  of: (r: Partial<TastingRecord>) => caffeineMg({ method: r.method ?? null, ml: r.ml }),
+  round: (n: number) => Math.round(n / 10) * 10,
+  text: (n: number) => tr("カフェイン約{0}mg", n),
+  guide: 400,
+  guideText: "1日の目安はカフェイン400mgまで",
+  like: (r: TastingRecord): Partial<TastingRecord> => ({ method: r.method, ml: r.ml }),
+};

@@ -3,6 +3,7 @@
 import LineIcon from "@/components/LineIcon";
 import { clientReady } from "@/lib/pageSwap";
 import Link from "next/link";
+import { today } from "@/lib/lastScan";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import BeanSortBar from "@/components/BeanSortBar";
 import SearchField from "@/components/SearchField";
@@ -301,7 +302,12 @@ export default function RecordsPage() {
               <h2 className="date-head">
                 {dateHead(day.date)}
                 {/* 絞り込み中は一部の記録だけになるので、その日の合計は出さない */}
-                {!filtering && <span className="date-total"><NumText text={dayTotal(day.records)} /></span>}
+                {!filtering && (day.date === today() ? (
+                  /* 今日の合計は押すとカウンターへ */
+                  <Link href="/tonight" className="date-total date-total-link"><NumText text={dayTotal(day.records)} /> ›</Link>
+                ) : (
+                  <span className="date-total"><NumText text={dayTotal(day.records)} /></span>
+                ))}
               </h2>
             )}
             <div className="list-group">
