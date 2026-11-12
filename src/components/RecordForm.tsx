@@ -665,32 +665,37 @@ export default function RecordForm({
         <label className="label" htmlFor="f-price">
           {tr("値段（1杯・円）")}
         </label>
-        <input
-          id="f-price"
-          className="input"
-          inputMode="numeric"
-          placeholder={tr("例：650")}
-          value={draft.price ?? ""}
-          onChange={(e) => {
-            // 全角数字やカンマ入りでも数字だけ取り出す
-            const digits = e.target.value.normalize("NFKC").replace(/\D/g, "");
-            set("price", digits ? Number(digits) : null);
-          }}
-        />
-        {/* よく入れる値段と、このお店で前に入れた値段。± で100円ずつ（54） */}
-        <div className="chip-wrap quick-chips" role="group" aria-label={tr("よく入れる値段")}>
-          {prices.map((p) => (
-            <button key={p} type="button" className="chip" aria-pressed={draft.price === p} onClick={() => set("price", draft.price === p ? null : p)}>
-              {yen(p)}
-            </button>
-          ))}
-          <button type="button" className="chip step-chip" aria-label={tr("100円下げる")} disabled={!draft.price} onClick={() => set("price", Math.max(0, (draft.price ?? 0) - 100) || null)}>
+        {/* − 値段 ＋ を1つにまとめ、下によく入れる値段とこのお店で前に入れた値段（54） */}
+        <div className="stepper">
+          <button type="button" className="step-btn" aria-label={tr("100円下げる")} disabled={!draft.price} onClick={() => set("price", Math.max(0, (draft.price ?? 0) - 100) || null)}>
             −
           </button>
-          <button type="button" className="chip step-chip" aria-label={tr("100円上げる")} onClick={() => set("price", (draft.price ?? 0) + 100)}>
+          <input
+            id="f-price"
+            className="input step-input"
+            inputMode="numeric"
+            placeholder={tr("例：650")}
+            value={draft.price ?? ""}
+            onChange={(e) => {
+              // 全角数字やカンマ入りでも数字だけ取り出す
+              const digits = e.target.value.normalize("NFKC").replace(/\D/g, "");
+              set("price", digits ? Number(digits) : null);
+            }}
+          />
+          <span className="step-unit" aria-hidden="true">{tr("円")}</span>
+          <button type="button" className="step-btn" aria-label={tr("100円上げる")} onClick={() => set("price", (draft.price ?? 0) + 100)}>
             ＋
           </button>
         </div>
+        {prices.length > 0 && (
+          <div className="chip-wrap quick-chips" role="group" aria-label={tr("よく入れる値段")}>
+            {prices.map((p) => (
+              <button key={p} type="button" className="chip" aria-pressed={draft.price === p} onClick={() => set("price", draft.price === p ? null : p)}>
+                {yen(p)}
+              </button>
+            ))}
+          </div>
+        )}
       </div>}
       {/* 飲んだ量。1日のカフェインの計算に使う（32） */}
       <fieldset className="field">
@@ -720,6 +725,7 @@ export default function RecordForm({
           <label className="label" htmlFor="f-date">
             {tr("日付")}{" "}<span className="req">{tr("必須")}</span>
           </label>
+          <div className="date-line">
           <input
             id="f-date"
             className="input"
@@ -747,6 +753,7 @@ export default function RecordForm({
                 {tr(label)}
               </button>
             ))}
+          </div>
           </div>
           {dateFromPhoto && (
             <p className="muted field-note">
