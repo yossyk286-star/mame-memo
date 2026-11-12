@@ -28,3 +28,20 @@ export const DAY_AMOUNT = {
   guideText: "1日の目安はカフェイン400mgまで",
   like: (r: TastingRecord): Partial<TastingRecord> => ({ method: r.method, ml: r.ml }),
 };
+
+/** カウンターの「よく飲むもの」ボタン。豆の名前が書いていないお店でも、押すだけで1杯数える */
+export const QUICK_DRINKS: { name: string; like: Partial<TastingRecord> }[] = [
+  { name: "ブレンド", like: { method: "ドリップ", ml: 150 } },
+  { name: "カフェラテ", like: { method: "エスプレッソ", ml: 60 } },
+  { name: "アメリカーノ", like: { method: "エスプレッソ", ml: 60 } },
+  { name: "エスプレッソ", like: { method: "エスプレッソ", ml: 30 } },
+  { name: "カプチーノ", like: { method: "エスプレッソ", ml: 30 } },
+  { name: "水出しコーヒー", like: { method: "その他", ml: 200 } },
+];
+
+/** 自分で足した飲み物は名前から淹れ方を当てて、カフェインの計算に使う */
+export function guessLike(name: string): Partial<TastingRecord> {
+  if (/ラテ|カプチーノ|エスプレッソ|アメリカーノ|マキアート|フラット/.test(name)) return { method: "エスプレッソ", ml: 60 };
+  if (/デカフェ|カフェインレス/.test(name)) return { method: "その他", ml: 1 };
+  return { method: "ドリップ", ml: 150 };
+}
