@@ -2,7 +2,9 @@ import type { TastingRecord } from "./types";
 import { tr } from "./i18n";
 
 /** 1杯のカフェイン量（mg）の目安。エスプレッソ系はショット1〜2杯分、ほかはドリップ1杯（150ml）くらい */
-export function caffeineMg(r: Pick<TastingRecord, "method">) {
+export function caffeineMg(r: Pick<TastingRecord, "method" | "ml">) {
+  // 飲んだ量を選んでいれば、その量から（32）。エスプレッソは濃いので ml あたり多め
+  if (r.ml) return r.method === "エスプレッソ" || r.ml <= 60 ? r.ml * 2 : r.ml * 0.8;
   return r.method === "エスプレッソ" ? 80 : 120;
 }
 

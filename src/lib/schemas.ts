@@ -9,6 +9,9 @@ const TasteLevel = z.number().int().describe("1（弱い）〜5（強い）の�
 /** メニュー写真から読み取った豆1つ分 */
 export const ScannedBeanSchema = z.object({
   name: z.string().describe("メニューに書かれている豆の名前（例：ケニア ニエリ）"),
+  reading: z
+    .string()
+    .describe("名前にアルファベットなど読みにくい外国語の地名・農園名が入っているときだけ、その名前のカタカナの読み（例：Yirgacheffe Kochere→イルガチェフェ コチャレ、Huila→ウイラ）。カタカナ・ひらがな・漢字だけの名前や、読みがわからないときは空文字"),
   origin: z.string().describe("産地の国名。わからなければ空文字"),
   farm: z
     .string()
@@ -49,10 +52,10 @@ export const MenuScanResultSchema = z.object({
  * 読み取った豆。taste・methodNotes・sweets は後から増やした項目なので、
  * 以前に保存した読み取り結果や気になる豆には入っていないことがある
  */
-export type ScannedBean = Omit<z.infer<typeof ScannedBeanSchema>, "taste" | "methodNotes" | "sweets"> &
-  Partial<Pick<z.infer<typeof ScannedBeanSchema>, "taste" | "methodNotes" | "sweets">>;
+export type ScannedBean = Omit<z.infer<typeof ScannedBeanSchema>, "taste" | "methodNotes" | "sweets" | "reading"> &
+  Partial<Pick<z.infer<typeof ScannedBeanSchema>, "taste" | "methodNotes" | "sweets" | "reading">>;
 export type BeanTaste = z.infer<typeof ScannedBeanSchema>["taste"];
-export type MenuScanResult = z.infer<typeof MenuScanResultSchema>;
+export type MenuScanResult = { beans: ScannedBean[] };
 
 /** 食べているスイーツとの相性。豆は送った順の番号で返す */
 export const PairingResultSchema = z.object({
@@ -126,3 +129,17 @@ export type FoodMenu = z.infer<typeof FoodMenuSchema>;
 
 export type FoodPick = z.infer<typeof FoodPickSchema>;
 export type FoodPairing = Omit<z.infer<typeof FoodPairingSchema>, "found">;
+
+/** 豆の袋の裏から読んだスペック（12） */
+export const SpecResultSchema = z.object({
+  specs: z
+    .array(
+      z.object({
+        label: z
+          .string()
+          .describe("項目名。なるべく次の書き方にそろえる：焙煎日、焙煎度、標高、生産者、農園、地域、品種、精製、収穫年、内容量、賞味期限、フレーバー"),
+        value: z.string().describe("袋に書いてある値をそのまま短く（例：2026.11.05、1,900m、ゲイシャ、Washed、2025/26）"),
+      }),
+    )
+    .describe("袋やラベルに書いてある項目だけ。書いていない項目は入れない。コーヒーの袋やラベルでなければ空配列。多くても10項目"),
+});

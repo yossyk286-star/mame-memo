@@ -23,6 +23,15 @@ export default function ScanPage() {
   const [counts, setCounts] = useState(() => (clientReady ? { beans: loadLastScan()?.beans.length ?? 0, dishes: loadTodayMenu().length } : { beans: 0, dishes: 0 }));
   // 「新しいお店」で一覧を作り直すための番号
   const [shop, setShop] = useState(0);
+  // 辞典・農園のページ・記録の検索から「この名前で調べる」で来たときの名前（?q=）
+  const [q, setQ] = useState("");
+  useEffect(() => {
+    const v = new URLSearchParams(location.search).get("q");
+    if (v) {
+      setQ(v);
+      setShop((n) => n + 1);
+    }
+  }, []);
 
   useEffect(() => {
     setBeans(loadLastScan()?.beans ?? []);
@@ -60,6 +69,7 @@ export default function ScanPage() {
       {beans && (
         <MenuScan
           key={shop}
+          initialQuery={q}
           initialBeans={beans}
           onPick={(b) => router.push(`/new?bean=${encodeURIComponent(b.name)}`)}
         />

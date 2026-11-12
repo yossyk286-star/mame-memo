@@ -10,12 +10,14 @@ import EmptyState from "@/components/EmptyState";
 import RadarChart from "@/components/RadarChart";
 import { beanTitle, roastColor, Stars, stars, yen } from "@/components/RecordCard";
 import { TASTE_AXES } from "@/lib/axes";
-import { recordImage, shareImage } from "@/lib/shareImage";
+import { shareImage } from "@/lib/shareImage";
+import { recordBlob } from "@/lib/recordShare";
 import { PhotoAddButton, PhotoRow } from "@/components/PhotoAdd";
 import { putRecord } from "@/lib/db";
 import { photosOf, shrinkPhotos } from "@/lib/photo";
 import { hasRecipe, recipeText } from "@/lib/recipe";
 import { mapsUrl } from "@/lib/shops";
+import { volumeName } from "@/lib/quickPick";
 import { useRecordFromQuery } from "@/lib/useRecord";
 import AskAI from "@/components/AskAI";
 import type { QA } from "@/lib/types";
@@ -127,18 +129,7 @@ function DetailBody() {
 
   async function share() {
     if (!r) return;
-    const blob = await recordImage({
-      title: beanTitle(r),
-      overall: r.overall,
-      tags: [r.roast, r.process, r.method, r.temp, r.style].filter((t): t is NonNullable<typeof t> => !!t && t !== "不明"),
-      axes: TASTE_AXES.map(([label]) => label),
-      values: TASTE_AXES.map(([, get]) => get(r)),
-      flavors: r.flavors,
-      memo: r.memo,
-      footer: trJoin([r.shop, r.date.replaceAll("-", "/")]),
-      photo: photosOf(r)[0] ?? null,
-    });
-    await shareImage(blob, beanTitle(r)).catch(() => toast("共有できませんでした", { tone: "warn" }));
+    await shareImage(await recordBlob(r), beanTitle(r)).catch(() => toast("共有できませんでした", { tone: "warn" }));
   }
 
   async function toggleAgain() {
@@ -173,6 +164,7 @@ function DetailBody() {
         ["温度・飲み方", trJoin([r.temp, r.style])],
         ["合うスイーツ", r.sweets ?? ""],
         ["値段", r.price ? yen(r.price) : ""],
+        ["量", r.ml ? volumeName(r.ml) : ""],
       ]
     : [];
   const shopMap = r ? mapsUrl(r.shop) : null;
@@ -256,19 +248,29 @@ function DetailBody() {
               <div className="detail-hero-name">
                 {(r.roast && r.roast !== "不明") || heroTags.length > 0 ? (
                   <div className="tags">
+                    {/* 焙煎度・精製などを押すと辞典のその言葉へ（20） */}
                     {r.roast && r.roast !== "不明" && (
-                      <span className="tag kind-tag">
+                      <Link href={`/glossary?q=${encodeURIComponent(r.roast)}`} className="tag kind-tag tag-link">
                         {trv(r.roast)}
-                      </span>
+                      </Link>
                     )}
                     {heroTags.map((t) => (
-                      <span key={t} className="tag">
+                      <Link key={t} href={`/glossary?q=${encodeURIComponent(t)}`} className="tag tag-link">
                         {trv(t)}
-                      </span>
+                      </Link>
                     ))}
                   </div>
                 ) : null}
+                {/* 外国語の産地・農園名の読み（42） */}
+                {r.reading && <p className="name-reading">{r.reading}</p>}
                 <h2 className={beanTitle(r).length > 18 ? "is-long" : undefined}>{beanTitle(r)}</h2>
+                {r.farm && (
+                  // 農園を押すと、その農園で飲んだ記録のページへ（34）
+                  <Link href={`/farm?name=${encodeURIComponent(r.farm)}`} className="maker-link">
+                    {tr("この農園の記録")}
+                    <span aria-hidden="true">›</span>
+                  </Link>
+                )}
               </div>
               <div className="detail-score" aria-label={features.scale === "star5" ? tr("総合 5段階中{0}", r.overall) : tr("総合 {0}", stars(r.overall))}>
                 <span className="detail-score-label">{tr("総合")}</span>
@@ -338,6 +340,29 @@ function DetailBody() {
 
           <DetailSection title={tr("淹れ方・飲み方")} rows={brewRows} />
           <DetailSection title={tr("豆のこと")} rows={beanRows} />
+
+          {r.specs && r.specs.length > 0 && (
+            <>
+              <h2 className="section-title">{tr("スペック")}</h2>
+              <ul className="card spec-grid">
+                {r.specs.map((s) => (
+                  <li key={s.label}>
+                    <span>{trv(s.label)}</span>
+                    <b>{s.value}</b>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {r.tags && r.tags.length > 0 && (
+            <div className="tags" aria-label={tr("タグ")}>
+              {r.tags.map((t) => (
+                <Link key={t} href={`/?tag=${encodeURIComponent(t)}`} className="tag tag-plain">
+                  #{t}
+                </Link>
+              ))}
+            </div>
+          )}
 
           {r.memo.trim() && (
             <>
