@@ -85,7 +85,6 @@ export function loadShopMenu(shop: string): ShopMenu | null {
   return m && m.date !== today() && m.beans.length > 0 ? m : null;
 }
 
-
 export function markRecorded(name: string) {
   const scan = loadLastScan();
   if (scan && !scan.recorded.includes(name)) store({ ...scan, recorded: [...scan.recorded, name] });

@@ -26,7 +26,5 @@ export function recipeText(r: Recipe) {
 
 /** レシピ付きの記録のうち、いちばん評価が高いもの（同じなら新しいほう） */
 export function bestRecipe(records: TastingRecord[]) {
-  return records
-    .filter((r) => hasRecipe(r.recipe))
-    .sort((a, b) => b.overall - a.overall || b.createdAt - a.createdAt)[0];
+  return records.filter((r) => hasRecipe(r.recipe)).sort((a, b) => b.overall - a.overall || b.createdAt - a.createdAt)[0];
 }

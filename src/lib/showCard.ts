@@ -62,32 +62,82 @@ export function buildShowCard(records: TastingRecord[], prefs: MyPrefs, roast: R
     return xs.length > 0 ? average(xs) : null;
   }
   const taste = [
-    wordFor(lean((r) => r.acidity, prefs.acidity), ["酸味は控えめ", "酸味がしっかり"]),
-    wordFor(lean((r) => r.bitterness, prefs.bitterness), ["苦味はおだやか", "苦味がしっかり"]),
-    wordFor(lean((r) => r.body, prefs.body), ["軽くてすっきり", "コクがある"]),
-    wordFor(lean((r) => r.sweetness), ["甘さは控えめ", "甘みがある"]),
-    wordFor(lean((r) => r.aroma), ["香りは控えめ", "香りが華やか"]),
+    wordFor(
+      lean((r) => r.acidity, prefs.acidity),
+      ["酸味は控えめ", "酸味がしっかり"],
+    ),
+    wordFor(
+      lean((r) => r.bitterness, prefs.bitterness),
+      ["苦味はおだやか", "苦味がしっかり"],
+    ),
+    wordFor(
+      lean((r) => r.body, prefs.body),
+      ["軽くてすっきり", "コクがある"],
+    ),
+    wordFor(
+      lean((r) => r.sweetness),
+      ["甘さは控えめ", "甘みがある"],
+    ),
+    wordFor(
+      lean((r) => r.aroma),
+      ["香りは控えめ", "香りが華やか"],
+    ),
   ].filter((w): w is string => w !== null);
 
   const known = (v: string | null | undefined) => (v && v !== "不明" ? v : "");
   // 焙煎度をしぼったときは、焙煎度の行は出さない（見出しに出ているため）
   const roasts = roast
     ? []
-    : [...new Set([...prefs.roasts.filter((r) => r !== "不明"), ...topCounts(liked.map((r) => known(r.roast)), 2)])]
+    : [
+        ...new Set([
+          ...prefs.roasts.filter((r) => r !== "不明"),
+          ...topCounts(
+            liked.map((r) => known(r.roast)),
+            2,
+          ),
+        ]),
+      ]
         .filter((r) => !prefs.avoidRoasts.includes(r))
         .slice(0, 2);
   const processes = [
-    ...new Set([...prefs.processes.filter((p) => p !== "不明"), ...topCounts(liked.map((r) => known(r.process)), 2)]),
+    ...new Set([
+      ...prefs.processes.filter((p) => p !== "不明"),
+      ...topCounts(
+        liked.map((r) => known(r.process)),
+        2,
+      ),
+    ]),
   ].slice(0, 3);
-  const origins = [...new Set([...prefs.origins, ...topCounts(liked.map((r) => countryOf(r) ?? r.origin), 3)])].slice(
-    0,
-    4,
-  );
-  const methods = [...new Set([...prefs.methods, ...topCounts(liked.map((r) => r.method ?? ""), 2)])]
+  const origins = [
+    ...new Set([
+      ...prefs.origins,
+      ...topCounts(
+        liked.map((r) => countryOf(r) ?? r.origin),
+        3,
+      ),
+    ]),
+  ].slice(0, 4);
+  const methods = [
+    ...new Set([
+      ...prefs.methods,
+      ...topCounts(
+        liked.map((r) => r.method ?? ""),
+        2,
+      ),
+    ]),
+  ]
     .filter((m) => m !== "その他")
     .slice(0, 3);
   const ways = [...new Set([...prefs.ways, ...topCounts(liked.map(wayOf), 2)])].slice(0, 3);
-  const likes = [...new Set([...prefs.likes, ...topCounts(liked.flatMap((r) => r.flavors), 3)])]
+  const likes = [
+    ...new Set([
+      ...prefs.likes,
+      ...topCounts(
+        liked.flatMap((r) => r.flavors),
+        3,
+      ),
+    ]),
+  ]
     .filter((f) => !prefs.dislikes.includes(f))
     .slice(0, 5);
   const dislikes = [...new Set([...prefs.dislikes, ...prefs.avoidRoasts.filter((r) => r !== "不明")])];
@@ -107,9 +157,7 @@ export function showRoasts(records: TastingRecord[], prefs: MyPrefs): Roast[] {
     records.filter((r) => r.overall >= LIKED && r.roast && r.roast !== "不明").map((r) => r.roast!),
     choices.length,
   ) as Roast[];
-  return [...new Set([...prefs.roasts.filter((r): r is Roast => choices.includes(r as Roast)), ...fromRecords])].filter(
-    (r) => !prefs.avoidRoasts.includes(r),
-  );
+  return [...new Set([...prefs.roasts.filter((r): r is Roast => choices.includes(r as Roast)), ...fromRecords])].filter((r) => !prefs.avoidRoasts.includes(r));
 }
 
 export function isEmptyCard(c: ShowCard) {

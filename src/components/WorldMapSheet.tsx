@@ -28,13 +28,7 @@ export default function WorldMapSheet({ stamps, onClose }: { stamps: Map<string,
   // 後ろの画面（.app）を奥へ下げるので、シートはその外（body の直下）に置く
   return createPortal(
     <div className="sheet-backdrop" onClick={onClose}>
-      <section
-        className="sheet jmap-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="jmap-title"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <section className="sheet jmap-sheet" role="dialog" aria-modal="true" aria-labelledby="jmap-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <h2 id="jmap-title">
             {tr("世界地図")}{" "}
@@ -63,14 +57,18 @@ export default function WorldMapSheet({ stamps, onClose }: { stamps: Map<string,
           ) : !stamp || !best ? (
             <span>
               <strong>{trv(picked)}</strong>
-              <span className="muted">{"　"}{tr("まだ。次に試してみる？")}</span>
+              <span className="muted">
+                {"　"}
+                {tr("まだ。次に試してみる？")}
+              </span>
             </span>
           ) : (
             <Link href={`/record?id=${best.id}`} className="jmap-best">
               <span>
                 <strong>{trv(picked)}</strong>
                 <span className="muted">
-                  　{"　"}{tr("{0}杯・最高{1}", stamp.count, stars(stamp.best))}
+                  　{"　"}
+                  {tr("{0}杯・最高{1}", stamp.count, stars(stamp.best))}
                 </span>
               </span>
               <span className="jmap-best-name">{tr("いちばん：{0} ›", beanTitle(best))}</span>

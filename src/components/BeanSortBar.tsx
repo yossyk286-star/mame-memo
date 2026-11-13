@@ -67,13 +67,7 @@ export default function BeanSortBar({
             </button>
           ))}
           {(areasUsed.length > 1 ? areasUsed : []).map((a) => (
-            <button
-              key={a}
-              type="button"
-              className="chip"
-              aria-pressed={area === a}
-              onClick={() => onArea(area === a ? null : a)}
-            >
+            <button key={a} type="button" className="chip" aria-pressed={area === a} onClick={() => onArea(area === a ? null : a)}>
               {trv(a)}
             </button>
           ))}

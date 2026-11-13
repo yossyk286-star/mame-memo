@@ -179,15 +179,17 @@ function DetailBody() {
   const filledScores = scores.filter(([, v]) => v);
   /** AI に聞くときに渡す中身（入っている欄だけ） */
   const rows: Row[] = r
-    ? ([
-        ["日付", r.date],
-        ["飲んだ場所", r.shop],
-        ...beanRows,
-        ...brewRows,
-        ["感じた味", trJoin(r.flavors)],
-        ...filledScores.map(([k, v]) => [k, `${v} / 5`] as Row),
-        ["メモ", r.memo],
-      ] as Row[]).filter(([, v]) => v.trim())
+    ? (
+        [
+          ["日付", r.date],
+          ["飲んだ場所", r.shop],
+          ...beanRows,
+          ...brewRows,
+          ["感じた味", trJoin(r.flavors)],
+          ...filledScores.map(([k, v]) => [k, `${v} / 5`] as Row),
+          ["メモ", r.memo],
+        ] as Row[]
+      ).filter(([, v]) => v.trim())
     : [];
   /** 一覧へ戻るとき、詳細が縮んで元の行へ帰る。行が見つからなければふつうに重ねて切り替える */
   function back(e: React.MouseEvent) {
@@ -216,7 +218,11 @@ function DetailBody() {
 
   return (
     <>
-      <header className="sub-header" data-top={atTop ? "" : undefined} style={r ? ({ "--kind": tint ?? roastColor(r.roast) } as React.CSSProperties) : undefined}>
+      <header
+        className="sub-header"
+        data-top={atTop ? "" : undefined}
+        style={r ? ({ "--kind": tint ?? roastColor(r.roast) } as React.CSSProperties) : undefined}
+      >
         <Link href="/" className="back" onClick={back}>
           <BackChevron />
         </Link>
@@ -235,7 +241,11 @@ function DetailBody() {
         </main>
       )}
       {r && (
-        <main className="content detail-page" data-tint={tint ? "" : undefined} style={{ paddingTop: 16, "--kind": tint ?? roastColor(r.roast) } as React.CSSProperties}>
+        <main
+          className="content detail-page"
+          data-tint={tint ? "" : undefined}
+          style={{ paddingTop: 16, "--kind": tint ?? roastColor(r.roast) } as React.CSSProperties}
+        >
           {/* 上からその豆の焙煎の色がうっすら差して、下で地に溶ける */}
           <div className="detail-tint" aria-hidden="true" />
           {/* 写真があるときは上に出して右下に小さく足すボタンを重ねる。ないときは下のボタンの列から足す */}
@@ -285,7 +295,11 @@ function DetailBody() {
                 <span className="detail-score-num roll" data-roll={features.numRoll ? "" : undefined}>
                   {features.scale === "star5" ? trv(r.overall) : features.scale === "ten" ? Math.round(r.overall * 2) : Math.round(r.overall * 20)}
                 </span>
-                {features.scale === "star5" ? <Stars n={r.overall} label="" /> : <span className="muted detail-score-of">{features.scale === "ten" ? "/10" : "/100"}</span>}
+                {features.scale === "star5" ? (
+                  <Stars n={r.overall} label="" />
+                ) : (
+                  <span className="muted detail-score-of">{features.scale === "ten" ? "/10" : "/100"}</span>
+                )}
               </div>
             </div>
             <div className="detail-when">
@@ -311,7 +325,12 @@ function DetailBody() {
               <div className="card detail-taste">
                 {filledScores.length >= 3 && (
                   <div className="detail-radar">
-                    <RadarChart axes={scores.map(([a]) => a)} series={[{ label: tr("この記録"), values: scores.map(([, v]) => v) }]} showValues color="var(--kind)" />
+                    <RadarChart
+                      axes={scores.map(([a]) => a)}
+                      series={[{ label: tr("この記録"), values: scores.map(([, v]) => v) }]}
+                      showValues
+                      color="var(--kind)"
+                    />
                   </div>
                 )}
                 {/* 五角形が出るときは角に数字があるので、目盛りは五角形が出ないとき（2つ以下）だけ */}

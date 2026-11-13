@@ -66,14 +66,8 @@ export default function ShowPage() {
 
   const roasts = useMemo(() => (records && prefs ? showRoasts(records, prefs) : []), [records, prefs]);
   // 今日の気分では、記録がない焙煎度も選べるようにする（よく飲む焙煎度が先）
-  const roastOptions = useMemo(
-    () => (mode === "mood" ? [...new Set([...roasts, ...ROASTS.filter((r) => r !== "不明")])] : roasts),
-    [mode, roasts],
-  );
-  const card = useMemo(
-    () => (records && prefs ? buildShowCard(records, prefs, roast) : null),
-    [records, prefs, roast],
-  );
+  const roastOptions = useMemo(() => (mode === "mood" ? [...new Set([...roasts, ...ROASTS.filter((r) => r !== "不明")])] : roasts), [mode, roasts]);
+  const card = useMemo(() => (records && prefs ? buildShowCard(records, prefs, roast) : null), [records, prefs, roast]);
 
   function updateMoods(next: string[]) {
     setMoods(next);
@@ -128,13 +122,7 @@ export default function ShowPage() {
                   {mode === "mood" ? tr("おまかせ") : tr("ぜんぶ")}
                 </button>
                 {roastOptions.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    className="chip"
-                    aria-pressed={roast === r}
-                    onClick={() => setRoast(r)}
-                  >
+                  <button key={r} type="button" className="chip" aria-pressed={roast === r} onClick={() => setRoast(r)}>
                     {trv(r)}
                   </button>
                 ))}
@@ -193,12 +181,7 @@ export default function ShowPage() {
             )
           ) : (
             <>
-              <button
-                type="button"
-                className="btn-secondary show-flip"
-                aria-pressed={flipped}
-                onClick={() => setFlipped(!flipped)}
-              >
+              <button type="button" className="btn-secondary show-flip" aria-pressed={flipped} onClick={() => setFlipped(!flipped)}>
                 <svg
                   width="16"
                   height="16"
@@ -218,7 +201,10 @@ export default function ShowPage() {
                 <section className="show-card" data-flipped={flipped || undefined} aria-label={tr("今日の気分")}>
                   <p className="show-ask">
                     <span>{tr("今日は")}</span>
-                    <span>{tr("こういう")}{roast ? tr("{0}の", roast) : ""}</span>
+                    <span>
+                      {tr("こういう")}
+                      {roast ? tr("{0}の", roast) : ""}
+                    </span>
                     <span>{tr("コーヒーが")}</span>
                     <span>{tr("飲みたいです")}</span>
                   </p>
@@ -248,7 +234,10 @@ export default function ShowPage() {
                 <section className="show-card" data-flipped={flipped || undefined} aria-label={tr("わたしの好み")}>
                   <p className="show-ask">
                     {/* 変なところで折り返さないよう、言葉のまとまりごとに区切る */}
-                    <span>{tr("こういう")}{roast ? tr("{0}の", roast) : ""}</span>
+                    <span>
+                      {tr("こういう")}
+                      {roast ? tr("{0}の", roast) : ""}
+                    </span>
                     <span>{tr("コーヒーが")}</span>
                     <span>{tr("好きです")}</span>
                   </p>

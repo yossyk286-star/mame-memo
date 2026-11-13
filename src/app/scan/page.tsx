@@ -20,7 +20,9 @@ export default function ScanPage() {
   // 2回目からは今日の一覧ですぐ描く（最初はサーバーの絵と合わせるため、読んでから）
   const [beans, setBeans] = useState<ScannedBean[] | null>(() => (clientReady ? (loadLastScan()?.beans ?? []) : null));
   // 今日のお店のメニューの数（調べるたびに増えるので、一覧が変わった合図で数え直す）
-  const [counts, setCounts] = useState(() => (clientReady ? { beans: loadLastScan()?.beans.length ?? 0, dishes: loadTodayMenu().length } : { beans: 0, dishes: 0 }));
+  const [counts, setCounts] = useState(() =>
+    clientReady ? { beans: loadLastScan()?.beans.length ?? 0, dishes: loadTodayMenu().length } : { beans: 0, dishes: 0 },
+  );
   // 「新しいお店」で一覧を作り直すための番号
   const [shop, setShop] = useState(0);
   // 辞典・農園のページ・記録の検索から「この名前で調べる」で来たときの名前（?q=）
@@ -40,7 +42,6 @@ export default function ScanPage() {
     window.addEventListener(LAST_SCAN_EVENT, count);
     return () => window.removeEventListener(LAST_SCAN_EVENT, count);
   }, []);
-
 
   return (
     <>
@@ -63,17 +64,12 @@ export default function ScanPage() {
       />
 
       <Hint id="scan-page" className="lead scan-hint">
-        {tr("撮った結果は今日のあいだ残るので、あとから「記録する」でも同じ豆から選べます。 次に試したい豆は「☆」で")}<Link href="/wishlist">{tr("気になる豆")}</Link>{tr("に残せます。")}
+        {tr("撮った結果は今日のあいだ残るので、あとから「記録する」でも同じ豆から選べます。 次に試したい豆は「☆」で")}
+        <Link href="/wishlist">{tr("気になる豆")}</Link>
+        {tr("に残せます。")}
       </Hint>
 
-      {beans && (
-        <MenuScan
-          key={shop}
-          initialQuery={q}
-          initialBeans={beans}
-          onPick={(b) => router.push(`/new?bean=${encodeURIComponent(b.name)}`)}
-        />
-      )}
+      {beans && <MenuScan key={shop} initialQuery={q} initialBeans={beans} onPick={(b) => router.push(`/new?bean=${encodeURIComponent(b.name)}`)} />}
 
       {/* 今日まだ何も調べていないときだけ、前に調べたものを下に出す */}
       {beans && counts.beans === 0 && (

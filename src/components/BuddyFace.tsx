@@ -7,59 +7,59 @@ export default function BuddyFace({ mood = "normal", size = 56 }: { mood?: Buddy
       <ellipse cx="32" cy="60.5" rx="14" ry="2.2" fill="var(--fill-strong)" />
       {/* ときどき首をかしげる（影は動かさない） */}
       <g className="buddy-head">
-      <ellipse cx="32" cy="35" rx="19.5" ry="23" fill="var(--buddy-body)" stroke="var(--accent)" strokeWidth="2" />
-      {/* 豆のまんなかの割れ目。顔にかからないよう上だけ */}
-      <path d="M31 13.5c-3.5 4-3.5 8.5 1 12.5" fill="none" stroke="var(--buddy-crease)" strokeWidth="2.6" strokeLinecap="round" />
-      <ellipse cx="25" cy="22" rx="3.2" ry="5.5" fill="#fff" opacity="0.18" transform="rotate(25 25 22)" />
+        <ellipse cx="32" cy="35" rx="19.5" ry="23" fill="var(--buddy-body)" stroke="var(--accent)" strokeWidth="2" />
+        {/* 豆のまんなかの割れ目。顔にかからないよう上だけ */}
+        <path d="M31 13.5c-3.5 4-3.5 8.5 1 12.5" fill="none" stroke="var(--buddy-crease)" strokeWidth="2.6" strokeLinecap="round" />
+        <ellipse cx="25" cy="22" rx="3.2" ry="5.5" fill="#fff" opacity="0.18" transform="rotate(25 25 22)" />
 
-      <g fill="var(--buddy-blush)">
-        <ellipse cx="20.5" cy="45.5" rx="3.2" ry="2" />
-        <ellipse cx="43.5" cy="45.5" rx="3.2" ry="2" />
-      </g>
-      <g stroke="var(--buddy-ink)" strokeWidth="2" strokeLinecap="round" fill="none">
-        {mood === "happy" && (
-          <>
-            <path className="buddy-eyes" d="M22.5 41.5q2.5-3.2 5 0M36.5 41.5q2.5-3.2 5 0" />
-            <path d="M28.5 45.5q3.5 4.5 7 0z" fill="var(--buddy-ink)" strokeLinejoin="round" />
-          </>
-        )}
-        {mood === "normal" && <path d="M29 45.5q3 2.6 6 0" />}
-        {mood === "wow" && <ellipse cx="32" cy="47" rx="2.2" ry="2.6" fill="var(--buddy-ink)" stroke="none" />}
-        {mood === "worried" && (
-          <>
-            <path d="M21.5 36.5l5-1.6M42.5 36.5l-5-1.6" strokeWidth="1.6" />
-            <path d="M28 47.5q2-1.8 4 0t4 0" strokeWidth="1.8" />
-          </>
-        )}
-        {mood === "sad" && (
-          <>
-            <path d="M22 37.2l4.6-1.2M42 37.2l-4.6-1.2" strokeWidth="1.6" />
-            <path d="M29 47.5q3-2.6 6 0" />
-          </>
-        )}
-      </g>
-      {mood !== "happy" && (
-        <g className="buddy-eyes" fill="var(--buddy-ink)">
-          <circle cx="25" cy={mood === "sad" ? 41.5 : 40.5} r={mood === "wow" ? 2.6 : 2.2} />
-          <circle cx="39" cy={mood === "sad" ? 41.5 : 40.5} r={mood === "wow" ? 2.6 : 2.2} />
-          {mood === "wow" && (
-            <g fill="var(--buddy-body)">
-              <circle cx="25.9" cy="39.6" r="0.9" />
-              <circle cx="39.9" cy="39.6" r="0.9" />
-            </g>
+        <g fill="var(--buddy-blush)">
+          <ellipse cx="20.5" cy="45.5" rx="3.2" ry="2" />
+          <ellipse cx="43.5" cy="45.5" rx="3.2" ry="2" />
+        </g>
+        <g stroke="var(--buddy-ink)" strokeWidth="2" strokeLinecap="round" fill="none">
+          {mood === "happy" && (
+            <>
+              <path className="buddy-eyes" d="M22.5 41.5q2.5-3.2 5 0M36.5 41.5q2.5-3.2 5 0" />
+              <path d="M28.5 45.5q3.5 4.5 7 0z" fill="var(--buddy-ink)" strokeLinejoin="round" />
+            </>
+          )}
+          {mood === "normal" && <path d="M29 45.5q3 2.6 6 0" />}
+          {mood === "wow" && <ellipse cx="32" cy="47" rx="2.2" ry="2.6" fill="var(--buddy-ink)" stroke="none" />}
+          {mood === "worried" && (
+            <>
+              <path d="M21.5 36.5l5-1.6M42.5 36.5l-5-1.6" strokeWidth="1.6" />
+              <path d="M28 47.5q2-1.8 4 0t4 0" strokeWidth="1.8" />
+            </>
+          )}
+          {mood === "sad" && (
+            <>
+              <path d="M22 37.2l4.6-1.2M42 37.2l-4.6-1.2" strokeWidth="1.6" />
+              <path d="M29 47.5q3-2.6 6 0" />
+            </>
           )}
         </g>
-      )}
-      {mood === "worried" && (
-        <path className="buddy-sweat" d="M49 26c-1.8 2.6-2.6 4-2.6 5.2a2.6 2.6 0 0 0 5.2 0c0-1.2-.8-2.6-2.6-5.2z" fill="var(--buddy-drop)" />
-      )}
-      {mood === "sad" && <path d="M41 44.5c-1 1.6-1.5 2.4-1.5 3.1a1.5 1.5 0 0 0 3 0c0-.7-.5-1.5-1.5-3.1z" fill="var(--buddy-drop)" />}
-      {mood === "wow" && (
-        <g className="buddy-spark" fill="var(--buddy-spark)">
-          <path d="M9 18l1.3 3.2 3.2 1.3-3.2 1.3L9 27l-1.3-3.2-3.2-1.3 3.2-1.3z" />
-          <path d="M55 12l.9 2.2 2.2.9-2.2.9-.9 2.2-.9-2.2-2.2-.9 2.2-.9z" />
-        </g>
-      )}
+        {mood !== "happy" && (
+          <g className="buddy-eyes" fill="var(--buddy-ink)">
+            <circle cx="25" cy={mood === "sad" ? 41.5 : 40.5} r={mood === "wow" ? 2.6 : 2.2} />
+            <circle cx="39" cy={mood === "sad" ? 41.5 : 40.5} r={mood === "wow" ? 2.6 : 2.2} />
+            {mood === "wow" && (
+              <g fill="var(--buddy-body)">
+                <circle cx="25.9" cy="39.6" r="0.9" />
+                <circle cx="39.9" cy="39.6" r="0.9" />
+              </g>
+            )}
+          </g>
+        )}
+        {mood === "worried" && (
+          <path className="buddy-sweat" d="M49 26c-1.8 2.6-2.6 4-2.6 5.2a2.6 2.6 0 0 0 5.2 0c0-1.2-.8-2.6-2.6-5.2z" fill="var(--buddy-drop)" />
+        )}
+        {mood === "sad" && <path d="M41 44.5c-1 1.6-1.5 2.4-1.5 3.1a1.5 1.5 0 0 0 3 0c0-.7-.5-1.5-1.5-3.1z" fill="var(--buddy-drop)" />}
+        {mood === "wow" && (
+          <g className="buddy-spark" fill="var(--buddy-spark)">
+            <path d="M9 18l1.3 3.2 3.2 1.3-3.2 1.3L9 27l-1.3-3.2-3.2-1.3 3.2-1.3z" />
+            <path d="M55 12l.9 2.2 2.2.9-2.2.9-.9 2.2-.9-2.2-2.2-.9 2.2-.9z" />
+          </g>
+        )}
       </g>
     </svg>
   );
