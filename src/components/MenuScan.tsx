@@ -23,6 +23,7 @@ import {
   peekRecords,
   peekWishes,
   putBag,
+  deleteBag,
   putWish,
   type WishBean,
 } from "@/lib/db";
@@ -250,7 +251,8 @@ export default function MenuScan({
   // 料理メニューをまだ読み取っていないときに「合う料理を探す」で挙げてもらった料理
   const [dishIdeas, setDishIdeas] = useState<Record<string, MenuRank[]>>({});
   // 買った豆を、家で何回かに分けて淹れる豆として登録する
-  const [bagged, setBagged] = useState<string[]>([]);
+  // 登録した名前 → 家の豆の id（もう一度押したら外すのに使う）
+  const [bagged, setBagged] = useState<Record<string, string>>({});
   // AI を使わずに出したとき、どこから出したか（調べ直すボタン用）
   const [localHit, setLocalHit] = useState<{
     name: string;
@@ -460,8 +462,9 @@ export default function MenuScan({
 
   async function addBag(b: ScannedBean) {
     const d = beanToDraft(b);
+    const id = crypto.randomUUID();
     await putBag({
-      id: crypto.randomUUID(),
+      id,
       origin: d.origin,
       farm: d.farm,
       roast: d.roast,
@@ -473,7 +476,20 @@ export default function MenuScan({
       finished: false,
       createdAt: Date.now(),
     });
-    setBagged((ns) => [...ns, b.name]);
+    setBagged((m) => ({ ...m, [b.name]: id }));
+  }
+
+  /** 家の豆ボタン：まだなら登録、登録済みなら確認してから外す */
+  async function toggleBag(b: ScannedBean) {
+    const id = bagged[b.name];
+    if (!id) return addBag(b);
+    if (!(await askConfirm({ message: tr("家の豆から外しますか？"), action: tr("外す") }))) return;
+    await deleteBag(id);
+    setBagged((m) => {
+      const next = { ...m };
+      delete next[b.name];
+      return next;
+    });
   }
 
   /** いま頼む・食べているスイーツか、文字で入れた気分に合う順に並べる */
@@ -1511,11 +1527,11 @@ export default function MenuScan({
                   <button
                     type="button"
                     className={styles.act}
-                    disabled={bagged.includes(b.name)}
+                    aria-pressed={!!bagged[b.name]}
                     aria-label={tr("家の豆に登録（買って家にある豆）")}
-                    onClick={() => addBag(b)}
+                    onClick={() => toggleBag(b)}
                   >
-                    {bagged.includes(b.name) ? tr("家の豆 ✓") : tr("＋家の豆")}
+                    {bagged[b.name] ? tr("家の豆 ✓") : tr("＋家の豆")}
                   </button>
                 )}
               </div>
