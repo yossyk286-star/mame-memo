@@ -32,13 +32,7 @@ function LeanRow({
       <div className="rating-scale">
         <div className="rating-btns">
           {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              type="button"
-              key={n}
-              className="chip"
-              aria-pressed={value === n}
-              onClick={() => onChange(value === n ? null : n)}
-            >
+            <button type="button" key={n} className="chip" aria-pressed={value === n} onClick={() => onChange(value === n ? null : n)}>
               {trv(n)}
             </button>
           ))}
@@ -138,11 +132,7 @@ export default function PrefsPage() {
           </fieldset>
           <fieldset className="field">
             <legend className="label">{tr("苦手な焙煎度")}</legend>
-            <MultiChips
-              options={ROAST_OPTIONS.filter((r) => !prefs.roasts.includes(r))}
-              value={prefs.avoidRoasts}
-              onChange={(v) => update("avoidRoasts", v)}
-            />
+            <MultiChips options={ROAST_OPTIONS.filter((r) => !prefs.roasts.includes(r))} value={prefs.avoidRoasts} onChange={(v) => update("avoidRoasts", v)} />
           </fieldset>
           <fieldset className="field">
             <legend className="label">{tr("好きな精製方法")}</legend>
@@ -158,13 +148,7 @@ export default function PrefsPage() {
           </fieldset>
           <fieldset className="field">
             <legend className="label">{tr("好きな産地（国）")}</legend>
-            <FlavorPicker
-              id="p-origin"
-              base={[]}
-              placeholder={tr("例：エチオピア、ケニア")}
-              value={prefs.origins}
-              onChange={(v) => update("origins", v)}
-            />
+            <FlavorPicker id="p-origin" base={[]} placeholder={tr("例：エチオピア、ケニア")} value={prefs.origins} onChange={(v) => update("origins", v)} />
           </fieldset>
           <fieldset className="field">
             <legend className="label">{tr("好きな味の寄り方（こだわらなければ選ばない）")}</legend>

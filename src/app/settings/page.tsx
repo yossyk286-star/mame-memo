@@ -19,7 +19,6 @@ const APPEARANCES: { id: Appearance; label: string }[] = [
   { id: "time", label: "時間で" },
 ];
 
-
 // 言語の名前は、どちらの言語で開いていても読めるようにそのまま出す
 const LANGS: { id: LangSetting; label: string }[] = [
   { id: "auto", label: "自動" },
@@ -89,12 +88,7 @@ export default function SettingsPage() {
             <span>{tr("明るさ")}</span>
             <div className="mode-switch" role="group" aria-label={tr("明るさ")}>
               {APPEARANCES.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  aria-pressed={theme.appearance === a.id}
-                  onClick={() => changeTheme({ appearance: a.id })}
-                >
+                <button key={a.id} type="button" aria-pressed={theme.appearance === a.id} onClick={() => changeTheme({ appearance: a.id })}>
                   {trv(a.label)}
                 </button>
               ))}
@@ -105,12 +99,7 @@ export default function SettingsPage() {
             <span>{tr("文字の大きさ")}</span>
             <div className="mode-switch" role="group" aria-label={tr("文字の大きさ")}>
               {(["normal", "large"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  aria-pressed={(theme.text ?? "normal") === t}
-                  onClick={() => changeTheme({ text: t })}
-                >
+                <button key={t} type="button" aria-pressed={(theme.text ?? "normal") === t} onClick={() => changeTheme({ text: t })}>
                   {t === "normal" ? tr("標準") : tr("大きめ")}
                 </button>
               ))}
@@ -120,13 +109,7 @@ export default function SettingsPage() {
             <span>{tr("テーマ色")}</span>
             <div className="swatches" role="group" aria-label={tr("テーマ色")}>
               {ACCENTS.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  className="swatch"
-                  aria-pressed={theme.accent === a.id}
-                  onClick={() => changeTheme({ accent: a.id })}
-                >
+                <button key={a.id} type="button" className="swatch" aria-pressed={theme.accent === a.id} onClick={() => changeTheme({ accent: a.id })}>
                   <i style={{ "--sw": a.light } as React.CSSProperties} />
                   {trv(a.label)}
                 </button>

@@ -11,7 +11,9 @@ export const ScannedBeanSchema = z.object({
   name: z.string().describe("メニューに書かれている豆の名前（例：ケニア ニエリ）"),
   reading: z
     .string()
-    .describe("名前にアルファベットなど読みにくい外国語の地名・農園名が入っているときだけ、その名前のカタカナの読み（例：Yirgacheffe Kochere→イルガチェフェ コチャレ、Huila→ウイラ）。カタカナ・ひらがな・漢字だけの名前や、読みがわからないときは空文字"),
+    .describe(
+      "名前にアルファベットなど読みにくい外国語の地名・農園名が入っているときだけ、その名前のカタカナの読み（例：Yirgacheffe Kochere→イルガチェフェ コチャレ、Huila→ウイラ）。カタカナ・ひらがな・漢字だけの名前や、読みがわからないときは空文字",
+    ),
   origin: z.string().describe("産地の国名。わからなければ空文字"),
   farm: z
     .string()
@@ -52,9 +54,7 @@ export const MenuListSchema = z.object({
   beans: z
     .array(
       ScannedBeanSchema.pick({ name: true, reading: true, origin: true, farm: true, roast: true, process: true, menuNote: true }).extend({
-        facts: z
-          .string()
-          .describe("写真に書いてあるそのほかの手がかり（値段・量・品種・標高・抽出方法・ロースター名など）を短く。なければ空文字"),
+        facts: z.string().describe("写真に書いてあるそのほかの手がかり（値段・量・品種・標高・抽出方法・ロースター名など）を短く。なければ空文字"),
       }),
     )
     .describe("写真に載っているコーヒー豆すべて。数に上限はない。豆が写っていなければ空配列"),

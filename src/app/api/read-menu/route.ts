@@ -4,7 +4,16 @@ import { timingSafeEqual } from "node:crypto";
 import { BEAN_REFERENCE } from "@/lib/knownBeans";
 import { CHOOSING_TIPS, TERMS } from "@/lib/glossary";
 import { nameKey } from "@/lib/savedLookups";
-import { FoodMenuSchema, FoodPairingSchema, MenuListSchema, MenuScanResultSchema, PairingResultSchema, DishIdeasSchema, TermLookupSchema, SpecResultSchema } from "@/lib/schemas";
+import {
+  FoodMenuSchema,
+  FoodPairingSchema,
+  MenuListSchema,
+  MenuScanResultSchema,
+  PairingResultSchema,
+  DishIdeasSchema,
+  TermLookupSchema,
+  SpecResultSchema,
+} from "@/lib/schemas";
 
 // 品の多いメニューを全部読むときは時間がかかるので、待ち時間の上限を長めにする
 export const maxDuration = 120;
@@ -109,10 +118,7 @@ function error(status: number, message: string) {
 
 export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY || !process.env.APP_PASSCODE) {
-    return error(
-      503,
-      "読み取り機能の設定がまだです（API キーと合言葉を登録してください）",
-    );
+    return error(503, "読み取り機能の設定がまだです（API キーと合言葉を登録してください）");
   }
 
   const body = await req.json().catch(() => null);
@@ -203,7 +209,9 @@ export async function POST(req: Request) {
       const response = await client.messages.parse({
         model: READ_MODEL,
         max_tokens: 1500,
-        system: sys(`あなたはコーヒー豆の袋やラベルを読む係です。写真に書いてある項目と値だけを、そのまま書き写してください。書いていないことは推測で足さないでください。${READING_RULES}`),
+        system: sys(
+          `あなたはコーヒー豆の袋やラベルを読む係です。写真に書いてある項目と値だけを、そのまま書き写してください。書いていないことは推測で足さないでください。${READING_RULES}`,
+        ),
         output_config: { effort: READ_EFFORT, format: zodOutputFormat(SpecResultSchema) },
         messages: [
           {
@@ -226,7 +234,10 @@ export async function POST(req: Request) {
   // 逆向き：1杯の豆に、読み取った料理メニューのどれが合うか
   if (body?.bean && typeof body.bean === "object" && Array.isArray(body?.dishes)) {
     const b = body.bean as Record<string, unknown>;
-    const name = [b.name, b.roast, b.process].filter((x) => typeof x === "string" && x).join(" / ").slice(0, 120);
+    const name = [b.name, b.roast, b.process]
+      .filter((x) => typeof x === "string" && x)
+      .join(" / ")
+      .slice(0, 120);
     const dishes = (body.dishes as unknown[])
       .filter((x): x is string => typeof x === "string" && !!x.trim())
       .slice(0, MAX_PAIRING_BEANS)
@@ -277,11 +288,7 @@ export async function POST(req: Request) {
       : [];
     if (!sweet || sweet.length > MAX_WORD) return error(400, isMood ? "気分を入れてください" : "スイーツの名前を入れてください");
     if (beans.length === 0) return error(400, "豆がありません");
-    const list = beans
-      .map((b, i) =>
-        `${i}. ${[b.name, b.roast, b.process].filter((x) => typeof x === "string" && x).join(" / ")}`.slice(0, 120),
-      )
-      .join("\n");
+    const list = beans.map((b, i) => `${i}. ${[b.name, b.roast, b.process].filter((x) => typeof x === "string" && x).join(" / ")}`.slice(0, 120)).join("\n");
     try {
       const response = await client.messages.parse({
         model: MODEL,
@@ -321,7 +328,12 @@ export async function POST(req: Request) {
     const turns = [...history, { q: ask, a: "" }];
     const messages: Anthropic.MessageParam[] = turns.flatMap((t, i) => {
       const q = i === 0 ? `## 見ているもの\n${context}\n\n## 質問\n${t.q}` : t.q;
-      return t.a ? [{ role: "user" as const, content: q }, { role: "assistant" as const, content: t.a }] : [{ role: "user" as const, content: q }];
+      return t.a
+        ? [
+            { role: "user" as const, content: q },
+            { role: "assistant" as const, content: t.a },
+          ]
+        : [{ role: "user" as const, content: q }];
     });
     // 画面に書かれていくように見せるため、届いた分から少しずつ送る（最初の1つが届くまでの失敗はいつも通り JSON で返す）
     if (body.stream === true) {
@@ -329,8 +341,7 @@ export async function POST(req: Request) {
         const it = client.messages
           .stream({ model: MODEL, max_tokens: 1500, system: sys(ASK_SYSTEM), output_config: { effort: "low" }, messages })
           [Symbol.asyncIterator]();
-        const textOf = (ev: Anthropic.MessageStreamEvent) =>
-          ev.type === "content_block_delta" && ev.delta.type === "text_delta" ? ev.delta.text : "";
+        const textOf = (ev: Anthropic.MessageStreamEvent) => (ev.type === "content_block_delta" && ev.delta.type === "text_delta" ? ev.delta.text : "");
         // 最初の文字が届くまで待つ（ここまでの失敗は apiError で理由を返す）
         let first = "";
         for (let r = await it.next(); !r.done; r = await it.next()) {
@@ -386,9 +397,11 @@ export async function POST(req: Request) {
       const response = await client.messages.parse({
         model: MODEL,
         max_tokens: 2000,
-        system: sys(`あなたはコーヒー初心者向け辞典の編集者です。次の用語集と同じ書き方で、やさしい日本語で説明してください。\n\n${TERMS.map(
-          (t) => `- ${t.term}（${t.category}）: ${t.description}`,
-        ).join("\n")}`),
+        system: sys(
+          `あなたはコーヒー初心者向け辞典の編集者です。次の用語集と同じ書き方で、やさしい日本語で説明してください。\n\n${TERMS.map(
+            (t) => `- ${t.term}（${t.category}）: ${t.description}`,
+          ).join("\n")}`,
+        ),
         output_config: { effort: "low", format: zodOutputFormat(TermLookupSchema) },
         messages: [{ role: "user", content: `「${term}」という言葉を辞典に足したいです。説明してください。` }],
       });
@@ -468,41 +481,36 @@ export async function POST(req: Request) {
     const explained = await Promise.all([first, ...chunks.slice(1).map(explainChunk)]);
 
     // 写真から読んだこと（名前・産地など）を優先し、解説は2回目の答えから付ける。解説が付かなかった豆も名前だけは残す
-    const exFor = new Map(
-      chunks.flatMap((chunk, c) => chunk.map((b, i) => [b, explained[c].find((x) => x.name === b.name) ?? explained[c][i]] as const)),
-    );
+    const exFor = new Map(chunks.flatMap((chunk, c) => chunk.map((b, i) => [b, explained[c].find((x) => x.name === b.name) ?? explained[c][i]] as const)));
     const beans = items.map((b) => {
-        const ex = exFor.get(b);
-        return {
-          ...(isKnown(b) ? { known: true } : {}),
-          name: b.name,
-          reading: b.reading,
-          origin: b.origin || ex?.origin || "",
-          farm: b.farm || ex?.farm || "",
-          roast: b.roast ?? ex?.roast ?? null,
-          process: b.process ?? ex?.process ?? null,
-          menuNote: b.menuNote,
-          explanation: ex?.explanation ?? "",
-          recommendedMethod: ex?.recommendedMethod ?? null,
-          recommendation: ex?.recommendation ?? "",
-          sweets: ex?.sweets ?? "",
-          taste: ex?.taste ?? { acidity: 3, bitterness: 3, sweetness: 3, body: 3 },
-          methodNotes: ex?.methodNotes ?? [],
-        };
-      });
+      const ex = exFor.get(b);
+      return {
+        ...(isKnown(b) ? { known: true } : {}),
+        name: b.name,
+        reading: b.reading,
+        origin: b.origin || ex?.origin || "",
+        farm: b.farm || ex?.farm || "",
+        roast: b.roast ?? ex?.roast ?? null,
+        process: b.process ?? ex?.process ?? null,
+        menuNote: b.menuNote,
+        explanation: ex?.explanation ?? "",
+        recommendedMethod: ex?.recommendedMethod ?? null,
+        recommendation: ex?.recommendation ?? "",
+        sweets: ex?.sweets ?? "",
+        taste: ex?.taste ?? { acidity: 3, bitterness: 3, sweetness: 3, body: 3 },
+        methodNotes: ex?.methodNotes ?? [],
+      };
+    });
     return { beans };
   };
 
   const image = body?.image;
   const text = typeof body?.text === "string" ? body.text.trim() : "";
   if (text) {
-    if (text.length > MAX_TEXT)
-      return error(413, `文字は${MAX_TEXT}文字までにしてください`);
+    if (text.length > MAX_TEXT) return error(413, `文字は${MAX_TEXT}文字までにしてください`);
   } else {
-    if (typeof image !== "string" || image.length === 0)
-      return error(400, "写真か文字を入れてください");
-    if (image.length > MAX_IMAGE_BASE64)
-      return error(413, "写真が大きすぎます");
+    if (typeof image !== "string" || image.length === 0) return error(400, "写真か文字を入れてください");
+    if (image.length > MAX_IMAGE_BASE64) return error(413, "写真が大きすぎます");
   }
 
   try {
@@ -520,12 +528,7 @@ export async function POST(req: Request) {
         );
 
     if (!result) {
-      return error(
-        422,
-        text
-          ? "うまく読み取れませんでした。書き方を変えてみてください"
-          : "うまく読み取れませんでした。もう一度撮ってみてください",
-      );
+      return error(422, text ? "うまく読み取れませんでした。書き方を変えてみてください" : "うまく読み取れませんでした。もう一度撮ってみてください");
     }
     return Response.json(result);
   } catch (e) {
@@ -539,8 +542,7 @@ function apiError(e: unknown) {
     console.error("read-menu parse error", e.message.slice(0, 200));
     return error(422, "豆が多すぎて読み切れませんでした。メニューを半分ずつ撮ってみてください");
   }
-  if (e instanceof Anthropic.RateLimitError)
-    return error(429, "混み合っています。少し待ってからもう一度お試しください");
+  if (e instanceof Anthropic.RateLimitError) return error(429, "混み合っています。少し待ってからもう一度お試しください");
   if (e instanceof Anthropic.AuthenticationError) return error(503, "API キーが正しくないようです");
   if (e instanceof Anthropic.APIError) {
     console.error("read-menu API error", e.status, e.message);

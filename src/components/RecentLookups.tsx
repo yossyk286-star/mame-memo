@@ -6,13 +6,7 @@ import type { ScannedBean } from "@/lib/menuScan";
 import { recentSaved } from "@/lib/savedLookups";
 
 /** 調べる画面の下に、前に調べた豆を3つ。押すと今日の一覧に入る（AI は呼ばない） */
-export default function RecentLookups({
-  onOpen,
-  onRecord,
-}: {
-  onOpen: (d: ScannedBean) => void;
-  onRecord: (d: ScannedBean) => void;
-}) {
+export default function RecentLookups({ onOpen, onRecord }: { onOpen: (d: ScannedBean) => void; onRecord: (d: ScannedBean) => void }) {
   const [items, setItems] = useState<ScannedBean[]>([]);
   useEffect(() => setItems(recentSaved(3)), []);
   if (items.length === 0) return null;

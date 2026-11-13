@@ -53,8 +53,11 @@ export function volumeName(ml: number) {
 export function priceChoices(past: TastingRecord[], shop: string) {
   const count = new Map<number, number>();
   for (const r of past) if (r.price) count.set(r.price, (count.get(r.price) ?? 0) + 1);
-  const often = [...count].sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 3).map(([p]) => p);
-  const here = shop.trim() ? past.find((r) => r.price && r.shop.trim() === shop.trim())?.price ?? null : null;
+  const often = [...count]
+    .sort((a, b) => b[1] - a[1] || a[0] - b[0])
+    .slice(0, 3)
+    .map(([p]) => p);
+  const here = shop.trim() ? (past.find((r) => r.price && r.shop.trim() === shop.trim())?.price ?? null) : null;
   const out = here ? [here, ...often.filter((p) => p !== here)] : often;
   return out.slice(0, 4).sort((a, b) => a - b);
 }
@@ -68,5 +71,8 @@ export function tagsUsed(records: TastingRecord[]) {
 
 /** 入力されたタグをととのえる（先頭の # と前後の空白を取る） */
 export function cleanTag(t: string) {
-  return t.replace(/^[#＃\s]+/, "").trim().slice(0, 20);
+  return t
+    .replace(/^[#＃\s]+/, "")
+    .trim()
+    .slice(0, 20);
 }

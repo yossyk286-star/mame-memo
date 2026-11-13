@@ -17,13 +17,7 @@ const TITLES: Record<GlossaryCategory, string> = {
 };
 
 /** 入力フォームの「?」から開く、その場で読める用語説明 */
-export default function GlossarySheet({
-  category,
-  onClose,
-}: {
-  category: GlossaryCategory;
-  onClose: () => void;
-}) {
+export default function GlossarySheet({ category, onClose }: { category: GlossaryCategory; onClose: () => void }) {
   useEffect(() => {
     markSheetOrigin();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -49,13 +43,7 @@ export default function GlossarySheet({
   // 後ろの画面（.app）を奥へ下げるので、シートはその外（body の直下）に置く
   return createPortal(
     <div className="sheet-backdrop" onClick={onClose}>
-      <section
-        className="sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="sheet-title"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <section className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <h2 id="sheet-title">{trv(TITLES[category])}</h2>
           <button className="icon-btn" aria-label={tr("閉じる")} onClick={onClose} autoFocus>

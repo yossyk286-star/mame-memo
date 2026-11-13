@@ -3,12 +3,7 @@
 import SearchField from "@/components/SearchField";
 import { useEffect, useState } from "react";
 import DailyQuiz from "@/components/DailyQuiz";
-import {
-  CATEGORIES,
-  CHOOSING_TIPS,
-  TERMS,
-  type GlossaryCategory,
-} from "@/lib/glossary";
+import { CATEGORIES, CHOOSING_TIPS, TERMS, type GlossaryCategory } from "@/lib/glossary";
 import { DRINKS } from "@/lib/knownBeans";
 import type { TermLookup } from "@/lib/menuScan";
 import { announceBuddy, pick } from "@/lib/buddy";
@@ -65,21 +60,10 @@ function MyDrinks({ term, records }: { term: string; records: TastingRecord[] })
   );
 }
 
-const FILTERS: ("すべて" | "自分で追加" | "ドリンク" | GlossaryCategory)[] = [
-  "すべて",
-  "自分で追加",
-  "ドリンク",
-  ...CATEGORIES,
-];
+const FILTERS: ("すべて" | "自分で追加" | "ドリンク" | GlossaryCategory)[] = ["すべて", "自分で追加", "ドリンク", ...CATEGORIES];
 
 /** 辞典にない言葉を AI に調べてもらい、自分の辞典に足す */
-function AddTerm({
-  query,
-  onAdded,
-}: {
-  query: string;
-  onAdded: (t: MyTerm) => void;
-}) {
+function AddTerm({ query, onAdded }: { query: string; onAdded: (t: MyTerm) => void }) {
   const [passcode, setPasscode] = useState("");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -97,8 +81,12 @@ function AddTerm({
     setBusy(true);
     setError("");
     try {
-      const res = await sendAI({
-          term: query.trim() }, passcode);
+      const res = await sendAI(
+        {
+          term: query.trim(),
+        },
+        passcode,
+      );
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) setSaved(false);
       if (!res.ok) throw new Error(data.error ?? "調べられませんでした");
@@ -118,10 +106,7 @@ function AddTerm({
   }
 
   return (
-    <section
-      className="tips"
-      style={{ display: "flex", flexDirection: "column", gap: 8 }}
-    >
+    <section className="tips" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <h2 style={{ margin: 0 }}>{tr("「{0}」を調べて辞典に追加", query.trim())}</h2>
       <p className="term-desc" style={{ margin: 0 }}>
         {tr("AI が初心者向けの説明を書いて、「自分で追加」に入れます（1回0.1円くらい）。")}
@@ -137,12 +122,7 @@ function AddTerm({
           onChange={(e) => setPasscode(e.target.value)}
         />
       )}
-      <button
-        type="button"
-        className="btn-primary"
-        onClick={lookup}
-        disabled={busy}
-      >
+      <button type="button" className="btn-primary" onClick={lookup} disabled={busy}>
         {busy ? tr("調べています…") : tr("調べて追加する")}
       </button>
       {busy && <Skeleton plain label={tr("AI が説明を書いています…")} lines={3} />}
@@ -176,7 +156,14 @@ export default function GlossaryPage() {
     setMyTerms(next);
     saveMyTerms(next);
     setJustAdded(t.term);
-    announceBuddy({ mood: "wow", text: pick([tr("「{0}」を覚えたね。ひとつ詳しくなった！", t.term), tr("「{0}」をメモしたよ。お店で見かけたら思い出してね", t.term), tr("「{0}」、覚えた！コーヒーの話がもっと楽しくなるね", t.term)]) });
+    announceBuddy({
+      mood: "wow",
+      text: pick([
+        tr("「{0}」を覚えたね。ひとつ詳しくなった！", t.term),
+        tr("「{0}」をメモしたよ。お店で見かけたら思い出してね", t.term),
+        tr("「{0}」、覚えた！コーヒーの話がもっと楽しくなるね", t.term),
+      ]),
+    });
     setQuery(t.term);
     setFilter("すべて");
   }
@@ -189,29 +176,16 @@ export default function GlossaryPage() {
   }
 
   const q = query.trim().toLowerCase();
-  const all = [
-    ...myTerms.map((t) => ({ ...t, mine: true })),
-    ...TERMS.map((t) => ({ ...t, mine: false })),
-  ];
+  const all = [...myTerms.map((t) => ({ ...t, mine: true })), ...TERMS.map((t) => ({ ...t, mine: false }))];
   const terms = all.filter(
     (t) =>
-      (filter === "すべて" ||
-        (filter === "自分で追加" ? t.mine : t.category === filter)) &&
-      (!q ||
-        [t.term, t.reading ?? "", t.description, tr(t.term), tr(t.description)].some((s) =>
-          s.toLowerCase().includes(q),
-        )),
+      (filter === "すべて" || (filter === "自分で追加" ? t.mine : t.category === filter)) &&
+      (!q || [t.term, t.reading ?? "", t.description, tr(t.term), tr(t.description)].some((s) => s.toLowerCase().includes(q))),
   );
   // ドリンクは「ドリンク」で一覧、「すべて」では検索したときだけ出す
   const drinks =
     filter === "ドリンク" || (filter === "すべて" && q)
-      ? DRINKS.filter(
-          (d) =>
-            !q ||
-            [d.name, d.recipe, d.description, tr(d.name), tr(d.recipe), tr(d.description)].some((s) =>
-              s.toLowerCase().includes(q),
-            ),
-        )
+      ? DRINKS.filter((d) => !q || [d.name, d.recipe, d.description, tr(d.name), tr(d.recipe), tr(d.description)].some((s) => s.toLowerCase().includes(q)))
       : [];
   // 種類ごとに見出しを付けてまとめる。自分で足した言葉はいちばん上
   const groups: [string, typeof terms][] = [];
@@ -225,8 +199,7 @@ export default function GlossaryPage() {
   const few = !!q && terms.length + drinks.length <= 3;
   // 言葉そのものが辞典にないときだけ、調べて足すボタンを出す
   const exact =
-    all.some((t) => t.term.toLowerCase() === q || t.reading === q || tr(t.term).toLowerCase() === q) ||
-    DRINKS.some((d) => d.name.toLowerCase() === q);
+    all.some((t) => t.term.toLowerCase() === q || t.reading === q || tr(t.term).toLowerCase() === q) || DRINKS.some((d) => d.name.toLowerCase() === q);
 
   return (
     <>
@@ -250,19 +223,11 @@ export default function GlossaryPage() {
           />
         </div>
         <div className="scroll-row" data-tour="g-filter">
-          {FILTERS.filter((c) => c !== "自分で追加" || myTerms.length > 0).map(
-            (c) => (
-              <button
-                key={c}
-                type="button"
-                className="chip"
-                aria-pressed={filter === c}
-                onClick={() => setFilter(c)}
-              >
-                {trv(c)}
-              </button>
-            ),
-          )}
+          {FILTERS.filter((c) => c !== "自分で追加" || myTerms.length > 0).map((c) => (
+            <button key={c} type="button" className="chip" aria-pressed={filter === c} onClick={() => setFilter(c)}>
+              {trv(c)}
+            </button>
+          ))}
         </div>
       </div>
       <main className="content" style={{ gap: 10 }}>
@@ -354,9 +319,7 @@ export default function GlossaryPage() {
               </section>
             );
           })}
-        {filter !== "ドリンク" && terms.length === 0 && !q && (
-          <p className="empty">{tr("まだありません。")}</p>
-        )}
+        {filter !== "ドリンク" && terms.length === 0 && !q && <p className="empty">{tr("まだありません。")}</p>}
       </main>
     </>
   );

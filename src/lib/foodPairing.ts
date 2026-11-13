@@ -306,7 +306,6 @@ export function loadTodayMenu(): FoodMenu["dishes"] {
   return last?.date === today() ? (last.menu ?? []) : [];
 }
 
-
 const MENU_RANK_KEY = "mame-memo:pair-menu-ranks";
 
 /** 今日のコーヒーのメニューの中で、この料理に合う順（AI が付けた相性） */

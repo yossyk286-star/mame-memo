@@ -59,25 +59,15 @@ const MILESTONES = [10, 30, 50, 100, 200, 300, 500, 1000];
 /** 焙煎度・淹れ方ごとのひとこと。当てはまるものがなければ ふつうの言葉から選ぶ */
 function kindLines(r: TastingRecord): string[] {
   if (r.temp === "アイス")
-    return [
-      "アイスコーヒー、氷がカランっていう音が好き",
-      "冷やすと甘さが感じやすくなるんだって",
-      "氷が溶けると味も変わるね。最後までおいしかった？",
-    ];
-  if (r.method === "エスプレッソ")
-    return ["エスプレッソ！ぎゅっと濃いね", "クレマ、きれいだった？", "砂糖を入れて飲むのもイタリア流なんだって"];
-  if (r.style === "ミルク")
-    return ["ミルクと合わせるとまろやかになるね", "ラテアート、あったかな？", "深めの豆はミルクとよく合うんだって"];
+    return ["アイスコーヒー、氷がカランっていう音が好き", "冷やすと甘さが感じやすくなるんだって", "氷が溶けると味も変わるね。最後までおいしかった？"];
+  if (r.method === "エスプレッソ") return ["エスプレッソ！ぎゅっと濃いね", "クレマ、きれいだった？", "砂糖を入れて飲むのもイタリア流なんだって"];
+  if (r.style === "ミルク") return ["ミルクと合わせるとまろやかになるね", "ラテアート、あったかな？", "深めの豆はミルクとよく合うんだって"];
   if (r.method === "フレンチプレス") return ["フレンチプレスはコーヒーの油分まで楽しめるね", "とろっとした口当たり、いいよね"];
   if (r.method === "サイフォン") return ["サイフォン、ぽこぽこ上がるの見てて楽しいよね", "サイフォンはすっきりクリアな味になるんだって"];
   if (r.method === "エアロプレス") return ["エアロプレス、ぎゅーっと押すの楽しいよね", "エアロプレスは短い時間でしっかり出るんだって"];
   switch (r.roast) {
     case "浅煎り":
-      return [
-        "浅煎りは果物みたいな酸味が楽しいよね",
-        "ぼくより明るい色の豆だね",
-        "浅煎りは冷めてくると甘さが出てくるよ",
-      ];
+      return ["浅煎りは果物みたいな酸味が楽しいよね", "ぼくより明るい色の豆だね", "浅煎りは冷めてくると甘さが出てくるよ"];
     case "中煎り":
       return ["中煎りはバランスがいいよね", "酸味と苦味、どっちが強かった？", "中煎りはナッツやチョコっぽさが出やすいんだって"];
     case "深煎り":
@@ -124,12 +114,7 @@ function beanName(r: TastingRecord) {
  * 保存した記録へのひとこと。all はこの記録も含めたすべての記録
  * カフェインのとりすぎが心配な日は、ほかより先に心配する
  */
-export function buddyLine(
-  r: TastingRecord,
-  all: TastingRecord[],
-  opts: { fromWish?: boolean } = {},
-  now = new Date(),
-): BuddyLine {
+export function buddyLine(r: TastingRecord, all: TastingRecord[], opts: { fromWish?: boolean } = {}, now = new Date()): BuddyLine {
   const others = all.filter((x) => x.id !== r.id);
   const isToday = r.date === localDate(now);
   const sameDay = all.filter((x) => x.date === r.date).length;
@@ -184,10 +169,7 @@ export function buddyLine(
     return {
       mood: "wow",
       text: newCountry
-        ? pick([
-            tr("ついに飲めたね！{0}のスタンプも押しといたよ", country),
-            tr("気になってた豆、ついに！{0}のスタンプも増えたよ", country),
-          ])
+        ? pick([tr("ついに飲めたね！{0}のスタンプも押しといたよ", country), tr("気になってた豆、ついに！{0}のスタンプも増えたよ", country)])
         : pick(["ついに飲めたね！気になるリストから外しておいたよ", "念願の1杯だね！気になるリストから外しといたよ"]),
     };
 
@@ -219,10 +201,7 @@ export function buddyLine(
     if (r.overall > prev.overall)
       return {
         mood: "happy",
-        text: pick([
-          tr("{0}は{1}回目。前より好きになったみたいだね", name, n),
-          tr("{0}、{1}回目でもっと好きに。相性がいいのかも", name, n),
-        ]),
+        text: pick([tr("{0}は{1}回目。前より好きになったみたいだね", name, n), tr("{0}、{1}回目でもっと好きに。相性がいいのかも", name, n)]),
       };
     if (r.overall < prev.overall)
       return {
@@ -260,8 +239,7 @@ export function buddyLine(
       ]),
     };
 
-  if (isToday && sameDay === 3)
-    return { mood: "normal", text: pick(["今日3杯目だね。お水もいっしょに飲もうね", "今日3杯目だね。コーヒーずきだなあ"]) };
+  if (isToday && sameDay === 3) return { mood: "normal", text: pick(["今日3杯目だね。お水もいっしょに飲もうね", "今日3杯目だね。コーヒーずきだなあ"]) };
 
   if (isToday && hour >= 20)
     return {
@@ -273,10 +251,7 @@ export function buddyLine(
   if (isToday && streak >= 3)
     return {
       mood: "happy",
-      text: pick([
-        tr("{0}日続けて記録してるね！毎日の1杯、いいね", streak),
-        tr("{0}日連続！コーヒーのある毎日っていいね", streak),
-      ]),
+      text: pick([tr("{0}日続けて記録してるね！毎日の1杯、いいね", streak), tr("{0}日連続！コーヒーのある毎日っていいね", streak)]),
     };
 
   const lines = kindLines(r);
@@ -298,8 +273,7 @@ function loadSeen(): Seen {
   }
 }
 
-const daysBetween = (a: string, b: string) =>
-  Math.round((new Date(`${b}T12:00:00`).getTime() - new Date(`${a}T12:00:00`).getTime()) / 86400000);
+const daysBetween = (a: string, b: string) => Math.round((new Date(`${b}T12:00:00`).getTime() - new Date(`${a}T12:00:00`).getTime()) / 86400000);
 
 /**
  * アプリを開いたときのひとこと。出すぎないよう、どれも間をあけて1回だけ
@@ -337,11 +311,7 @@ export function openLine(records: TastingRecord[], now = new Date()): BuddyLine 
         tr("{0}日ぶり！その間に飲んだコーヒー、思い出したら書いてね", gap),
       ]),
     };
-  } else if (
-    (now.getDay() === 0 || now.getDay() === 6) &&
-    morning &&
-    (!seen.weekend || daysBetween(seen.weekend, today) >= 6)
-  ) {
+  } else if ((now.getDay() === 0 || now.getDay() === 6) && morning && (!seen.weekend || daysBetween(seen.weekend, today) >= 6)) {
     line = {
       mood: "happy",
       text: pick(["週末の朝だね。今日はどの豆にする？", "おはよう！週末はゆっくりハンドドリップでも？", "週末の朝、カフェめぐりもいいね"]),

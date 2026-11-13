@@ -95,8 +95,7 @@ const REGION_OF = new Map(REGIONS.flatMap((r) => r.countries.map((c) => [c.name,
 
 /** 国を初めて飲んだ日の順に並べる。コーヒーで世界一周する旅の記録のように読める */
 export function travelDiary(stamps: Map<string, Stamp>, others: Map<string, Stamp>): DiaryEntry[] {
-  const earliest = (rs: TastingRecord[]) =>
-    rs.reduce((a, b) => (b.date < a.date || (b.date === a.date && b.createdAt < a.createdAt) ? b : a));
+  const earliest = (rs: TastingRecord[]) => rs.reduce((a, b) => (b.date < a.date || (b.date === a.date && b.createdAt < a.createdAt) ? b : a));
   return [...stamps, ...others]
     .map(([place, s]) => ({ place, region: REGION_OF.get(place) ?? null, first: earliest(s.records), count: s.count }))
     .sort((a, b) => a.first.date.localeCompare(b.first.date) || a.first.createdAt - b.first.createdAt);
@@ -104,7 +103,10 @@ export function travelDiary(stamps: Map<string, Stamp>, others: Map<string, Stam
 
 /** 旅日記に添えるひとこと。メモの1行目、なければ感じた味や合うスイーツ */
 export function diaryNote(r: TastingRecord): { text: string; quote: boolean } | null {
-  const line = r.memo.split("\n").map((s) => s.trim()).find(Boolean);
+  const line = r.memo
+    .split("\n")
+    .map((s) => s.trim())
+    .find(Boolean);
   if (line) return { text: line.length > 40 ? `${line.slice(0, 40)}…` : line, quote: true };
   if (r.flavors.length > 0) return { text: r.flavors.slice(0, 3).join("・"), quote: false };
   if (r.sweets?.trim()) return { text: tr("{0}と一緒に", r.sweets.trim()), quote: false };

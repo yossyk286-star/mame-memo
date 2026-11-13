@@ -88,8 +88,19 @@ function Thumb({ record: r }: { record: TastingRecord }) {
   if (first) {
     // 縮小版ができるまでは同じ大きさの空き枠を出して、行の高さや並びが動かないようにする
     if (!url) return <span className="thumb thumb-wait" style={{ borderColor: roastColor(r.roast) }} aria-hidden="true" />;
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt="" className="thumb photo-fade" loading="lazy" decoding="async" ref={markIfLoaded} onLoad={markLoaded} style={{ borderColor: roastColor(r.roast) }} />;
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt=""
+        className="thumb photo-fade"
+        loading="lazy"
+        decoding="async"
+        ref={markIfLoaded}
+        onLoad={markLoaded}
+        style={{ borderColor: roastColor(r.roast) }}
+      />
+    );
   }
   return (
     <span className="thumb thumb-mark" style={{ "--kc": roastColor(r.roast) } as React.CSSProperties} aria-hidden="true">
@@ -127,7 +138,11 @@ export default function RecordCard({ record: r, showDate = true, nth }: { record
     const row = e.currentTarget;
     nameForTransition(row, "rec-card");
     nameForTransition(row.querySelector("h2"), "rec-name");
-    transitionTo(() => router.push(href), () => !!document.querySelector(".detail-hero"), "open");
+    transitionTo(
+      () => router.push(href),
+      () => !!document.querySelector(".detail-hero"),
+      "open",
+    );
   }
   return (
     <Link href={href} className="card record-row" data-rid={r.id} onClick={open}>

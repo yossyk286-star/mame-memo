@@ -35,7 +35,6 @@ export const TITLES = [
 /** いちばん上まで来たときのひとこと（称号・しるし） */
 export const TOP_LINES = { title: "もう教えることはありません。夜はデカフェもどうぞ", badge: "極めた！おかわり？" };
 
-
 /** icon は Medal に彫る絵の名前。「#10」のように # で始まるときは数字を彫る */
 export type Badge = {
   id: string;
@@ -76,9 +75,7 @@ const ROASTS: [Roast, string][] = [
 export function badgesOf(records: TastingRecord[]): Badge[] {
   const n = records.length;
   const places = collectStamps(records).stamps;
-  const regions = new Set(
-    [...places.keys()].map((p) => REGIONS.find((r) => r.countries.some((c) => c.name === p))?.region).filter(Boolean),
-  );
+  const regions = new Set([...places.keys()].map((p) => REGIONS.find((r) => r.countries.some((c) => c.name === p))?.region).filter(Boolean));
   const processes = new Set(records.map((r) => r.process).filter((p) => p && p !== "不明" && p !== "その他"));
   const methods = new Set(records.map((r) => r.method).filter(Boolean));
   const shops = groupByShop(records).length;
@@ -101,16 +98,40 @@ export function badgesOf(records: TastingRecord[]): Badge[] {
     tiered("places", "pin", "産地", places.size, [3, 5, 10, 15, 20], () => "{0}か国の豆を飲む", "か国"),
     tiered("regions", "globe", "世界の地域", regions.size, [1, 2, 3], () => "{0}つの地域（アフリカ・中南米・アジア）の豆を飲む", "地域"),
     ...ROASTS.map(([k, icon]) => tiered(`r-${k}`, icon, k, roastCount(k), [1, 3, 5, 10, 20], (x) => (x === 1 ? "{1}を記録する" : "{1}を{0}杯"), "杯", k)),
-    tiered("r-all", "beans", "焙煎度ぜんぶ", Math.min(...ROASTS.map(([k]) => roastCount(k))), [1, 2, 3, 5, 10], (x) => (x === 1 ? "浅煎り・中煎り・深煎りを記録する" : "焙煎度それぞれ{0}杯"), "杯"),
+    tiered(
+      "r-all",
+      "beans",
+      "焙煎度ぜんぶ",
+      Math.min(...ROASTS.map(([k]) => roastCount(k))),
+      [1, 2, 3, 5, 10],
+      (x) => (x === 1 ? "浅煎り・中煎り・深煎りを記録する" : "焙煎度それぞれ{0}杯"),
+      "杯",
+    ),
     tiered("methods", "dripper", "淹れ方", methods.size, [1, 2, 3, 4, 5], (x) => (x === 1 ? "淹れ方を記録する" : "{0}種類の淹れ方で記録する"), "種類"),
     tiered("process", "beans", "精製", processes.size, [1, 2, 3, 4], (x) => (x === 1 ? "精製方法を記録する" : "{0}種類の精製方法の豆を記録する"), "種類"),
-    tiered("natural", "cherry", "ナチュラル", records.filter((r) => r.process === "Natural").length, [1, 3, 5, 10, 20], (x) => (x === 1 ? "ナチュラル精製の豆を記録する" : "ナチュラルを{0}杯"), "杯"),
+    tiered(
+      "natural",
+      "cherry",
+      "ナチュラル",
+      records.filter((r) => r.process === "Natural").length,
+      [1, 3, 5, 10, 20],
+      (x) => (x === 1 ? "ナチュラル精製の豆を記録する" : "ナチュラルを{0}杯"),
+      "杯",
+    ),
     tiered("star5", "star", "★5の1杯", records.filter((r) => r.overall >= 5).length, [1, 3, 5, 10, 20], (x) => (x === 1 ? "★5をつける" : "★5を{0}回"), "回"),
     tiered("shops", "store", "お店", shops, [3, 5, 10, 20, 30], () => "{0}軒のお店で記録する", "軒"),
     tiered("home", "home", "家で一杯", homeCount, [1, 3, 5, 10, 20], (x) => (x === 1 ? "家で淹れて記録する" : "家で{0}杯"), "杯"),
     tiered("photo", "camera", "写真", photoCount, [5, 10, 20, 30, 50], () => "写真つきの記録を{0}つ", "つ"),
     tiered("weekend", "sun", "週末の一杯", weekends, [1, 3, 5, 10, 20], (x) => (x === 1 ? "土日に記録する" : "週末{0}日"), "日"),
-    tiered("three", "cups", "1日に3杯", [...perDay.values()].filter((c) => c >= 3).length, [1, 3, 5, 10, 20], (x) => (x === 1 ? "同じ日に3杯記録する" : "3杯の日を{0}日"), "日"),
+    tiered(
+      "three",
+      "cups",
+      "1日に3杯",
+      [...perDay.values()].filter((c) => c >= 3).length,
+      [1, 3, 5, 10, 20],
+      (x) => (x === 1 ? "同じ日に3杯記録する" : "3杯の日を{0}日"),
+      "日",
+    ),
   ];
 }
 

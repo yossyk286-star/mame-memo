@@ -37,11 +37,7 @@ function averageBy(records: TastingRecord[], key: (r: TastingRecord) => string |
 }
 
 export function summarize(records: TastingRecord[]): TasteSummary {
-  const combos = averageBy(
-    records,
-    (r) => (r.roast && r.method && !UNKNOWN.has(r.roast) && !UNKNOWN.has(r.method) ? `${r.roast} × ${r.method}` : null),
-    2,
-  );
+  const combos = averageBy(records, (r) => (r.roast && r.method && !UNKNOWN.has(r.roast) && !UNKNOWN.has(r.method) ? `${r.roast} × ${r.method}` : null), 2);
 
   const flavorCounts = new Map<string, number>();
   for (const r of records) for (const f of r.flavors) flavorCounts.set(f, (flavorCounts.get(f) ?? 0) + 1);
