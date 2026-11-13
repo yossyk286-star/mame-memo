@@ -11,9 +11,9 @@ export interface Term {
 }
 
 export const TERMS: Term[] = [
-  { category: "精製", term: "Washed", reading: "ウォッシュト", description: "果肉を取り除き、水で洗ってから乾燥させる。クリアですっきりした酸味になりやすい。" },
-  { category: "精製", term: "Natural", reading: "ナチュラル", description: "実をつけたまま乾燥させる。果実のような甘さと香りが強めに出る。" },
-  { category: "精製", term: "Honey", reading: "ハニー", description: "果肉の一部を残したまま乾燥させる。Washed と Natural の中間の味わい。" },
+  { category: "精製", term: "Washed", reading: "ウォッシュト", description: "果皮と果肉を取り除き、発酵させてぬめりを落とし、水で洗ってから乾燥させる。クリアですっきりした酸味になりやすい。" },
+  { category: "精製", term: "Natural", reading: "ナチュラル", description: "収穫した実を、果肉をつけたまま丸ごと乾燥させる。果実のような甘さと香りが強めに出る。" },
+  { category: "精製", term: "Honey", reading: "ハニー", description: "果皮と果肉を取り除き、ぬめり（ミューシレージ）を残したまま乾燥させる。Washed と Natural の中間の味わい。" },
   { category: "精製", term: "Anaerobic", reading: "アナエロビック", description: "酸素を断った密閉タンクで発酵させる。独特で華やかな香りが出る。Anaerobic Natural は発酵後に実のまま乾燥させたもの。" },
   { category: "精製", term: "Pulped Natural", reading: "パルプドナチュラル", description: "果皮と果肉を取り除き、ぬめり（ミューシレージ）を残したまま乾燥させる。ブラジルに多く、Honey とよく似た甘くまろやかな味。" },
   { category: "精製", term: "Wet Hulled", reading: "ウェットハル", description: "スマトラ式とも。生乾きのうちに殻（パーチメント）を外して乾燥させる。インドネシアに多く、どっしりしたコクと土やハーブのような香り。" },
@@ -61,7 +61,7 @@ export const TERMS: Term[] = [
   { category: "豆・産地", term: "ブレンド", description: "いくつかの産地の豆を混ぜたもの。味のバランスを整えたり、いつも同じ味にしたりできる。" },
   { category: "豆・産地", term: "標高", reading: "ひょうこう", description: "豆が育った高さ。高いほど昼と夜の寒暖差でゆっくり育ち、酸味がはっきりして香りが豊かになりやすい。" },
   { category: "豆・産地", term: "コーヒーベルト", description: "赤道をはさんだ北緯25度から南緯25度くらいの、コーヒーが育つ地域。" },
-  { category: "豆・産地", term: "生豆", reading: "なままめ", description: "焙煎する前の緑色の豆。「せいまめ」とも読む。そのままでは香りがなく、焼いて初めてコーヒーの香りが出る。" },
+  { category: "豆・産地", term: "生豆", reading: "なままめ", description: "焙煎する前の緑色の豆。「きまめ」「せいまめ」とも読む。そのままでは香りがなく、焼いて初めてコーヒーの香りが出る。" },
   { category: "味わい", term: "酸味", reading: "さんみ", description: "コーヒーの明るさ。よい酸味は果物のように爽やか。浅煎りほど強く、深煎りほど弱くなる。" },
   { category: "味わい", term: "ボディ", description: "口の中で感じる重さやとろみ。フレンチプレスや深煎りで強く、ペーパードリップや浅煎りで軽くなる。" },
   { category: "味わい", term: "アフターテイスト", description: "飲み込んだあとに残る香りと味。長く心地よいほど、よいコーヒーとされる。" },

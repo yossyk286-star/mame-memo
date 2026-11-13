@@ -20,26 +20,54 @@ export const WORDS = {
 
 /** 記録の数で上がる称号。at 杯目でその称号になる */
 export const TITLES = [
-  { at: 1, name: "コーヒーはじめ" },
-  { at: 10, name: "コーヒーずき" },
-  { at: 25, name: "コーヒー通" },
-  { at: 50, name: "カッピングの達人" },
-  { at: 100, name: "珈琲仙人" },
+  { at: 1, name: "ひとくち目", quip: "ようこそ、豆の世界へ" },
+  { at: 3, name: "一服", quip: "まずはひと息、どうぞ" },
+  { at: 5, name: "豆好き", quip: "豆の袋の裏を読みはじめた" },
+  { at: 10, name: "珈琲好き", quip: "朝の1杯がないと始まらない" },
+  { at: 25, name: "珈琲通", quip: "産地を聞かれたら即答できる" },
+  { at: 50, name: "目利き", quip: "もう選ばれる側じゃなく、選ぶ側" },
+  { at: 100, name: "珈琲仙人", quip: "香りだけで産地がわかる…気がする" },
+  { at: 200, name: "珈琲聖", quip: "バリスタに一目置かれる存在" },
+  { at: 365, name: "珈琲の神", quip: "もはや拝まれる側" },
+  { at: 500, name: "珈琲そのもの", quip: "もう、どっちが淹れているのかわからない" },
 ];
+
+/** いちばん上まで来たときのひとこと（称号・しるし） */
+export const TOP_LINES = { title: "もう教えることはありません。夜はデカフェもどうぞ", badge: "極めた！おかわり？" };
+
+/** しるしの段の名前（銅→ダイヤ）。Medal の METALS と同じ並び */
+export const METAL_NAMES = ["銅", "銀", "金", "プラチナ", "ダイヤ"];
 
 /** icon は Medal に彫る絵の名前。「#10」のように # で始まるときは数字を彫る */
 export type Badge = {
   id: string;
   icon: string;
   label: string;
-  how: string;
+  /** いまの段（0 銅〜4 ダイヤ）。まだ取っていなければ -1 */
+  tier: number;
   done: boolean;
-  /** 取ったあと、もっと続けるとプラチナになる。left はあと何、unit はその単位 */
-  plat?: { done: boolean; how: string; left: number; unit: string };
+  /** 次の段に上がるには（いちばん上なら null） */
+  /** how は「{0}杯記録する」のような文（{0} に need、{1} に arg が入る。tr で訳してから埋める） */
+  next: { how: string; need: number; arg?: string; left: number; unit: string; metal: string } | null;
 };
 
-/** プラチナの目安。have が need に届いたらプラチナ */
-const platOf = (have: number, need: number, how: string, unit: string) => ({ done: have >= need, how, left: Math.max(0, need - have), unit });
+/**
+ * 同じ中身のしるしは1つにまとめ、続けるほど 銅→銀→金→プラチナ→ダイヤ と色が変わる。
+ * steps は各段に届く数。how は段の数から「{0}杯記録する」のような文を選ぶ
+ */
+function tiered(id: string, icon: string, label: string, have: number, steps: number[], how: (n: number) => string, unit: string, arg?: string): Badge {
+  const tier = steps.filter((s) => have >= s).length - 1;
+  const need = steps[tier + 1];
+  return {
+    id,
+    // 数字を彫るしるしは、いまの段（まだなら最初の段）の数を彫る
+    icon: icon === "#" ? `#${steps[Math.max(0, tier)]}` : icon,
+    label,
+    tier,
+    done: tier >= 0,
+    next: need === undefined ? null : { how: how(need), need, arg, left: need - have, unit, metal: METAL_NAMES[tier + 1] },
+  };
+}
 
 const ROASTS: [Roast, string][] = [
   ["浅煎り", "bean"],
@@ -47,14 +75,13 @@ const ROASTS: [Roast, string][] = [
   ["深煎り", "bean-full"],
 ];
 
-/** あつめるしるし（24個）。done は記録から決める */
+/** あつめるしるし。段は記録から決める */
 export function badgesOf(records: TastingRecord[]): Badge[] {
   const n = records.length;
   const places = collectStamps(records).stamps;
   const regions = new Set(
     [...places.keys()].map((p) => REGIONS.find((r) => r.countries.some((c) => c.name === p))?.region).filter(Boolean),
   );
-  const roasts = new Set(records.map((r) => r.roast));
   const processes = new Set(records.map((r) => r.process).filter((p) => p && p !== "不明" && p !== "その他"));
   const methods = new Set(records.map((r) => r.method).filter(Boolean));
   const shops = groupByShop(records).length;
@@ -69,33 +96,24 @@ export function badgesOf(records: TastingRecord[]): Badge[] {
       })
       .map((r) => r.date),
   ).size;
-  const b = (id: string, icon: string, label: string, how: string, done: boolean, plat?: Badge["plat"]): Badge => ({ id, icon, label, how, done, plat });
   const roastCount = (k: string) => records.filter((r) => r.roast === k).length;
   const homeCount = records.filter((r) => isHome(r.shop)).length;
   const photoCount = records.filter((r) => r.photos?.length || r.photo).length;
   return [
-    b("n1", "sprout", "1杯目", "はじめて記録する", n >= 1),
-    b("n10", "#10", "10杯目", "10杯記録する", n >= 10),
-    b("n25", "#25", "25杯目", "25杯記録する", n >= 25),
-    b("n50", "#50", "50杯目", "50杯記録する", n >= 50),
-    b("n100", "#100", "100杯目", "100杯記録する", n >= 100),
-    b("p3", "pin", "産地3か国", "3か国の豆を飲む", places.size >= 3),
-    b("p5", "map", "産地5か国", "5か国の豆を飲む", places.size >= 5),
-    b("p10", "compass", "産地10か国", "10か国の豆を飲む", places.size >= 10),
-    b("p15", "plane", "産地15か国", "15か国の豆を飲む", places.size >= 15),
-    b("regions", "globe", "3地域ぜんぶ", "アフリカ・中南米・アジアの豆を飲む", regions.size >= 3, platOf(places.size, 20, "20か国の豆を飲む", "か国")),
-    ...ROASTS.map(([k, icon]) => b(`r-${k}`, icon, k, `${k}を記録する`, roasts.has(k), platOf(roastCount(k), 10, `${k}を10杯`, "杯"))),
-    b("r-all", "beans", "焙煎度ぜんぶ", "浅煎り・中煎り・深煎りを記録する", ROASTS.every(([k]) => roasts.has(k)), platOf(Math.min(...ROASTS.map(([k]) => roastCount(k))), 5, "焙煎度それぞれ5杯", "杯")),
-    b("methods", "dripper", "淹れ方3種", "3種類の淹れ方で記録する", methods.size >= 3, platOf(methods.size, 5, "5種類の淹れ方", "種類")),
-    b("process3", "beans", "精製3種", "3種類の精製方法の豆を記録する", processes.size >= 3),
-    b("natural", "cherry", "ナチュラル", "ナチュラル精製の豆を記録する", records.some((r) => r.process === "Natural"), platOf(records.filter((r) => r.process === "Natural").length, 10, "ナチュラルを10杯", "杯")),
-    b("star5", "star", "★5の1杯", "★5をつける", records.some((r) => r.overall >= 5), platOf(records.filter((r) => r.overall >= 5).length, 5, "★5を5回", "回")),
-    b("shop3", "store", "お店3軒", "3軒のお店で記録する", shops >= 3),
-    b("shop10", "cup", "お店10軒", "10軒のお店で記録する", shops >= 10),
-    b("home", "home", "家で一杯", "家で淹れて記録する", homeCount > 0, platOf(homeCount, 10, "家で10杯", "杯")),
-    b("photo", "camera", "写真5枚", "写真つきの記録を5つ", photoCount >= 5, platOf(photoCount, 20, "写真つきの記録を20", "つ")),
-    b("weekend", "sun", "週末の一杯", "土日に記録する", weekends > 0, platOf(weekends, 5, "週末5日", "日")),
-    b("three", "cups", "1日に3杯", "同じ日に3杯記録する", [...perDay.values()].some((c) => c >= 3), platOf([...perDay.values()].filter((c) => c >= 3).length, 5, "3杯の日を5日", "日")),
+    tiered("cups", "#", "記録した杯数", n, [1, 10, 25, 50, 100], (x) => (x === 1 ? "はじめて記録する" : "{0}杯記録する"), "杯"),
+    tiered("places", "pin", "産地", places.size, [3, 5, 10, 15, 20], () => "{0}か国の豆を飲む", "か国"),
+    tiered("regions", "globe", "世界の地域", regions.size, [1, 2, 3], () => "{0}つの地域（アフリカ・中南米・アジア）の豆を飲む", "地域"),
+    ...ROASTS.map(([k, icon]) => tiered(`r-${k}`, icon, k, roastCount(k), [1, 3, 5, 10, 20], (x) => (x === 1 ? "{1}を記録する" : "{1}を{0}杯"), "杯", k)),
+    tiered("r-all", "beans", "焙煎度ぜんぶ", Math.min(...ROASTS.map(([k]) => roastCount(k))), [1, 2, 3, 5, 10], (x) => (x === 1 ? "浅煎り・中煎り・深煎りを記録する" : "焙煎度それぞれ{0}杯"), "杯"),
+    tiered("methods", "dripper", "淹れ方", methods.size, [1, 2, 3, 4, 5], (x) => (x === 1 ? "淹れ方を記録する" : "{0}種類の淹れ方で記録する"), "種類"),
+    tiered("process", "beans", "精製", processes.size, [1, 2, 3, 4], (x) => (x === 1 ? "精製方法を記録する" : "{0}種類の精製方法の豆を記録する"), "種類"),
+    tiered("natural", "cherry", "ナチュラル", records.filter((r) => r.process === "Natural").length, [1, 3, 5, 10, 20], (x) => (x === 1 ? "ナチュラル精製の豆を記録する" : "ナチュラルを{0}杯"), "杯"),
+    tiered("star5", "star", "★5の1杯", records.filter((r) => r.overall >= 5).length, [1, 3, 5, 10, 20], (x) => (x === 1 ? "★5をつける" : "★5を{0}回"), "回"),
+    tiered("shops", "store", "お店", shops, [3, 5, 10, 20, 30], () => "{0}軒のお店で記録する", "軒"),
+    tiered("home", "home", "家で一杯", homeCount, [1, 3, 5, 10, 20], (x) => (x === 1 ? "家で淹れて記録する" : "家で{0}杯"), "杯"),
+    tiered("photo", "camera", "写真", photoCount, [5, 10, 20, 30, 50], () => "写真つきの記録を{0}つ", "つ"),
+    tiered("weekend", "sun", "週末の一杯", weekends, [1, 3, 5, 10, 20], (x) => (x === 1 ? "土日に記録する" : "週末{0}日"), "日"),
+    tiered("three", "cups", "1日に3杯", [...perDay.values()].filter((c) => c >= 3).length, [1, 3, 5, 10, 20], (x) => (x === 1 ? "同じ日に3杯記録する" : "3杯の日を{0}日"), "日"),
   ];
 }
 
