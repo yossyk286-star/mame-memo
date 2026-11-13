@@ -44,6 +44,22 @@ export const ScannedBeanSchema = z.object({
     .describe("メニューにある抽出方法ごと（書かれていなければドリップ・エアロプレス・エスプレッソ）の味の違い"),
 });
 
+/**
+ * メニューや豆の袋の写真から、まず載っている豆の名前と書いてあることだけを全部書き出させる（1回目）。
+ * 解説まで一度に書かせると答えが長くなって途中で切れ、品が抜けるため、解説は2回目に文字だけで分けて書かせる
+ */
+export const MenuListSchema = z.object({
+  beans: z
+    .array(
+      ScannedBeanSchema.pick({ name: true, reading: true, origin: true, farm: true, roast: true, process: true, menuNote: true }).extend({
+        facts: z
+          .string()
+          .describe("写真に書いてあるそのほかの手がかり（値段・量・品種・標高・抽出方法・ロースター名など）を短く。なければ空文字"),
+      }),
+    )
+    .describe("写真に載っているコーヒー豆すべて。数に上限はない。豆が写っていなければ空配列"),
+});
+
 export const MenuScanResultSchema = z.object({
   beans: z.array(ScannedBeanSchema).describe("写真に載っている豆。メニューでなければ空配列"),
 });
@@ -122,7 +138,7 @@ export const FoodMenuSchema = z.object({
         pick: FoodPickSchema.describe("この料理にいちばん合うコーヒー"),
       }),
     )
-    .describe("写っている料理。多くても12品。飲み物は含めない。料理が写っていなければ空配列"),
+    .describe("写っている料理すべて。数に上限はない。飲み物は含めない。料理が写っていなければ空配列"),
 });
 
 export type FoodMenu = z.infer<typeof FoodMenuSchema>;

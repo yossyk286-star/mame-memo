@@ -3,7 +3,10 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { timingSafeEqual } from "node:crypto";
 import { BEAN_REFERENCE } from "@/lib/knownBeans";
 import { CHOOSING_TIPS, TERMS } from "@/lib/glossary";
-import { FoodMenuSchema, FoodPairingSchema, MenuScanResultSchema, PairingResultSchema, DishIdeasSchema, TermLookupSchema, SpecResultSchema } from "@/lib/schemas";
+import { FoodMenuSchema, FoodPairingSchema, MenuListSchema, MenuScanResultSchema, PairingResultSchema, DishIdeasSchema, TermLookupSchema, SpecResultSchema } from "@/lib/schemas";
+
+// 品の多いメニューを全部読むときは時間がかかるので、待ち時間の上限を長めにする
+export const maxDuration = 120;
 
 // 料金を抑えるため一番安いモデルを使う。変えたいときは環境変数 MENU_MODEL で上書き
 const MODEL = process.env.MENU_MODEL || "claude-haiku-5-5";
@@ -32,6 +35,10 @@ const MAX_TEXT = 2000;
 // スイーツとの相性・辞典の言葉の文字数と、相性を見る豆の数の上限
 const MAX_WORD = 60;
 const MAX_PAIRING_BEANS = 40;
+// 写真から書き出した豆の解説を、何個ずつに分けて同時に書かせるか（1回の答えを短くして、途中で切れたり時間切れになったりしないように）
+const EXPLAIN_CHUNK = 5;
+// 1枚の写真から読む豆の上限（ふつうのメニューなら届かない。答えが長くなりすぎないための安全弁）
+const MAX_MENU_BEANS = 60;
 // 記録について AI に聞くときの、質問・記録の要約の文字数と、続けて聞くときに渡す前の質問の数
 const MAX_ASK = 300;
 const MAX_CONTEXT = 1500;
@@ -132,7 +139,7 @@ export async function POST(req: Request) {
     try {
       const response = await client.messages.parse({
         model: READ_MODEL,
-        max_tokens: 6000,
+        max_tokens: 16000,
         system: sys("あなたはコーヒーと食べ物の組み合わせにくわしい、やさしい案内役です。初心者にもわかる日本語で答えてください。"),
         output_config: { effort: READ_EFFORT, format: zodOutputFormat(FoodMenuSchema) },
         messages: [
@@ -142,7 +149,7 @@ export async function POST(req: Request) {
               { type: "image", source: { type: "base64", media_type: "image/jpeg", data: image } },
               {
                 type: "text",
-                text: `料理のメニューか、料理そのものの写真です。載っている（写っている）料理それぞれに、いちばん合うコーヒーを1つずつ、焙煎度・産地・飲み方（ブラック、ミルク、アイスなど）を考えて選んでください。同じコーヒーで合う料理はなるべく同じ焙煎度にそろえ、全体で2〜4種類にしぼってください。title には料理名を入れず、コーヒーの特徴だけを短く書いてください（例：香ばしい深煎り）。\n${READING_RULES}${likes ? `\n\n利用者の好み（合うものの中から、なるべく好みに寄せる）：${likes}` : ""}`,
+                text: `料理のメニューか、料理そのものの写真です。載っている（写っている）料理は、数が多くても1品も飛ばさずに全部入れてください。小さい字・端の列・別の枠・おすすめの黒板なども見落とさないでください。それぞれの料理に、いちばん合うコーヒーを1つずつ、焙煎度・産地・飲み方（ブラック、ミルク、アイスなど）を考えて選んでください。同じコーヒーで合う料理はなるべく同じ焙煎度にそろえ、全体で2〜4種類にしぼってください。title には料理名を入れず、コーヒーの特徴だけを短く書いてください（例：香ばしい深煎り）。料理が多いときは reason を1文に短くしてください。\n${READING_RULES}${likes ? `\n\n利用者の好み（合うものの中から、なるべく好みに寄せる）：${likes}` : ""}`,
               },
             ],
           },
@@ -390,49 +397,108 @@ export async function POST(req: Request) {
     }
   }
 
+  // 文字だけで解説を書かせる（打ち込んだ文字・写真から書き出した豆の解説）
+  const explain = async (content: Anthropic.ContentBlockParam[]) => {
+    const response = await client.messages.parse({
+      model: MODEL,
+      max_tokens: 8000,
+      system: sys(SYSTEM),
+      output_config: { effort: "low", format: zodOutputFormat(MenuScanResultSchema) },
+      messages: [{ role: "user", content }],
+    });
+    return response.stop_reason === "refusal" ? null : response.parsed_output;
+  };
+
+  /**
+   * 写真の豆を全部読む。1回目は写真から名前と書いてあることだけを全部書き出し（答えが短いので品が抜けない）、
+   * 2回目は書き出した豆を何個かずつに分けて、文字だけで解説を同時に書かせる
+   */
+  const readPhoto = async (data: string) => {
+    const listed = await client.messages.parse({
+      model: READ_MODEL,
+      max_tokens: 12000,
+      system: sys(SYSTEM),
+      output_config: { effort: READ_EFFORT, format: zodOutputFormat(MenuListSchema) },
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: "image/jpeg", data } },
+            {
+              type: "text",
+              text: "このメニュー（または豆の袋・ラベル）に載っているコーヒー豆を、数が多くても1つも飛ばさずに全部書き出してください。解説はまだ書かず、名前と写真に書いてあることだけを入れてください。メニューは上から下、すべての行・列・枠・ページ・小さい字・手書きの追加・黒板まで順に見てください。同じ豆が量や淹れ方違いで並んでいるときは1つにまとめてください。名前はまず写真の字を一字ずつ確かめてから書いてください。",
+            },
+          ],
+        },
+      ],
+    });
+    if (listed.stop_reason === "refusal" || !listed.parsed_output) return null;
+    const items = listed.parsed_output.beans.slice(0, MAX_MENU_BEANS);
+    if (items.length === 0) return { beans: [] };
+
+    const chunks: (typeof items)[] = [];
+    for (let i = 0; i < items.length; i += EXPLAIN_CHUNK) chunks.push(items.slice(i, i + EXPLAIN_CHUNK));
+    const explainChunk = async (chunk: typeof items) => {
+      const lines = chunk.map((b, i) => `${i}. ${JSON.stringify(b)}`).join("\n");
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const out = await explain([
+            {
+              type: "text",
+              text: `メニューや豆の袋の写真から読み取ったコーヒー豆です（JSON、写真に書いてあったことだけ）。この${chunk.length}つを、同じ順番で1つずつ全部解説してください。名前（name）・読み・産地・農園・焙煎度・精製・メニューの説明は、書いてある通りにそのまま使い、変えないでください。facts は写真に書いてあった手がかりなので、解説に使ってください。\n\n${lines}`,
+            },
+          ]);
+          if (out?.beans.length) return out.beans;
+        } catch (e) {
+          if (attempt === 1) console.error("read-menu explain error", e instanceof Error ? e.message.slice(0, 200) : e);
+        }
+      }
+      return [];
+    };
+    const explained = await Promise.all(chunks.map(explainChunk));
+
+    // 写真から読んだこと（名前・産地など）を優先し、解説は2回目の答えから付ける。解説が付かなかった豆も名前だけは残す
+    const beans = chunks.flatMap((chunk, c) =>
+      chunk.map((b, i) => {
+        const ex = explained[c].find((x) => x.name === b.name) ?? explained[c][i];
+        return {
+          name: b.name,
+          reading: b.reading,
+          origin: b.origin || ex?.origin || "",
+          farm: b.farm || ex?.farm || "",
+          roast: b.roast ?? ex?.roast ?? null,
+          process: b.process ?? ex?.process ?? null,
+          menuNote: b.menuNote,
+          explanation: ex?.explanation ?? "",
+          recommendedMethod: ex?.recommendedMethod ?? null,
+          recommendation: ex?.recommendation ?? "",
+          sweets: ex?.sweets ?? "",
+          taste: ex?.taste ?? { acidity: 3, bitterness: 3, sweetness: 3, body: 3 },
+          methodNotes: ex?.methodNotes ?? [],
+        };
+      }),
+    );
+    return { beans };
+  };
+
   const image = body?.image;
   const text = typeof body?.text === "string" ? body.text.trim() : "";
-  let content: Anthropic.ContentBlockParam[];
-  const fromPhoto = !text;
   if (text) {
     if (text.length > MAX_TEXT)
       return error(413, `文字は${MAX_TEXT}文字までにしてください`);
-    content = [
-      {
-        type: "text",
-        text: `次のコーヒー豆について解説してください。\n\n${text}`,
-      },
-    ];
   } else {
     if (typeof image !== "string" || image.length === 0)
       return error(400, "写真か文字を入れてください");
     if (image.length > MAX_IMAGE_BASE64)
       return error(413, "写真が大きすぎます");
-    content = [
-      {
-        type: "image",
-        source: { type: "base64", media_type: "image/jpeg", data: image },
-      },
-      {
-        type: "text",
-        text: "このメニュー（または豆の袋・ラベル）のコーヒー豆を読み取って解説してください。名前はまず写真の字を一字ずつ確かめてから書いてください。",
-      },
-    ];
   }
 
   try {
-    const response = await client.messages.parse({
-      model: fromPhoto ? READ_MODEL : MODEL,
-      max_tokens: 8000,
-      system: sys(SYSTEM),
-      output_config: {
-        effort: fromPhoto ? READ_EFFORT : "low",
-        format: zodOutputFormat(MenuScanResultSchema),
-      },
-      messages: [{ role: "user", content }],
-    });
+    const result = text
+      ? await explain([{ type: "text", text: `次のコーヒー豆について解説してください。\n\n${text}` }])
+      : await readPhoto(image);
 
-    if (response.stop_reason === "refusal" || !response.parsed_output) {
+    if (!result) {
       return error(
         422,
         text
@@ -440,7 +506,7 @@ export async function POST(req: Request) {
           : "うまく読み取れませんでした。もう一度撮ってみてください",
       );
     }
-    return Response.json(response.parsed_output);
+    return Response.json(result);
   } catch (e) {
     return apiError(e);
   }
