@@ -37,7 +37,7 @@ import {
 import { findKnownBean } from "@/lib/knownBeans";
 import PasscodeField from "./PasscodeField";
 import { loadLastScan, loadShopMenu, saveLastScan, today, type ShopMenu } from "@/lib/lastScan";
-import { findSaved, saveLookups } from "@/lib/savedLookups";
+import { fillKnown, findSaved, saveLookups, savedNames } from "@/lib/savedLookups";
 import { MOODS, moodFromText, wordMatch } from "@/lib/moods";
 import { loadPasscode, PASSCODE_KEY } from "@/lib/passcode";
 import { shrinkForReading } from "@/lib/photo";
@@ -715,6 +715,7 @@ export default function MenuScan({
     // 小さい字も読めるよう、大きめ（長辺2576px・360万画素まで）にして送る（Haiku なので料金はほぼ変わらない）
     return await request(async () => ({
       image: await blobToBase64(await shrinkForReading(photo)),
+      known: savedNames(),
     }));
   }
 
@@ -747,7 +748,7 @@ export default function MenuScan({
   }
 
   async function request(
-    payload: () => Promise<{ image?: string; text?: string }>,
+    payload: () => Promise<{ image?: string; text?: string; known?: string[] }>,
     query?: string,
   ): Promise<boolean | "offline"> {
     setLocalHit(null);
@@ -788,7 +789,8 @@ export default function MenuScan({
         localStorage.setItem(PASSCODE_KEY, passcode.trim().normalize("NFKC"));
       } catch {}
       setSavedPasscode(true);
-      const result = data as MenuScanResult;
+      // 前に解説を出した豆は、AI に書かせずに端末に残っている解説を使う
+      const result = { beans: fillKnown((data as MenuScanResult).beans) };
       if (result.beans.length === 0)
         throw new Error("コーヒー豆のメニューが見つかりませんでした");
       // 次からは AI を呼ばずに出せるよう保存しておく
