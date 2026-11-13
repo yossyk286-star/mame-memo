@@ -147,6 +147,13 @@ function DetailBody() {
     setR(next);
   }
 
+  async function deleteQA(ats: number[]) {
+    if (!r) return;
+    const next = { ...r, qa: (r.qa ?? []).filter((h) => !ats.includes(h.at)) };
+    await putRecord(next);
+    setR(next);
+  }
+
   // 空の欄は出さない。まとまりごとに分けて表で見せる
   const beanRows: Row[] = r
     ? [
@@ -376,6 +383,7 @@ function DetailBody() {
             suggestions={SUGGESTIONS.map((s) => tr(s))}
             history={r.qa ?? []}
             onAnswered={addQA}
+            onDeleted={deleteQA}
           />
           <button type="button" className="btn-secondary btn-main" onClick={share}>
             {tr("画像にして送る")}
