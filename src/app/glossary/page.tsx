@@ -13,7 +13,8 @@ import { DRINKS } from "@/lib/knownBeans";
 import type { TermLookup } from "@/lib/menuScan";
 import { announceBuddy, pick } from "@/lib/buddy";
 import { loadMyTerms, saveMyTerms, type MyTerm } from "@/lib/myTerms";
-import { loadPasscode, normalizePasscode, savePasscode } from "@/lib/passcode";
+import { loadPasscode } from "@/lib/passcode";
+import { sendAI } from "@/lib/askServer";
 import Skeleton from "@/components/Skeleton";
 import { getLang, tr, trv } from "@/lib/i18n";
 import { askConfirm } from "@/components/ConfirmSheet";
@@ -96,19 +97,11 @@ function AddTerm({
     setBusy(true);
     setError("");
     try {
-      const res = await fetch("/api/read-menu", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          term: query.trim(),
-          passcode: normalizePasscode(passcode),
-          lang: getLang(),
-        }),
-      });
+      const res = await sendAI({
+          term: query.trim() }, passcode);
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) setSaved(false);
       if (!res.ok) throw new Error(data.error ?? "調べられませんでした");
-      savePasscode(normalizePasscode(passcode));
       const t = data as TermLookup;
       onAdded({
         term: t.term,

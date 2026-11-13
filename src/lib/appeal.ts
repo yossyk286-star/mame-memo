@@ -35,8 +35,6 @@ export const TITLES = [
 /** いちばん上まで来たときのひとこと（称号・しるし） */
 export const TOP_LINES = { title: "もう教えることはありません。夜はデカフェもどうぞ", badge: "極めた！おかわり？" };
 
-/** しるしの段の名前（銅→ダイヤ）。Medal の METALS と同じ並び */
-export const METAL_NAMES = ["銅", "銀", "金", "プラチナ", "ダイヤ"];
 
 /** icon は Medal に彫る絵の名前。「#10」のように # で始まるときは数字を彫る */
 export type Badge = {
@@ -46,9 +44,8 @@ export type Badge = {
   /** いまの段（0 銅〜4 ダイヤ）。まだ取っていなければ -1 */
   tier: number;
   done: boolean;
-  /** 次の段に上がるには（いちばん上なら null） */
-  /** how は「{0}杯記録する」のような文（{0} に need、{1} に arg が入る。tr で訳してから埋める） */
-  next: { how: string; need: number; arg?: string; left: number; unit: string; metal: string } | null;
+  /** 次の段に上がるには（いちばん上なら null）。how は「{0}杯記録する」のような文（{0} に need、{1} に arg が入る。tr で訳してから埋める） */
+  next: { how: string; need: number; arg?: string; left: number; unit: string } | null;
 };
 
 /**
@@ -65,7 +62,7 @@ function tiered(id: string, icon: string, label: string, have: number, steps: nu
     label,
     tier,
     done: tier >= 0,
-    next: need === undefined ? null : { how: how(need), need, arg, left: need - have, unit, metal: METAL_NAMES[tier + 1] },
+    next: need === undefined ? null : { how: how(need), need, arg, left: need - have, unit },
   };
 }
 

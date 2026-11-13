@@ -39,11 +39,11 @@ import PasscodeField from "./PasscodeField";
 import { loadLastScan, loadShopMenu, saveLastScan, today, type ShopMenu } from "@/lib/lastScan";
 import { fillKnown, findSaved, saveLookups, savedNames } from "@/lib/savedLookups";
 import { MOODS, moodFromText, wordMatch } from "@/lib/moods";
-import { loadPasscode, PASSCODE_KEY } from "@/lib/passcode";
+import { loadPasscode } from "@/lib/passcode";
+import { sendAI } from "@/lib/askServer";
 import { shrinkForReading } from "@/lib/photo";
 import {
   addPending,
-  fetchOnline,
   loadPending,
   OfflineError,
   setPending as savePending,
@@ -523,16 +523,9 @@ export default function MenuScan({
     setDishRankError(null);
     setDishRanking(b.name);
     try {
-      const res = await fetch("/api/read-menu", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await sendAI({
           bean: { name: b.name, roast: b.roast, process: b.process },
-          dishes: foodMenu.map((m) => m.dish),
-          passcode: passcode.trim().normalize("NFKC"),
-          lang: getLang(),
-        }),
-      });
+          dishes: foodMenu.map((m) => m.dish) }, passcode);
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) setSavedPasscode(false);
       if (!res.ok) throw new Error(data.error ?? "相性を調べられませんでした");
@@ -573,20 +566,13 @@ export default function MenuScan({
     setError("");
     setPairingBusy(true);
     try {
-      const res = await fetch("/api/read-menu", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await sendAI({
           [asMood ? "mood" : "sweet"]: s,
           beans: beans.map(({ name, roast, process }) => ({
             name,
             roast,
             process,
-          })),
-          passcode: passcode.trim().normalize("NFKC"),
-          lang: getLang(),
-        }),
-      });
+          })) }, passcode);
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) setSavedPasscode(false);
       if (!res.ok) throw new Error(data.error ?? "相性を調べられませんでした");
@@ -786,22 +772,12 @@ export default function MenuScan({
     try {
       const body = await payload();
       setPhase(1);
-      const res = await fetchOnline("/api/read-menu", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...body,
-          passcode: passcode.trim().normalize("NFKC"),
-          lang: getLang(),
-        }),
-      });
+      const res = await sendAI({
+          ...body }, passcode);
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) setSavedPasscode(false);
       if (!res.ok) throw new Error(data.error ?? "読み取りに失敗しました");
       setPhase(2);
-      try {
-        localStorage.setItem(PASSCODE_KEY, passcode.trim().normalize("NFKC"));
-      } catch {}
       setSavedPasscode(true);
       // 前に解説を出した豆は、AI に書かせずに端末に残っている解説を使う
       const result = { beans: fillKnown((data as MenuScanResult).beans) };

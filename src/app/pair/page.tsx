@@ -29,9 +29,10 @@ import {
   type FoodPairing,
   type MineMatch,
 } from "@/lib/foodPairing";
-import { loadPasscode, normalizePasscode, savePasscode } from "@/lib/passcode";
+import { loadPasscode } from "@/lib/passcode";
+import { sendAI } from "@/lib/askServer";
 import { shrinkForReading } from "@/lib/photo";
-import { addPending, fetchOnline, loadPending, OfflineError, setPending as savePending } from "@/lib/pending";
+import { addPending, loadPending, OfflineError, setPending as savePending } from "@/lib/pending";
 import PendingPhotos from "@/components/PendingPhotos";
 import { loadPrefs } from "@/lib/prefs";
 import type { Bag, TastingRecord } from "@/lib/types";
@@ -39,7 +40,7 @@ import MenuPicks from "@/components/MenuPicks";
 import ScanTabs from "@/components/ScanTabs";
 import ShopBar from "@/components/ShopBar";
 import Skeleton from "@/components/Skeleton";
-import { getLang, tr, trv } from "@/lib/i18n";
+import { tr, trv } from "@/lib/i18n";
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -161,16 +162,10 @@ export default function PairPage() {
   }
 
   async function post(payload: object) {
-    const code = normalizePasscode(passcode);
-    const res = await fetchOnline("/api/read-menu", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, likes: likesText(), passcode: code, lang: getLang() }),
-    });
+    const res = await sendAI({ ...payload, likes: likesText() }, passcode);
     const data = await res.json().catch(() => ({}));
     if (res.status === 401) setSavedPasscode(false);
     if (!res.ok) throw new Error(data.error ?? "調べられませんでした");
-    savePasscode(code);
     setSavedPasscode(true);
     return data;
   }
@@ -389,7 +384,7 @@ export default function PairPage() {
             type="search"
             enterKeyHint="search"
             maxLength={40}
-            placeholder={tr("料理・食べ物（例：ケーキ）")}
+            placeholder={tr("料理名（例：ケーキ）")}
             value={dish}
             onChange={(e) => setDish(e.target.value)}
           />
