@@ -10,7 +10,10 @@ export function sizeOf(b: Bag) {
 /** 残りの割合（0〜1）と、あと何杯か（45）。pour は設定の「1回に使う豆の量」 */
 export function remaining(b: Bag, mine: TastingRecord[], pour: number) {
   const size = sizeOf(b);
-  const left = Math.max(0, size - mine.length * pour);
+  // 自分で残りを決めていたら、そこから後の記録の分だけ減らす
+  const start = b.leftSet ? size * b.leftSet.ratio : size;
+  const used = b.leftSet ? Math.max(0, mine.length - b.leftSet.count) : mine.length;
+  const left = Math.max(0, start - used * pour);
   return { ratio: left / size, cups: Math.floor(left / pour) };
 }
 
