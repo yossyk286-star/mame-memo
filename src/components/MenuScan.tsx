@@ -392,6 +392,20 @@ export default function MenuScan({
   const [find, setFind] = useState("");
   // タップで開いているカード（1杯だけのときは最初から開く）
   const [openCard, setOpenCard] = useState<string | null>(null);
+  // 一覧から開いたカードは、名前が画面の上に来るところまで動かす（開いたあと途中から見えないように）
+  const scrollToCard = useRef<string | null>(null);
+  function openCardAt(name: string) {
+    scrollToCard.current = name;
+    setOpenCard(name);
+  }
+  useEffect(() => {
+    const name = scrollToCard.current;
+    if (!name || openCard !== name) return;
+    scrollToCard.current = null;
+    document
+      .querySelector(`[data-card="${CSS.escape(name)}"]`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [openCard]);
   // スイーツとの相性を出したときは、その順を優先する
   const roastsHere = ROAST_FILTERS.filter((r) =>
     beans.some((b) => b.roast === r),
@@ -1294,6 +1308,7 @@ export default function MenuScan({
               </p>
             )}
             <article
+              data-card={b.name}
               className={`${styles.bean} ${i === best ? styles.best : ""} ${open ? "" : styles.closed} ${fresh.includes(b.name) ? "reveal-item" : ""}`}
               style={
                 fresh.includes(b.name)
@@ -1324,7 +1339,7 @@ export default function MenuScan({
                 type="button"
                 className={styles.cardHead}
                 aria-expanded={open}
-                onClick={() => setOpenCard(open ? null : b.name)}
+                onClick={() => (open ? setOpenCard(null) : openCardAt(b.name))}
               >
                 <span className={styles.cardTop}>
                   <span className={styles.name}>
@@ -1341,7 +1356,7 @@ export default function MenuScan({
                 <button
                   type="button"
                   className={styles.oneLine}
-                  onClick={() => setOpenCard(b.name)}
+                  onClick={() => openCardAt(b.name)}
                 >
                   {match &&
                     `${"●".repeat(match.score)}${"○".repeat(5 - match.score)} `}
@@ -1500,7 +1515,7 @@ export default function MenuScan({
                   className={styles.chev}
                   tabIndex={-1}
                   aria-hidden="true"
-                  onClick={() => setOpenCard(b.name)}
+                  onClick={() => openCardAt(b.name)}
                 >
                   ⌄
                 </button>

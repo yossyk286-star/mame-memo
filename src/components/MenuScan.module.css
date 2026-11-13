@@ -418,6 +418,11 @@
   font-weight: 700;
 }
 
+/* 開いたときに名前が上のバーに隠れないよう、上に少し余白をとって止める */
+.bean[data-card] {
+  scroll-margin-top: calc(env(safe-area-inset-top) + 64px);
+}
+
 .name {
   font-size: 17px;
   font-weight: 700;
