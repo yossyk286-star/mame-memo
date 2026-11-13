@@ -43,6 +43,31 @@ export function saveLookups(beans: ScannedBean[], query?: string) {
   } catch {}
 }
 
+/** 解説が残っている豆の名前。写真を読むときに送り、これらは AI に解説を書かせずにここの解説を使う */
+export function savedNames() {
+  return [...new Set(Object.values(load()).map(({ bean }) => bean.name))];
+}
+
+/**
+ * 写真の読み取りで known（前に解説を出したもの）と返ってきた豆に、残してある解説をつなぐ。
+ * 名前・メニューの説明・写真に書いてあった産地などは今回の写真のものを使う
+ */
+export function fillKnown(found: (ScannedBean & { known?: boolean })[]): ScannedBean[] {
+  return found.map(({ known, ...b }) => {
+    const saved = known ? findSaved(b.name) : null;
+    if (!saved) return b;
+    return {
+      ...saved,
+      name: b.name,
+      menuNote: b.menuNote || saved.menuNote,
+      origin: b.origin || saved.origin,
+      farm: b.farm || saved.farm,
+      roast: b.roast ?? saved.roast,
+      process: b.process ?? saved.process,
+    };
+  });
+}
+
 /** 最近調べた豆（名前が同じものは1つ） */
 export function recentSaved(n: number) {
   const seen = new Set<string>();

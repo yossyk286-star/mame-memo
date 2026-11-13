@@ -3,6 +3,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { timingSafeEqual } from "node:crypto";
 import { BEAN_REFERENCE } from "@/lib/knownBeans";
 import { CHOOSING_TIPS, TERMS } from "@/lib/glossary";
+import { nameKey } from "@/lib/savedLookups";
 import { FoodMenuSchema, FoodPairingSchema, MenuListSchema, MenuScanResultSchema, PairingResultSchema, DishIdeasSchema, TermLookupSchema, SpecResultSchema } from "@/lib/schemas";
 
 // 品の多いメニューを全部読むときは時間がかかるので、待ち時間の上限を長めにする
@@ -39,6 +40,8 @@ const MAX_PAIRING_BEANS = 40;
 const EXPLAIN_CHUNK = 5;
 // 1枚の写真から読む豆の上限（ふつうのメニューなら届かない。答えが長くなりすぎないための安全弁）
 const MAX_MENU_BEANS = 60;
+// 端末に解説が残っている豆として受け取る名前の数の上限（端末に残すのは300件まで）
+const MAX_KNOWN = 300;
 // 記録について AI に聞くときの、質問・記録の要約の文字数と、続けて聞くときに渡す前の質問の数
 const MAX_ASK = 300;
 const MAX_CONTEXT = 1500;
@@ -414,7 +417,7 @@ export async function POST(req: Request) {
    * 写真の豆を全部読む。1回目は写真から名前と書いてあることだけを全部書き出し（答えが短いので品が抜けない）、
    * 2回目は書き出した豆を何個かずつに分けて、文字だけで解説を同時に書かせる
    */
-  const readPhoto = async (data: string) => {
+  const readPhoto = async (data: string, known: Set<string>) => {
     const listed = await client.messages.parse({
       model: READ_MODEL,
       max_tokens: 12000,
@@ -437,8 +440,11 @@ export async function POST(req: Request) {
     const items = listed.parsed_output.beans.slice(0, MAX_MENU_BEANS);
     if (items.length === 0) return { beans: [] };
 
+    // 前にこの端末で解説まで出した豆は解説を書かせず、端末に残っている解説を使ってもらう（known を付けて返す）
+    const isKnown = (b: (typeof items)[number]) => known.has(nameKey(b.name));
+    const fresh = items.filter((b) => !isKnown(b));
     const chunks: (typeof items)[] = [];
-    for (let i = 0; i < items.length; i += EXPLAIN_CHUNK) chunks.push(items.slice(i, i + EXPLAIN_CHUNK));
+    for (let i = 0; i < fresh.length; i += EXPLAIN_CHUNK) chunks.push(fresh.slice(i, i + EXPLAIN_CHUNK));
     const explainChunk = async (chunk: typeof items) => {
       const lines = chunk.map((b, i) => `${i}. ${JSON.stringify(b)}`).join("\n");
       for (let attempt = 0; attempt < 2; attempt++) {
@@ -457,15 +463,18 @@ export async function POST(req: Request) {
       return [];
     };
     // 最初の組を先に送り、説明文の使い回しが用意できたころに残りを同時に送る（全部同時だと使い回せない）
-    const first = explainChunk(chunks[0]);
+    const first = chunks.length ? explainChunk(chunks[0]) : Promise.resolve([]);
     if (chunks.length > 1) await new Promise((r) => setTimeout(r, 1500));
     const explained = await Promise.all([first, ...chunks.slice(1).map(explainChunk)]);
 
     // 写真から読んだこと（名前・産地など）を優先し、解説は2回目の答えから付ける。解説が付かなかった豆も名前だけは残す
-    const beans = chunks.flatMap((chunk, c) =>
-      chunk.map((b, i) => {
-        const ex = explained[c].find((x) => x.name === b.name) ?? explained[c][i];
+    const exFor = new Map(
+      chunks.flatMap((chunk, c) => chunk.map((b, i) => [b, explained[c].find((x) => x.name === b.name) ?? explained[c][i]] as const)),
+    );
+    const beans = items.map((b) => {
+        const ex = exFor.get(b);
         return {
+          ...(isKnown(b) ? { known: true } : {}),
           name: b.name,
           reading: b.reading,
           origin: b.origin || ex?.origin || "",
@@ -480,8 +489,7 @@ export async function POST(req: Request) {
           taste: ex?.taste ?? { acidity: 3, bitterness: 3, sweetness: 3, body: 3 },
           methodNotes: ex?.methodNotes ?? [],
         };
-      }),
-    );
+      });
     return { beans };
   };
 
@@ -500,7 +508,16 @@ export async function POST(req: Request) {
   try {
     const result = text
       ? await explain([{ type: "text", text: `次のコーヒー豆について解説してください。\n\n${text}` }])
-      : await readPhoto(image);
+      : await readPhoto(
+          image,
+          // 端末に解説が残っている豆の名前（多すぎるときは先頭から）
+          new Set<string>(
+            (Array.isArray(body?.known) ? body.known : [])
+              .filter((n: unknown): n is string => typeof n === "string" && n.length <= 80)
+              .slice(0, MAX_KNOWN)
+              .map(nameKey),
+          ),
+        );
 
     if (!result) {
       return error(
