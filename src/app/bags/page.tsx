@@ -3,6 +3,7 @@
 import BackLink from "@/components/BackLink";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import BagGlass from "@/components/BagGlass";
 import { SingleChips } from "@/components/ChipGroup";
 import { beanTitle, roastColor, Stars, stars, yen } from "@/components/RecordCard";
 import { announceBuddy, pick } from "@/lib/buddy";
@@ -14,7 +15,7 @@ import type { Bag, TastingRecord } from "@/lib/types";
 import EmptyState from "@/components/EmptyState";
 import { tr, trJoin, trv } from "@/lib/i18n";
 import { askConfirm } from "@/components/ConfirmSheet";
-import { useFeatures } from "@/lib/features";
+import { reducedMotion, useFeatures } from "@/lib/features";
 import { BAG_SIZES, daysSinceDate, DRINK_WITHIN, remaining, roastedOf } from "@/lib/bottleLife";
 
 function emptyBag(): Omit<Bag, "id" | "createdAt"> {
@@ -130,6 +131,8 @@ function BagCard({ bag: b, records, onChange, onDelete }: { bag: Bag; records: T
   const left = remaining(b, mine, f.pour);
   // 残りを変えているときのスライダーの値（%）。閉じているときは null
   const [editPct, setEditPct] = useState<number | null>(null);
+  // 押した瞬間に袋がゆらっと揺れる間（そのあとで残りの変更に移る）
+  const [slosh, setSlosh] = useState(false);
   const days = daysSinceDate(roastedOf(b));
   const late = days >= DRINK_WITHIN;
   return (
@@ -191,12 +194,18 @@ function BagCard({ bag: b, records, onChange, onDelete }: { bag: Bag; records: T
           <button
             type="button"
             className="meter-row"
-            onClick={() => setEditPct(Math.round(left.ratio * 20) * 5)}
+            onClick={() => {
+              const open = () => {
+                setSlosh(false);
+                setEditPct(Math.round(left.ratio * 20) * 5);
+              };
+              if (reducedMotion()) return open();
+              setSlosh(true);
+              setTimeout(open, 420);
+            }}
             aria-label={tr("残り約{0}%", Math.round(left.ratio * 100)) + "・" + tr("変える")}
           >
-            <span className="bottle-meter" aria-hidden="true">
-              <i style={{ width: `${left.ratio * 100}%`, background: left.ratio < 0.25 ? "var(--danger)" : roastColor(b.roast) }} />
-            </span>
+            <BagGlass ratio={left.ratio} color={left.ratio < 0.25 ? "var(--danger)" : roastColor(b.roast)} sloshing={slosh} />
             <span className="muted">{left.cups > 0 ? tr("残り約{0}%・あと{1}杯くらい", Math.round(left.ratio * 100), left.cups) : tr("そろそろ空きそう")}</span>
             <span className="meter-change">{tr("変える")}</span>
           </button>
