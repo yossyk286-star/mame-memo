@@ -144,9 +144,12 @@ export default function MenuScan({
   onScanned,
   extra,
   initialQuery = "",
+  autoSearch = false,
 }: {
   /** 辞典・農園のページなどから「調べる」で来たときの名前。名前の欄に入れて開いておく（調べるのは押してから） */
   initialQuery?: string;
+  /** true なら開いてすぐ、initialQuery の名前で調べる（「いまが旬」カードから） */
+  autoSearch?: boolean;
   onPick: (bean: ScannedBean) => void;
   /** 記録に保存済みの写真。あればそれを読み取るボタンも出す */
   savedPhoto?: Blob | null;
@@ -632,6 +635,15 @@ export default function MenuScan({
     setLocalHit({ name: b.name, how, query: q });
     setOpenCard(b.name);
   }
+
+  // 「いまが旬」カードから来たら、押さなくてもすぐ調べる（開き直しで二重に調べない）
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (!autoSearch || !initialQuery || autoRan.current) return;
+    autoRan.current = true;
+    void lookupText(false, initialQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** 文字で調べる。アプリに入っている産地・銘柄と、前に調べた豆は AI を呼ばずに出す（無料・オフラインでも出る） */
   async function lookupText(fresh = false, q = text.trim()) {
